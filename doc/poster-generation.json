@@ -1,0 +1,9 @@
+{
+  "endpoint": "https://chat.aiwaves.tech/aigram/api/gen-image",
+  "origin": "https://aigram.app",
+  "request": {
+    "prompt": "Square 1024x1024 premium mobile game key art, full bleed, no text, no letters,\nno logo, no watermark, no UI. A frantic morning rush-hour subway scene shown\nas an open-roof cutaway train car in dramatic three-quarter perspective. A\nsingle exhausted office worker in a cream shirt and deep-purple trousers pushes\nthrough a dense, diverse crowd toward one acid-yellow subway door that is\nsliding shut. Several passengers stumble sideways like dominoes as the train\nviolently sways; overhead hand straps all swing in the same direction, bags and\npaper tickets fly through the air. The car has detailed green bench seats,\nsilver poles, hanging straps, windows, route map, advertisements, warning stripes\nand a gritty floor. Bold adult American graphic-novel screenprint style: strong\ndry-brush black ink contours, coarse halftone shadows, limited off-register\npalette of deep aubergine, warm paper cream, acid yellow, carriage green,\ncool cyan and tiny vermilion accents. Funny panic, kinetic physical comedy,\nfamily friendly, no injuries, no gore. Strong diagonal depth, clear hero and\nclear closing-door objective readable at 160px. Reserve the top 25 percent as\nmostly clean deep-aubergine tunnel atmosphere for later title typography; keep\nall faces, the hero and the closing door below that safe area. Bottom 20 percent\ncontains only secondary floor and scattered papers, no face or key object.\nNot anime, not photorealistic, not flat vector art, not a screenshot.",
+    "ref_url": "https://yinxinghuan.github.io/games/posters/midnight-verdict.png"
+  },
+  "output_url": "https://cdn.aiwaves.tech/prod/telegram/avatar/0/1784410013382074.webp"
+}
