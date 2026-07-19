@@ -36,19 +36,18 @@ interface Body {
 
 interface Obstacle { x: number; z: number; r: number }
 
-const DOOR_X = 5.15
 const CAR_MIN_X = -7.65
 const CAR_MAX_X = 7.65
 const CAR_MIN_Z = -2.42
 const CAR_MAX_Z = 2.28
 const START_X = -6.45
-const START_Z = 1.2
-const EXIT_Z = CAR_MIN_Z - 0.65
-const ROUTE_LENGTH = Math.hypot(DOOR_X - START_X, EXIT_Z - START_Z)
-const FORWARD_X = (DOOR_X - START_X) / ROUTE_LENGTH
-const FORWARD_Z = (EXIT_Z - START_Z) / ROUTE_LENGTH
-const RIGHT_X = -FORWARD_Z
-const RIGHT_Z = FORWARD_X
+const START_Z = 0
+const EXIT_X = CAR_MAX_X + 0.62
+const EXIT_Z = 0
+const FORWARD_X = 1
+const FORWARD_Z = 0
+const RIGHT_X = 0
+const RIGHT_Z = 1
 
 function mulberry32(seed: number) {
   return () => {
@@ -60,17 +59,17 @@ function mulberry32(seed: number) {
 }
 
 function addFloorArrow(root: THREE.Group, x: number, z: number, scale = 1) {
-  const stem = box(0.22 * scale, 0.025, 0.72 * scale, C.yellow, x, 0.19, z)
+  const stem = box(0.72 * scale, 0.025, 0.22 * scale, C.yellow, x, 0.19, z)
   const head = new THREE.Mesh(new THREE.ConeGeometry(0.34 * scale, 0.55 * scale, 3), toon(C.yellow))
-  head.rotation.x = Math.PI / 2
-  head.rotation.z = Math.PI
-  head.position.set(x, 0.205, z - 0.55 * scale)
+  head.rotation.z = -Math.PI / 2
+  head.position.set(x + 0.55 * scale, 0.205, z)
   root.add(stem, head)
 }
 
 function buildTrain(config: LevelConfig) {
   const root = new THREE.Group()
   const handles: THREE.Group[] = []
+  const carriageLights: THREE.PointLight[] = []
   const obstacles: Obstacle[] = []
   const bench = config.variant === 'ad-wrap' ? 0x9b5b43 : config.variant === 'maintenance' ? 0x5a5148 : C.green
   const wall = config.variant === 'long-seat' ? 0xd8c7a3 : C.paper
@@ -79,25 +78,22 @@ function buildTrain(config: LevelConfig) {
   root.add(box(16.05, 0.18, 5.18, C.floor, 0, 0.12, 0))
   root.add(box(16.2, 0.75, 0.18, C.aubergine, 0, 0.52, CAR_MAX_Z + 0.32, true))
 
-  // Far wall: deliberately segmented around the open door.
-  const doorHalf = config.variant === 'narrow-door' ? 0.67 : 1.04
-  const leftLen = DOOR_X - doorHalf - (-8.1)
-  const rightStart = DOOR_X + doorHalf
-  root.add(box(leftLen, 1.6, 0.18, wall, -8.1 + leftLen / 2, 1.0, CAR_MIN_Z - 0.31, true))
-  root.add(box(8.1 - rightStart, 1.6, 0.18, wall, rightStart + (8.1 - rightStart) / 2, 1.0, CAR_MIN_Z - 0.31, true))
+  // Continuous side wall; the only gameplay exit is centered straight ahead.
+  root.add(box(16.2, 1.6, 0.18, wall, 0, 1.0, CAR_MIN_Z - 0.31, true))
 
-  // Open door leaves, threshold and danger stripes.
-  root.add(box(0.18, 2.45, 0.32, C.red, DOOR_X - doorHalf - 0.12, 1.35, CAR_MIN_Z - 0.28, true))
-  root.add(box(0.18, 2.45, 0.32, C.red, DOOR_X + doorHalf + 0.12, 1.35, CAR_MIN_Z - 0.28, true))
-  root.add(box(doorHalf * 2.65, 0.28, 0.34, C.ink, DOOR_X, 2.72, CAR_MIN_Z - 0.28, true))
-  root.add(box(doorHalf * 2.25, 0.16, 0.37, C.yellow, DOOR_X, 2.73, CAR_MIN_Z - 0.30, true))
-  // High acid-yellow destination board stays visible over the crowd from the
-  // third-person chase camera, so the exit always reads at the top of frame.
-  root.add(box(doorHalf * 2.95, 0.72, 0.24, C.ink, DOOR_X, 3.63, CAR_MIN_Z - 0.26, true))
-  root.add(box(doorHalf * 2.58, 0.48, 0.28, C.yellow, DOOR_X, 3.64, CAR_MIN_Z - 0.29, true))
-  for (const x of [-0.42, 0, 0.42]) root.add(box(0.16, 0.28, 0.30, C.red, DOOR_X + x * doorHalf, 3.64, CAR_MIN_Z - 0.45, true))
-  root.add(box(doorHalf * 2.15, 0.08, 0.58, C.yellow, DOOR_X, 0.23, CAR_MIN_Z - 0.38, true))
-  for (let i = -3; i <= 3; i++) root.add(box(0.12, 0.035, 0.5, i % 2 ? C.ink : C.red, DOOR_X + i * 0.23, 0.29, CAR_MIN_Z - 0.39))
+  // Far-end exit gate: wide, bright, and perpendicular to the forward camera.
+  const exitHalf = config.variant === 'narrow-door' ? 0.76 : 1.22
+  const lowerDepth = EXIT_Z - exitHalf - (CAR_MIN_Z - 0.28)
+  const upperStart = EXIT_Z + exitHalf
+  const upperDepth = CAR_MAX_Z + 0.28 - upperStart
+  root.add(box(0.22, 2.5, lowerDepth, wall, CAR_MAX_X + 0.25, 1.42, CAR_MIN_Z - 0.28 + lowerDepth / 2, true))
+  root.add(box(0.22, 2.5, upperDepth, wall, CAR_MAX_X + 0.25, 1.42, upperStart + upperDepth / 2, true))
+  root.add(box(0.34, 2.7, 0.24, C.red, CAR_MAX_X + 0.2, 1.48, -exitHalf - 0.1, true))
+  root.add(box(0.34, 2.7, 0.24, C.red, CAR_MAX_X + 0.2, 1.48, exitHalf + 0.1, true))
+  root.add(box(0.34, 0.28, exitHalf * 2.65, C.ink, CAR_MAX_X + 0.2, 2.76, 0, true))
+  root.add(box(0.37, 0.16, exitHalf * 2.25, C.yellow, CAR_MAX_X + 0.16, 2.77, 0, true))
+  root.add(box(0.68, 0.08, exitHalf * 2.12, C.yellow, CAR_MAX_X + 0.16, 0.23, 0, true))
+  for (let i = -4; i <= 4; i++) root.add(box(0.58, 0.035, 0.12, i % 2 ? C.ink : C.red, CAR_MAX_X + 0.14, 0.29, i * exitHalf * 0.22))
 
   // Benches read as authored subway furniture, with dark end caps.
   const benchSegments = config.variant === 'long-seat' ? [[-3.5, 6.7], [3.0, 2.8]] : [[-4.2, 4.8], [0.0, 2.0]]
@@ -150,6 +146,24 @@ function buildTrain(config: LevelConfig) {
     root.add(h)
   }
 
+  // Suspended carriage lamps keep the roofless cutaway readable. The fixtures
+  // and their light sources move with the train instead of floating in screen space.
+  for (let i = 0; i < 5; i++) {
+    const x = -5.6 + i * 2.85
+    root.add(box(1.18, 0.09, 0.16, C.ink, x, 3.23, -1.42))
+    const tube = new THREE.Mesh(
+      new THREE.BoxGeometry(1.02, 0.055, 0.11),
+      new THREE.MeshBasicMaterial({ color: i === 3 ? 0xd9decb : 0xffedbd }),
+    )
+    tube.position.set(x, 3.17, -1.42)
+    root.add(tube)
+    const lamp = new THREE.PointLight(i === 3 ? 0xc9d9d2 : 0xffdfaa, 0.7, 5.4, 1.75)
+    lamp.position.set(x, 2.92, -0.72)
+    lamp.userData.phase = i * 1.37
+    carriageLights.push(lamp)
+    root.add(lamp)
+  }
+
   // Variant-specific clutter changes the collision map.
   if (config.variant === 'maintenance') {
     for (const [x, z, s] of [[-1.1, -0.78, 0.72], [2.2, 0.85, 0.62], [4.0, 0.35, 0.55]] as const) {
@@ -165,9 +179,9 @@ function buildTrain(config: LevelConfig) {
     }
   }
 
-  for (const x of [-5.5, -2.7, 0.1, 2.9, 4.5]) addFloorArrow(root, x, 0.4 - (x + 5.5) * 0.35, 0.72)
+  for (const x of [-5.5, -2.7, 0.1, 2.9, 5.25]) addFloorArrow(root, x, 0, 0.72)
 
-  return { root, handles, obstacles, doorHalf }
+  return { root, handles, carriageLights, obstacles, exitHalf }
 }
 
 function dispose(root: THREE.Object3D) {
@@ -196,7 +210,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     playerGroup.position.set(START_X, 0.24, START_Z)
     playerGroup.rotation.y = Math.atan2(FORWARD_X, FORWARD_Z)
     train.root.add(playerGroup)
-    const player: Body = { group: playerGroup, x: START_X, z: START_Z, vx: 0, vz: 0, r: 0.38, mass: 1, stability: 2.25, fallenUntil: 0, protectedUntil: 0, phase: 0, homeX: START_X, homeZ: START_Z, player: true }
+    const player: Body = { group: playerGroup, x: START_X, z: START_Z, vx: 0, vz: 0, r: 0.38, mass: 1.28, stability: 2.25, fallenUntil: 0, protectedUntil: 0, phase: 0, homeX: START_X, homeZ: START_Z, player: true }
     S.player = player
     S.bodies.push(player)
     camera.position.set(START_X - FORWARD_X * 5.2, 4.8, START_Z - FORWARD_Z * 5.2)
@@ -210,7 +224,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       for (let col = 0; col < cols && made < config.passengers; col++) {
         const x = -6.6 + col * 1.58 + (rand() - 0.5) * 0.28
         const z = -1.34 + row * 0.54 + (rand() - 0.5) * 0.12
-        if (Math.hypot(x + 6.45, z - 1.2) < 1.25 || (Math.abs(x - DOOR_X) < 1.2 && z < -0.7)) continue
+        if (Math.hypot(x - START_X, z - START_Z) < 1.25 || (x > CAR_MAX_X - 1.15 && Math.abs(z) < train.exitHalf + 0.25)) continue
         const monsterEvery = level === 3 ? 7 : level === 4 ? 4 : level < 10 ? 3 : 2
         const monsterKind = monsterEvery && made % monsterEvery === 0 ? MONSTER_KINDS[(made / monsterEvery + level) % MONSTER_KINDS.length | 0] : null
         const style = passengerStyle(made, level)
@@ -286,6 +300,13 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     for (let i = 0; i < train.handles.length; i++) {
       train.handles[i].rotation.z = Math.sin(S.time * 2.5 + i * 0.16) * 0.04 + train.root.rotation.x * -2.6
     }
+    for (let i = 0; i < train.carriageLights.length; i++) {
+      const lamp = train.carriageLights[i]
+      const slowBreath = 0.78 + Math.sin(S.time * 0.72 + lamp.userData.phase) * 0.10
+      const looseLamp = i === 3 ? 0.76 + Math.sin(S.time * 2.15) * 0.17 : 1
+      const impactDip = S.swayKick > 0.55 && (i + Math.floor(S.time * 18)) % 3 === 0 ? 0.38 : 1
+      lamp.intensity = (reducedMotion ? 0.72 : slowBreath * looseLamp * impactDip) * 0.92
+    }
 
     const player = S.player
     for (const b of S.bodies) {
@@ -313,10 +334,10 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       b.x += b.vx * dt
       b.z += b.vz * dt
 
-      b.x = THREE.MathUtils.clamp(b.x, CAR_MIN_X + b.r, CAR_MAX_X - b.r)
-      const inDoor = Math.abs(b.x - DOOR_X) < train.doorHalf - b.r * 0.3
-      if (!inDoor || b.z > CAR_MIN_Z + 0.2) b.z = Math.max(b.z, CAR_MIN_Z + b.r)
-      b.z = Math.min(b.z, CAR_MAX_Z - b.r)
+      const inExitLane = Math.abs(b.z - EXIT_Z) < train.exitHalf - b.r * 0.3
+      const maxX = b.player && inExitLane ? EXIT_X + 0.78 : CAR_MAX_X - b.r
+      b.x = THREE.MathUtils.clamp(b.x, CAR_MIN_X + b.r, maxX)
+      b.z = THREE.MathUtils.clamp(b.z, CAR_MIN_Z + b.r, CAR_MAX_Z - b.r)
 
       for (const o of train.obstacles) {
         const dx = b.x - o.x, dz = b.z - o.z
@@ -382,15 +403,16 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
 
     // A stable third-person chase camera keeps the player in the lower-middle
     // foreground while the yellow exit remains ahead at the top of the screen.
-    cameraGoal.current.set(player.x - FORWARD_X * 5.2, 4.8, player.z - FORWARD_Z * 5.2)
+    const cameraTrackZ = player.z * 0.35
+    cameraGoal.current.set(player.x - 5.2, 4.8, cameraTrackZ)
     camera.position.lerp(cameraGoal.current, 1 - Math.exp(-dt * 7.5))
     cameraLook.current.lerp(
-      cameraGoal.current.set(player.x + FORWARD_X * 4.8, 1.0, player.z + FORWARD_Z * 4.8),
+      cameraGoal.current.set(player.x + 4.8, 1.0, cameraTrackZ),
       1 - Math.exp(-dt * 9),
     )
     camera.lookAt(cameraLook.current)
 
-    if (player.z < CAR_MIN_Z - 0.48 && Math.abs(player.x - DOOR_X) < train.doorHalf) {
+    if (player.x > EXIT_X + 0.36 && Math.abs(player.z - EXIT_Z) < train.exitHalf) {
       S.ended = true
       sound.win()
       onOutcome('clear', { timeLeft: S.timeLeft, falls: S.falls })
@@ -407,7 +429,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       S.hudT = 0.08
       onHud({
         timeLeft: S.timeLeft,
-        distance: Math.hypot(DOOR_X - player.x, CAR_MIN_Z - 0.65 - player.z),
+        distance: Math.hypot(EXIT_X - player.x, EXIT_Z - player.z),
         falls: S.falls,
         braced: S.braced,
         swayWarning: warningNow,
@@ -421,9 +443,15 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
 
 export default function TrainScene(props: Props) {
   return (
-    <Canvas className="got__canvas" shadows dpr={[1, 1.65]} gl={{ antialias: true, alpha: false }}>
-      <color attach="background" args={[C.ink]} />
-      <fog attach="fog" args={[C.ink, 20, 42]} />
+    <Canvas
+      className="got__canvas"
+      shadows
+      dpr={[1, 1.65]}
+      gl={{ antialias: true, alpha: false }}
+      onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 0.82 }}
+    >
+      <color attach="background" args={[0x0d0b12]} />
+      <fog attach="fog" args={[0x0d0b12, 17, 36]} />
       <PerspectiveCamera
         makeDefault
         position={[START_X - FORWARD_X * 5.2, 4.8, START_Z - FORWARD_Z * 5.2]}
@@ -431,9 +459,9 @@ export default function TrainScene(props: Props) {
         near={0.15}
         far={100}
       />
-      <hemisphereLight args={[C.paper, C.aubergine, 1.4]} />
-      <directionalLight position={[-6, 14, 9]} intensity={3.4} color={C.paper} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={10} shadow-camera-bottom={-10} />
-      <directionalLight position={[8, 6, -9]} intensity={1.25} color={C.cyan} />
+      <hemisphereLight args={[0x8f91a2, 0x211722, 0.48]} />
+      <directionalLight position={[-6, 12, 8]} intensity={1.15} color={0xffe5b6} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={10} shadow-camera-bottom={-10} />
+      <directionalLight position={[8, 6, -9]} intensity={0.42} color={0x7fa9b5} />
       <World {...props} />
     </Canvas>
   )

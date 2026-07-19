@@ -129,16 +129,31 @@ export function passengerStyle(index: number, level: number): CharacterStyle {
 
 export function makePlayer() {
   const player = makeCharacter({
-    skin: C.skin2, top: C.yellow, bottom: C.aubergine, hair: 0x2e2520,
+    skin: C.skin2, top: C.yellow, bottom: C.aubergine, hair: C.paper,
     accent: C.red, body: 'normal', feature: 'bag',
   }, true)
-  const ringInk = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.095, 6, 18), new THREE.MeshBasicMaterial({ color: C.ink }))
+  const ringInk = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.17, 6, 20), new THREE.MeshBasicMaterial({ color: C.ink }))
   ringInk.rotation.x = Math.PI / 2
   ringInk.position.y = 0.035
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.052, 6, 18), new THREE.MeshBasicMaterial({ color: C.yellow }))
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.105, 6, 20), new THREE.MeshBasicMaterial({ color: C.yellow }))
   ring.rotation.x = Math.PI / 2
-  ring.position.y = 0.042
-  player.add(ringInk, ring)
+  ring.position.y = 0.052
+  const aura = new THREE.Mesh(
+    new THREE.TorusGeometry(0.73, 0.20, 8, 28),
+    new THREE.MeshBasicMaterial({
+      color: 0xfff1a8,
+      transparent: true,
+      opacity: 0.24,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    }),
+  )
+  aura.rotation.x = Math.PI / 2
+  aura.position.y = 0.045
+  const playerLight = new THREE.PointLight(0xffe7a0, 2.35, 4.2, 1.65)
+  playerLight.position.set(0, 1.15, 0)
+  playerLight.userData.playerLight = true
+  player.add(aura, ringInk, ring, playerLight)
   player.add(box(0.54, 0.09, 0.055, C.paper, 0, 1.38, -0.51, true))
   player.scale.setScalar(1.03)
   return player

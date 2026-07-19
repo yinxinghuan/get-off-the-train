@@ -12,7 +12,8 @@ import { telegramId, useGameEvent } from './shared/runtime'
 const BEST_KEY = 'get-off-the-train.best.v1'
 const POSTER_URL = 'https://yinxinghuan.github.io/games/posters/get-off-the-train.png'
 const QA_LEVEL = import.meta.env.DEV ? Math.max(0, Number(new URLSearchParams(location.search).get('qaLevel') || 1) - 1) : 0
-const QA_ACTIVE = import.meta.env.DEV && new URLSearchParams(location.search).has('qaLevel')
+const QA_AUTORUN = import.meta.env.DEV && new URLSearchParams(location.search).has('qaRun')
+const QA_ACTIVE = import.meta.env.DEV && (new URLSearchParams(location.search).has('qaLevel') || QA_AUTORUN)
 const initialHud: HudState = { timeLeft: getLevelConfig(QA_LEVEL).time, distance: 12, falls: 0, braced: false, swayWarning: false, swayDirection: 1 }
 const EN_LEVELS = [
   ['COMMUTER LOCAL', 'Learn to turn sideways through the gaps'],
@@ -52,6 +53,12 @@ export default function App() {
   const preRunBest = useRef(0)
   const { submitScore, fetchLeaderboard } = useGameScore()
   const events = useGameEvent()
+
+  useEffect(() => {
+    if (!QA_AUTORUN || phase !== 'playing') return
+    input.current = { x: 0, z: -1 }
+    return () => { input.current = { x: 0, z: 0 } }
+  }, [level, phase])
 
   useEffect(() => {
     let alive = true
@@ -179,6 +186,7 @@ export default function App() {
       <div className="got-level-tag"><TrainIcon size={18} /><b>{copy.name}</b><span>{runStarted ? copy.subtitle : t('dragUp')}</span></div>
       <div className="got-exit-cue" aria-hidden="true"><ExitAheadIcon size={18} /><b>{t('exitAhead')}</b></div>
       <button className="got-pause" aria-label={t('pause')} onPointerDown={pause}><PauseIcon /></button>
+      {phase === 'playing' && <div className="got-player-label" aria-hidden="true"><b>{t('you')}</b><span /></div>}
 
       {phase === 'playing' && (
         <>

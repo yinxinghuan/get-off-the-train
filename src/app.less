@@ -87,6 +87,13 @@ button { font: inherit; }
   b { font: 950 12px/1 Impact, "Arial Black", "Noto Sans SC", sans-serif; letter-spacing: .08em; }
 }
 
+.got-player-label {
+  position: absolute; z-index: 11; left: 50%; top: 40%; transform: translateX(-50%); pointer-events: none;
+  display: flex; flex-direction: column; align-items: center;
+  b { min-width: 42px; padding: 5px 8px; color: @ink; background: @yellow; border: 3px solid @ink; box-shadow: 3px 3px 0 @red; font: 950 13px/1 ui-monospace, monospace; text-align: center; }
+  span { width: 0; height: 0; margin-top: 1px; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 10px solid @yellow; filter: drop-shadow(0 3px 0 @ink); }
+}
+
 .got-pause {
   position: absolute; z-index: 12; right: 17px; top: calc(87px + env(safe-area-inset-top)); width: 48px; height: 48px;
   display: grid; place-items: center; color: @paper; background: @aubergine; border: 3px solid @ink; box-shadow: 3px 3px 0 @ink;
