@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrthographicCamera } from '@react-three/drei'
+import { PerspectiveCamera } from '@react-three/drei'
 import { MutableRefObject, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { box, C, cyl, makeCharacter, makeMonsterPassenger, makePlayer, MONSTER_KINDS, passengerStyle, toon } from './models'
@@ -41,6 +41,14 @@ const CAR_MIN_X = -7.65
 const CAR_MAX_X = 7.65
 const CAR_MIN_Z = -2.42
 const CAR_MAX_Z = 2.28
+const START_X = -6.45
+const START_Z = 1.2
+const EXIT_Z = CAR_MIN_Z - 0.65
+const ROUTE_LENGTH = Math.hypot(DOOR_X - START_X, EXIT_Z - START_Z)
+const FORWARD_X = (DOOR_X - START_X) / ROUTE_LENGTH
+const FORWARD_Z = (EXIT_Z - START_Z) / ROUTE_LENGTH
+const RIGHT_X = -FORWARD_Z
+const RIGHT_Z = FORWARD_X
 
 function mulberry32(seed: number) {
   return () => {
@@ -81,6 +89,13 @@ function buildTrain(config: LevelConfig) {
   // Open door leaves, threshold and danger stripes.
   root.add(box(0.18, 2.45, 0.32, C.red, DOOR_X - doorHalf - 0.12, 1.35, CAR_MIN_Z - 0.28, true))
   root.add(box(0.18, 2.45, 0.32, C.red, DOOR_X + doorHalf + 0.12, 1.35, CAR_MIN_Z - 0.28, true))
+  root.add(box(doorHalf * 2.65, 0.28, 0.34, C.ink, DOOR_X, 2.72, CAR_MIN_Z - 0.28, true))
+  root.add(box(doorHalf * 2.25, 0.16, 0.37, C.yellow, DOOR_X, 2.73, CAR_MIN_Z - 0.30, true))
+  // High acid-yellow destination board stays visible over the crowd from the
+  // third-person chase camera, so the exit always reads at the top of frame.
+  root.add(box(doorHalf * 2.95, 0.72, 0.24, C.ink, DOOR_X, 3.63, CAR_MIN_Z - 0.26, true))
+  root.add(box(doorHalf * 2.58, 0.48, 0.28, C.yellow, DOOR_X, 3.64, CAR_MIN_Z - 0.29, true))
+  for (const x of [-0.42, 0, 0.42]) root.add(box(0.16, 0.28, 0.30, C.red, DOOR_X + x * doorHalf, 3.64, CAR_MIN_Z - 0.45, true))
   root.add(box(doorHalf * 2.15, 0.08, 0.58, C.yellow, DOOR_X, 0.23, CAR_MIN_Z - 0.38, true))
   for (let i = -3; i <= 3; i++) root.add(box(0.12, 0.035, 0.5, i % 2 ? C.ink : C.red, DOOR_X + i * 0.23, 0.29, CAR_MIN_Z - 0.39))
 
@@ -163,9 +178,11 @@ function dispose(root: THREE.Object3D) {
 }
 
 function World({ level, config, active, input, reducedMotion, onHud, onOutcome }: Props) {
-  const { scene } = useThree()
+  const { scene, camera } = useThree()
   const train = useMemo(() => buildTrain(config), [config])
   const fx = useMemo(() => new THREE.Group(), [])
+  const cameraGoal = useRef(new THREE.Vector3())
+  const cameraLook = useRef(new THREE.Vector3(START_X + FORWARD_X * 4.8, 1.0, START_Z + FORWARD_Z * 4.8))
   const state = useRef({
     bodies: [] as Body[], player: null as Body | null, time: 0, timeLeft: config.time,
     nextSway: config.swayPeriod, warningSent: false, swayDirection: (level % 2 ? -1 : 1) as -1 | 1,
@@ -176,11 +193,14 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     const S = state.current
     scene.add(train.root, fx)
     const playerGroup = makePlayer()
-    playerGroup.position.set(-6.45, 0.24, 1.2)
+    playerGroup.position.set(START_X, 0.24, START_Z)
+    playerGroup.rotation.y = Math.atan2(FORWARD_X, FORWARD_Z)
     train.root.add(playerGroup)
-    const player: Body = { group: playerGroup, x: -6.45, z: 1.2, vx: 0, vz: 0, r: 0.38, mass: 1, stability: 2.25, fallenUntil: 0, protectedUntil: 0, phase: 0, homeX: -6.45, homeZ: 1.2, player: true }
+    const player: Body = { group: playerGroup, x: START_X, z: START_Z, vx: 0, vz: 0, r: 0.38, mass: 1, stability: 2.25, fallenUntil: 0, protectedUntil: 0, phase: 0, homeX: START_X, homeZ: START_Z, player: true }
     S.player = player
     S.bodies.push(player)
+    camera.position.set(START_X - FORWARD_X * 5.2, 4.8, START_Z - FORWARD_Z * 5.2)
+    camera.lookAt(cameraLook.current)
 
     const rand = mulberry32(9017 + level * 103)
     let made = 0
@@ -215,7 +235,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       dispose(train.root)
       dispose(fx)
     }
-  }, [scene, train, fx, config.passengers, level])
+  }, [scene, camera, train, fx, config.passengers, level])
 
   useFrame(() => {
     const S = state.current
@@ -272,10 +292,11 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       const fallen = b.fallenUntil > S.time
       if (b.player) {
         if (!fallen) {
-          // Input follows the screen, not the train's world axes: the camera looks
-          // down the car's X axis, so screen-down advances +X and screen-right is -Z.
-          const targetVx = input.current.z * 4.1
-          const targetVz = -input.current.x * 4.1
+          // Temple-run style mapping: dragging toward the top of the screen moves
+          // along the camera's forward route to the door; horizontal drag strafes.
+          const forward = -input.current.z
+          const targetVx = (FORWARD_X * forward + RIGHT_X * input.current.x) * 4.1
+          const targetVz = (FORWARD_Z * forward + RIGHT_Z * input.current.x) * 4.1
           b.vx += (targetVx - b.vx) * Math.min(1, 18 * dt)
           b.vz += (targetVz - b.vz) * Math.min(1, 18 * dt)
         }
@@ -359,6 +380,16 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       }
     }
 
+    // A stable third-person chase camera keeps the player in the lower-middle
+    // foreground while the yellow exit remains ahead at the top of the screen.
+    cameraGoal.current.set(player.x - FORWARD_X * 5.2, 4.8, player.z - FORWARD_Z * 5.2)
+    camera.position.lerp(cameraGoal.current, 1 - Math.exp(-dt * 7.5))
+    cameraLook.current.lerp(
+      cameraGoal.current.set(player.x + FORWARD_X * 4.8, 1.0, player.z + FORWARD_Z * 4.8),
+      1 - Math.exp(-dt * 9),
+    )
+    camera.lookAt(cameraLook.current)
+
     if (player.z < CAR_MIN_Z - 0.48 && Math.abs(player.x - DOOR_X) < train.doorHalf) {
       S.ended = true
       sound.win()
@@ -393,7 +424,13 @@ export default function TrainScene(props: Props) {
     <Canvas className="got__canvas" shadows dpr={[1, 1.65]} gl={{ antialias: true, alpha: false }}>
       <color attach="background" args={[C.ink]} />
       <fog attach="fog" args={[C.ink, 20, 42]} />
-      <OrthographicCamera makeDefault position={[14, 15, 0.4]} zoom={44} near={0.1} far={100} onUpdate={(camera) => camera.lookAt(0, 0.6, 0)} />
+      <PerspectiveCamera
+        makeDefault
+        position={[START_X - FORWARD_X * 5.2, 4.8, START_Z - FORWARD_Z * 5.2]}
+        fov={55}
+        near={0.15}
+        far={100}
+      />
       <hemisphereLight args={[C.paper, C.aubergine, 1.4]} />
       <directionalLight position={[-6, 14, 9]} intensity={3.4} color={C.paper} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={10} shadow-camera-bottom={-10} />
       <directionalLight position={[8, 6, -9]} intensity={1.25} color={C.cyan} />

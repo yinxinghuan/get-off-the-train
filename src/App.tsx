@@ -3,11 +3,11 @@ import TrainScene from './game/TrainScene'
 import { getLevelConfig, type HudState, type InputVector, type Phase } from './game/types'
 import { sound } from './audio/sound'
 import { locale, t } from './i18n'
-import { ArrowIcon, BalanceIcon, CrownIcon, MutedIcon, PauseIcon, SoundIcon, TrainIcon } from './ui/Icons'
+import { ArrowIcon, BalanceIcon, ExitAheadIcon, PauseIcon, TrainIcon } from './ui/Icons'
 import { Joystick } from './ui/Joystick'
 import { Leaderboard } from './shared/leaderboard/Leaderboard'
 import { useGameScore, type LeaderboardEntry } from './shared/leaderboard/useGameScore'
-import { openAigramProfile, telegramId, useGameEvent } from './shared/runtime'
+import { telegramId, useGameEvent } from './shared/runtime'
 
 const BEST_KEY = 'get-off-the-train.best.v1'
 const POSTER_URL = 'https://yinxinghuan.github.io/games/posters/get-off-the-train.png'
@@ -33,7 +33,7 @@ function ActionButton({ children, onPress, secondary = false }: { children: Reac
 }
 
 export default function App() {
-  const [phase, setPhase] = useState<Phase>(QA_ACTIVE ? 'playing' : 'start')
+  const [phase, setPhase] = useState<Phase>('playing')
   const [level, setLevel] = useState(QA_LEVEL)
   const config = getLevelConfig(level)
   const copy = levelCopy(level, config)
@@ -42,27 +42,25 @@ export default function App() {
   const [levelScore, setLevelScore] = useState(0)
   const [totalFalls, setTotalFalls] = useState(0)
   const [best, setBest] = useState(() => Number(localStorage.getItem(BEST_KEY) || 0))
-  const [muted, setMuted] = useState(sound.isMuted())
   const [reducedMotion, setReducedMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const [runStarted, setRunStarted] = useState(QA_ACTIVE)
+  const [showGuide, setShowGuide] = useState(!QA_ACTIVE)
   const [showBoard, setShowBoard] = useState(false)
-  const [champion, setChampion] = useState<LeaderboardEntry | null>(null)
   const input = useRef<InputVector>({ x: 0, z: 0 })
   const phaseBeforePause = useRef<Phase>('playing')
   const latestRows = useRef<LeaderboardEntry[]>([])
   const preRunBest = useRef(0)
-  const { isInAigram, submitScore, fetchLeaderboard } = useGameScore()
+  const { submitScore, fetchLeaderboard } = useGameScore()
   const events = useGameEvent()
 
   useEffect(() => {
-    if (phase !== 'start') return
     let alive = true
     fetchLeaderboard().then((rows) => {
       if (!alive) return
       latestRows.current = rows
-      setChampion(rows[0] || null)
     }).catch(() => {})
     return () => { alive = false }
-  }, [phase, fetchLeaderboard])
+  }, [fetchLeaderboard])
 
   const snapshotPreRunBest = useCallback(() => {
     if (!telegramId) { preRunBest.current = 0; return }
@@ -92,13 +90,24 @@ export default function App() {
     } catch { /* leaderboard notifications never block results */ }
   }, [events, fetchLeaderboard])
 
-  const start = useCallback(() => {
+  const restartRun = useCallback(() => {
     sound.unlock()
     snapshotPreRunBest()
     input.current = { x: 0, z: 0 }
     setLevel(0); setScore(0); setLevelScore(0); setTotalFalls(0)
     setHud({ ...initialHud, timeLeft: getLevelConfig(0).time })
+    setRunStarted(true)
+    setShowGuide(false)
     setPhase('playing')
+  }, [snapshotPreRunBest])
+
+  const beginFromInput = useCallback(() => {
+    sound.unlock()
+    setShowGuide(false)
+    setRunStarted((started) => {
+      if (!started) snapshotPreRunBest()
+      return true
+    })
   }, [snapshotPreRunBest])
 
   const handleOutcome = useCallback((kind: 'clear' | 'fail', data: { timeLeft: number; falls: number }) => {
@@ -133,6 +142,7 @@ export default function App() {
     const down = (ev: KeyboardEvent) => {
       if (ev.key === 'Escape' || ev.key.toLowerCase() === 'p') { ev.preventDefault(); phase === 'paused' ? setPhase(phaseBeforePause.current) : pause(); return }
       const key = ev.key.toLowerCase()
+      if (['a', 'd', 'w', 's', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) beginFromInput()
       if (key === 'a' || key === 'arrowleft') input.current.x = -1
       if (key === 'd' || key === 'arrowright') input.current.x = 1
       if (key === 'w' || key === 'arrowup') input.current.z = -1
@@ -147,7 +157,7 @@ export default function App() {
     }
     window.addEventListener('keydown', down); window.addEventListener('keyup', up)
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
-  }, [phase, pause])
+  }, [beginFromInput, phase, pause])
 
   useEffect(() => {
     const onVisibility = () => { if (document.hidden && phase === 'playing') pause() }
@@ -155,61 +165,26 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [phase, pause])
 
-  const toggleSound = () => { setMuted(sound.toggle()) }
-
   return (
     <main className={`got${hud.swayWarning ? ' got--warning' : ''}${phase === 'game-over' ? ' got--failed' : ''}`}>
-      {phase !== 'start' && (
-        <TrainScene key={level} level={level} config={config} active={phase === 'playing'} input={input} reducedMotion={reducedMotion} onHud={setHud} onOutcome={handleOutcome} />
-      )}
+      <TrainScene key={level} level={level} config={config} active={phase === 'playing' && runStarted} input={input} reducedMotion={reducedMotion} onHud={setHud} onOutcome={handleOutcome} />
       <div className="got__halftone" aria-hidden="true" />
       <div className="got__frame" aria-hidden="true" />
 
-      {phase === 'start' && (
-        <section className="got-cover">
-          <img className="got-cover__art" src="./poster.png" alt="拥挤的早高峰地铁车厢里，一名上班族冲向正在关闭的车门" />
-          <div className="got-cover__ink" />
-          <div className="got-cover__bottom">
-            <div className="got-cover__local-title"><span>{t('kicker')}</span><h1>{t('title')}</h1><strong>{t('endless')}</strong></div>
-            <p>{t('intro')}</p>
-            <ActionButton onPress={start}>{t('start')} <ArrowIcon /></ActionButton>
-            <div className="got-champ">
-              <button className="got-champ__board" onClick={() => setShowBoard(true)}><CrownIcon size={20} /> {t('board')}</button>
-              {champion && !champion.isMe && (
-                <button className="got-champ__person" onClick={() => { if (isInAigram) openAigramProfile(champion.user_id) }} disabled={!isInAigram} aria-label={`${t('openProfile')} ${champion.name}`}>
-                  <span className="got-champ__avatar">{champion.avatar_url ? <img src={champion.avatar_url} alt="" draggable={false} /> : (champion.name || '?').slice(0, 1)}</span>
-                  <span>{champion.name}</span>
-                </button>
-              )}
-              {champion?.isMe && <span className="got-champ__you">{t('you')}</span>}
-              <strong>{champion ? Math.round(champion.score).toLocaleString() : best.toLocaleString()}</strong>
-            </div>
-            <div className="got-cover__toggles">
-              <button aria-label={t(muted ? 'mute' : 'sound')} onClick={toggleSound}>{muted ? <MutedIcon /> : <SoundIcon />}</button>
-              <button className={reducedMotion ? 'is-on' : ''} onClick={() => setReducedMotion((v) => !v)}><BalanceIcon /> {t('reduced')}</button>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {phase !== 'start' && (
-        <>
-          <header className="got-hud">
-            <div className="got-hud__cell"><span>{t('level')}</span><strong>{level + 1}<small>∞</small></strong></div>
-            <div className={`got-hud__cell got-hud__cell--time${hud.timeLeft < 5 ? ' is-danger' : ''}`}><span>{t('time')}</span><strong>{hud.timeLeft.toFixed(1)}<small>s</small></strong></div>
-            <div className="got-hud__cell"><span>{t('distance')}</span><strong>{hud.distance.toFixed(1)}<small>{t('meters')}</small></strong></div>
-          </header>
-          <div className="got-level-tag"><TrainIcon size={18} /><b>{copy.name}</b><span>{copy.subtitle}</span></div>
-          <button className="got-pause" aria-label={t('pause')} onPointerDown={pause}><PauseIcon /></button>
-        </>
-      )}
+      <header className="got-hud">
+        <div className="got-hud__cell"><span>{t('level')}</span><strong>{level + 1}<small>∞</small></strong></div>
+        <div className={`got-hud__cell got-hud__cell--time${hud.timeLeft < 5 ? ' is-danger' : ''}`}><span>{t('time')}</span><strong>{hud.timeLeft.toFixed(1)}<small>s</small></strong></div>
+        <div className="got-hud__cell"><span>{t('distance')}</span><strong>{hud.distance.toFixed(1)}<small>{t('meters')}</small></strong></div>
+      </header>
+      <div className="got-level-tag"><TrainIcon size={18} /><b>{copy.name}</b><span>{runStarted ? copy.subtitle : t('dragUp')}</span></div>
+      <div className="got-exit-cue" aria-hidden="true"><ExitAheadIcon size={18} /><b>{t('exitAhead')}</b></div>
+      <button className="got-pause" aria-label={t('pause')} onPointerDown={pause}><PauseIcon /></button>
 
       {phase === 'playing' && (
         <>
           {hud.swayWarning && <div className="got-warning"><span>{hud.swayDirection > 0 ? t('right') : t('left')}</span><strong>{t('warning')}</strong></div>}
           {hud.braced && <div className="got-braced"><BalanceIcon size={18} /> {t('brace')}</div>}
-          <div className="got-tutorial"><b>{level === 0 && hud.timeLeft > 15 ? t('tutorialMove') : t('tutorialBrace')}</b></div>
-          <Joystick input={input} />
+          <Joystick input={input} enabled={phase === 'playing'} showGuide={showGuide} onFirstInput={beginFromInput} />
         </>
       )}
 
@@ -230,10 +205,10 @@ export default function App() {
             )}
             {phase === 'paused' && <ActionButton onPress={() => setPhase('playing')}>{t('resume')} <ArrowIcon /></ActionButton>}
             {phase === 'level-clear' && <ActionButton onPress={nextLevel}>{t('next')} <ArrowIcon /></ActionButton>}
-            {phase === 'game-over' && <ActionButton onPress={start}>{t('retry')} <ArrowIcon /></ActionButton>}
+            {phase === 'game-over' && <ActionButton onPress={restartRun}>{t('retry')} <ArrowIcon /></ActionButton>}
             {phase === 'game-over' && <ActionButton secondary onPress={() => setShowBoard(true)}>{t('board')}</ActionButton>}
-            {phase === 'paused' && <ActionButton secondary onPress={start}>{t('restart')}</ActionButton>}
-            {(phase === 'paused' || phase === 'game-over') && <ActionButton secondary onPress={() => setPhase('start')}>{t('quit')}</ActionButton>}
+            {phase === 'paused' && <ActionButton secondary onPress={restartRun}>{t('restart')}</ActionButton>}
+            {phase === 'paused' && <ActionButton secondary onPress={() => setReducedMotion((value) => !value)}>{t('reduced')}</ActionButton>}
           </section>
         </div>
       )}

@@ -80,6 +80,13 @@ button { font: inherit; }
   span { min-width: 0; overflow: hidden; color: fade(@paper, 74%); font-size: 10px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 }
 
+.got-exit-cue {
+  position: absolute; z-index: 11; top: calc(136px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%) rotate(-1deg);
+  min-width: 72px; min-height: 36px; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 5px 9px;
+  color: @ink; background: @yellow; border: 3px solid @ink; box-shadow: 3px 3px 0 @ink; pointer-events: none;
+  b { font: 950 12px/1 Impact, "Arial Black", "Noto Sans SC", sans-serif; letter-spacing: .08em; }
+}
+
 .got-pause {
   position: absolute; z-index: 12; right: 17px; top: calc(87px + env(safe-area-inset-top)); width: 48px; height: 48px;
   display: grid; place-items: center; color: @paper; background: @aubergine; border: 3px solid @ink; box-shadow: 3px 3px 0 @ink;
@@ -100,19 +107,28 @@ button { font: inherit; }
   font-size: 13px; font-weight: 950; white-space: nowrap; pointer-events: none;
 }
 
-.got-tutorial {
-  position: absolute; z-index: 9; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%);
-  max-width: 220px; padding: 6px 10px; color: @paper; background: fade(@ink, 86%); border: 2px solid fade(@paper, 68%);
-  font-size: 11px; line-height: 1.25; text-align: center; pointer-events: none;
+.got-input-surface {
+  position: absolute; inset: 0; z-index: 8; overflow: hidden; touch-action: none;
 }
 
 .got-stick {
-  position: absolute; z-index: 15; left: 19px; bottom: calc(18px + env(safe-area-inset-bottom)); width: 116px; height: 116px; border-radius: 50%;
-  background: fade(@paper, 82%); border: 4px solid @ink; box-shadow: 6px 6px 0 @ink; touch-action: none;
+  position: absolute; width: 108px; height: 108px; transform: translate(-50%, -50%); pointer-events: none;
+  &__ring { position: absolute; inset: 0; border-radius: 50%; background: fade(@paper, 78%); border: 4px solid @ink; box-shadow: 6px 6px 0 @ink; }
   &__cross { position: absolute; left: 50%; top: 50%; background: fade(@ink, 22%); transform: translate(-50%, -50%); pointer-events: none; }
   &__cross--x { width: 70%; height: 3px; }
   &__cross--y { width: 3px; height: 70%; }
-  &__knob { position: absolute; left: calc(50% - 23px); top: calc(50% - 23px); width: 46px; height: 46px; border-radius: 50%; background: @yellow; border: 4px solid @ink; box-shadow: 3px 3px 0 @ink; pointer-events: none; }
+  &__knob { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; border-radius: 50%; background: @yellow; border: 4px solid @ink; box-shadow: 3px 3px 0 @ink; pointer-events: none; }
+}
+
+.got-gesture {
+  position: absolute; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 4px; color: @paper; pointer-events: none;
+  &__track { position: relative; width: 96px; height: 132px; border: 3px dashed fade(@paper, 52%); background: fade(@ink, 34%); box-shadow: 4px 4px 0 fade(@ink, 80%); }
+  &__trail { position: absolute; left: 50%; top: 23px; width: 0; height: 82px; transform: translateX(-50%); border-left: 4px dashed @yellow; }
+  &__hand { position: absolute; left: 24px; top: 35px; width: 48px; height: 60px; color: @paper; filter: drop-shadow(4px 4px 0 @ink); animation: got-gesture-drag 4.5s ease-in-out infinite; }
+  &__hand path:first-child { fill: @paper; stroke: @ink; stroke-width: 3.2; stroke-linejoin: round; }
+  &__hand path:last-child { stroke: @yellow; stroke-width: 4; stroke-linecap: square; stroke-linejoin: miter; }
+  b { padding: 5px 8px; color: @ink; background: @yellow; border: 3px solid @ink; box-shadow: 3px 3px 0 @ink; font: 950 11px/1 ui-monospace, monospace; letter-spacing: .05em; white-space: nowrap; }
 }
 
 .got-champ {
@@ -177,14 +193,19 @@ button { font: inherit; }
 @keyframes got-danger { from { transform: translate(0); } to { transform: translate(1px, -1px); } }
 @keyframes got-warning { from { transform: translateX(-50%) rotate(-3deg); } to { transform: translateX(calc(-50% + 3px)) rotate(-1deg); } }
 @keyframes got-spin { to { transform: rotate(360deg); } }
+@keyframes got-gesture-drag {
+  0%, 8% { opacity: 0; transform: translateY(34px) scale(.92); }
+  14% { opacity: 1; transform: translateY(34px) scale(1); }
+  46% { opacity: 1; transform: translateY(-28px) scale(1); }
+  56%, 100% { opacity: 0; transform: translateY(-28px) scale(.94); }
+}
 
 @media (max-height: 640px) {
   .got-hud { top: calc(10px + env(safe-area-inset-top)); }
   .got-hud__cell { min-height: 54px; padding-block: 5px; }
   .got-level-tag, .got-pause { top: calc(72px + env(safe-area-inset-top)); }
+  .got-exit-cue { top: calc(120px + env(safe-area-inset-top)); }
   .got-level-tag span { display: none; }
-  .got-stick { width: 98px; height: 98px; bottom: calc(13px + env(safe-area-inset-bottom)); }
-  .got-tutorial { bottom: calc(70px + env(safe-area-inset-bottom)); max-width: 180px; }
   .got-braced { bottom: calc(115px + env(safe-area-inset-bottom)); }
   .got-cover__bottom { bottom: calc(19px + env(safe-area-inset-bottom)); gap: 8px; }
   .got-cover__local-title h1 { font-size: 26px; }
@@ -196,14 +217,11 @@ button { font: inherit; }
   .got-stats { margin-block: 11px 13px; }
 }
 
-@media (max-width: 360px) {
-  .got-tutorial { left: 138px; right: 14px; bottom: calc(52px + env(safe-area-inset-bottom)); max-width: none; transform: none; }
-}
-
 @media (min-width: 700px) {
   .got { max-width: 500px; margin: 0 auto; box-shadow: 0 0 0 5px @paper, 0 0 0 10px @ink; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .got-gesture__hand { animation: none !important; transform: translateY(-4px); }
 }

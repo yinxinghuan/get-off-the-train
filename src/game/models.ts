@@ -129,8 +129,8 @@ export function passengerStyle(index: number, level: number): CharacterStyle {
 
 export function makePlayer() {
   const player = makeCharacter({
-    skin: C.skin2, top: C.paper, bottom: C.aubergine, hair: 0x2e2520,
-    accent: C.yellow, body: 'normal', feature: 'tie',
+    skin: C.skin2, top: C.yellow, bottom: C.aubergine, hair: 0x2e2520,
+    accent: C.red, body: 'normal', feature: 'bag',
   }, true)
   const ringInk = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.095, 6, 18), new THREE.MeshBasicMaterial({ color: C.ink }))
   ringInk.rotation.x = Math.PI / 2
@@ -139,6 +139,8 @@ export function makePlayer() {
   ring.rotation.x = Math.PI / 2
   ring.position.y = 0.042
   player.add(ringInk, ring)
+  player.add(box(0.54, 0.09, 0.055, C.paper, 0, 1.38, -0.51, true))
+  player.scale.setScalar(1.03)
   return player
 }
 
