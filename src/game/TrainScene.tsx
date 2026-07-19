@@ -62,6 +62,7 @@ const RIGHT_X = 0
 const RIGHT_Z = 1
 const QA_AUTORUN = import.meta.env.DEV && new URLSearchParams(location.search).has('qaRun')
 const QA_FALL = import.meta.env.DEV && new URLSearchParams(location.search).has('qaFall')
+const QA_FALL_KIND = import.meta.env.DEV && new URLSearchParams(location.search).get('qaFall') === 'side' ? 'side' : 'forward'
 const QA_WALK = import.meta.env.DEV && new URLSearchParams(location.search).has('qaWalk')
 
 function mulberry32(seed: number) {
@@ -282,7 +283,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     playerGroup.rotation.y = Math.atan2(FORWARD_X, FORWARD_Z)
     train.root.add(playerGroup)
     const player: Body = {
-      group: playerGroup, x: START_X, z: START_Z, vx: 0, vz: 0, r: 0.28, mass: 1.28, stability: 2.25,
+      group: playerGroup, x: START_X, z: START_Z, vx: 0, vz: 0, r: 0.25, mass: 1.28, stability: 2.25,
       fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side', protectedUntil: 0, phase: 0,
       homeX: START_X, homeZ: START_Z, targetX: START_X, targetZ: START_Z, nextWander: 0, pauseUntil: 0,
       wanderSpeed: 0, gaitPhase: 0, lastX: START_X, lastZ: START_Z, player: true,
@@ -303,7 +304,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       const style = passengerStyle(made, level)
       const broad = monsterKind === 'werewolf' || (!monsterKind && style.body === 'broad')
       const ghost = monsterKind === 'ghost'
-      const r = broad ? 0.36 : style.body === 'small' ? 0.23 : 0.29
+      const r = broad ? 0.32 : style.body === 'small' ? 0.20 : 0.26
       const x = -6.55 + rand() * 12.35
       const sideBand = rand() < 0.38
       const z = sideBand
@@ -365,7 +366,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     }
 
     if (QA_FALL && !S.qaFallDone && S.time > 0.9) {
-      S.qaFallDone = knockDown(S.player, 'forward', 1.56)
+      S.qaFallDone = knockDown(S.player, QA_FALL_KIND, QA_FALL_KIND === 'side' ? 1.30 : 1.82)
     }
 
     const mag = Math.hypot(input.current.x, input.current.z)
@@ -391,7 +392,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
         if (loss > b.stability) {
           const nearDoor = THREE.MathUtils.clamp((b.x - (EXIT_X - 3.2)) / 3.2, 0, 1)
           const forwardFall = eventChance(b, 3.7) < config.swayFallChance + nearDoor * 0.16
-          knockDown(b, forwardFall ? 'forward' : 'side', forwardFall ? (b.player ? 1.48 : 1.22) : (b.player ? 1.02 : 0.82 + ((b.phase * 97) % 0.52)))
+          knockDown(b, forwardFall ? 'forward' : 'side', forwardFall ? (b.player ? 1.74 : 1.42) : (b.player ? 1.30 : 1.08 + ((b.phase * 97) % 0.16)))
         }
       }
       S.nextSway += config.swayPeriod * (0.92 + ((level * 31 + Math.floor(S.time)) % 17) / 100)
@@ -514,9 +515,9 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
             const nearDoor = THREE.MathUtils.clamp((victim.x - (EXIT_X - 3.2)) / 3.2, 0, 1)
             const chance = (playerVictim ? config.fallChance : config.fallChance * 0.48) + nearDoor * 0.20 + S.swayKick * 0.16 + Math.min(0.14, (impact - 0.55) * 0.055)
             if (eventChance(victim, i * 7.3 + j * 3.1) < chance) {
-              knockDown(victim, 'forward', victim.player ? 1.34 + nearDoor * 0.24 : 1.08 + nearDoor * 0.18)
+              knockDown(victim, 'forward', victim.player ? 1.58 + nearDoor * 0.24 : 1.30 + nearDoor * 0.18)
             } else if (impact > 3.2) {
-              knockDown(victim, 'side', victim.player ? 1.02 : 0.88)
+              knockDown(victim, 'side', victim.player ? 1.30 : 1.12)
             }
           }
         }
@@ -547,63 +548,74 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       const pose = rig?.pose
       if (pose) {
         const p = b.fallDuration > 0 ? THREE.MathUtils.clamp((S.time - b.fallStarted) / b.fallDuration, 0, 1) : 1
-        const segment = (from: number, to: number) => THREE.MathUtils.smoothstep(THREE.MathUtils.clamp((p - from) / (to - from), 0, 1), 0, 1)
+        const key = (frames: Array<[number, number]>) => {
+          let index = 1
+          while (index < frames.length && p > frames[index][0]) index++
+          const next = frames[Math.min(index, frames.length - 1)]
+          const prev = frames[Math.max(0, index - 1)]
+          if (next[0] === prev[0]) return next[1]
+          const u = THREE.MathUtils.smoothstep(THREE.MathUtils.clamp((p - prev[0]) / (next[0] - prev[0]), 0, 1), 0, 1)
+          return THREE.MathUtils.lerp(prev[1], next[1], u)
+        }
         if (fallen) {
           const sideDir = b.vz >= 0 ? 1 : -1
           const fallMotion = reducedMotion ? 0.65 : 1
-          const stumble = Math.sin(segment(0, 0.18) * Math.PI)
-          const collapse = segment(0.14, 0.52)
-          const settle = segment(0.52, 0.70)
-          const recover = segment(0.84, 1)
-          const remain = 1 - recover
-          const armReach = segment(0.10, 0.46) * remain
+          const nearLeg = sideDir > 0 ? rig.legR : rig.legL
+          const farLeg = sideDir > 0 ? rig.legL : rig.legR
+          const nearShin = sideDir > 0 ? rig.shinR : rig.shinL
+          const farShin = sideDir > 0 ? rig.shinL : rig.shinR
+          const nearArm = sideDir > 0 ? rig.armR : rig.armL
+          const farArm = sideDir > 0 ? rig.armL : rig.armR
+          const nearForearm = sideDir > 0 ? rig.forearmR : rig.forearmL
+          const farForearm = sideDir > 0 ? rig.forearmL : rig.forearmR
           pose.rotation.y = 0
-          if (rig.upperBody) rig.upperBody.rotation.y = 0
+          if (rig.upperBody) rig.upperBody.rotation.y = sideDir * key([[0, 0], [0.24, 0.03], [0.58, -0.18], [0.76, -0.22], [0.91, -0.08], [1, 0]]) * fallMotion
           if (rig.legL) { rig.legL.position.y = rig.hipY ?? rig.legL.position.y; rig.legL.position.z = 0 }
           if (rig.legR) { rig.legR.position.y = rig.hipY ?? rig.legR.position.y; rig.legR.position.z = 0 }
 
           if (b.fallKind === 'forward') {
-            // A foot-pivoted stumble and braced forward fall. The 82° cap and
-            // small lift keep the head/torso above the carriage floor.
-            pose.rotation.x = -(stumble * 0.08 + collapse * 0.22 + settle * 0.06) * remain * fallMotion
-            pose.rotation.z = sideDir * (stumble * 0.08 + collapse * 0.68 + settle * 0.10) * remain * fallMotion
-            pose.position.y = (collapse * 0.30 + settle * 0.08) * remain * fallMotion
-            pose.position.z = -collapse * 0.10 * remain * fallMotion
-            pose.position.x = sideDir * collapse * 0.12 * remain * fallMotion
+            // Nine eased poses: catch step, knee buckle, hands out, palm contact,
+            // shoulder/hip roll, hold, one-knee plant, push, and balance recovery.
+            pose.rotation.x = key([[0, 0], [0.10, -0.08], [0.24, -0.19], [0.43, -0.28], [0.58, -0.33], [0.74, -0.30], [0.84, -0.22], [0.93, -0.08], [1, 0]]) * fallMotion
+            pose.rotation.z = sideDir * key([[0, 0], [0.10, 0.05], [0.24, 0.17], [0.43, 0.53], [0.58, 0.88], [0.74, 0.84], [0.84, 0.58], [0.93, 0.20], [1, 0]]) * fallMotion
+            pose.position.y = key([[0, 0], [0.10, 0.02], [0.24, 0.15], [0.43, 0.35], [0.58, 0.50], [0.74, 0.48], [0.84, 0.39], [0.93, 0.18], [1, 0]]) * fallMotion
+            pose.position.z = key([[0, 0], [0.10, -0.08], [0.24, -0.13], [0.58, -0.18], [0.84, -0.08], [1, 0]]) * fallMotion
+            pose.position.x = sideDir * key([[0, 0], [0.24, 0.04], [0.58, 0.14], [0.74, 0.16], [0.93, 0.04], [1, 0]]) * fallMotion
             if (rig.upperBody) {
-              rig.upperBody.rotation.x = -(collapse * 0.30 + settle * 0.10) * remain * fallMotion
-              rig.upperBody.rotation.z = sideDir * (collapse * 0.24 + settle * 0.07) * remain * fallMotion
-              rig.upperBody.position.y = (rig.hipY ?? 0) - collapse * 0.07 * remain
+              rig.upperBody.rotation.x = key([[0, 0], [0.10, -0.05], [0.24, -0.22], [0.43, -0.43], [0.58, -0.58], [0.74, -0.52], [0.84, -0.34], [0.93, -0.10], [1, 0]]) * fallMotion
+              rig.upperBody.rotation.z = sideDir * key([[0, 0], [0.24, 0.08], [0.43, 0.24], [0.58, 0.38], [0.74, 0.42], [0.84, 0.28], [0.93, 0.09], [1, 0]]) * fallMotion
+              rig.upperBody.position.y = (rig.hipY ?? 0) + key([[0, 0], [0.24, -0.05], [0.58, -0.12], [0.74, -0.10], [0.84, -0.04], [1, 0]]) * fallMotion
             }
-            if (rig.armL) rig.armL.rotation.x = 1.05 * armReach
-            if (rig.armR) rig.armR.rotation.x = 1.05 * armReach
-            if (rig.armL) rig.armL.rotation.z = -sideDir * 0.58 * armReach
-            if (rig.armR) rig.armR.rotation.z = sideDir * 0.22 * armReach
-            if (rig.legL) rig.legL.rotation.x = (stumble * 0.42 - collapse * 0.24) * remain
-            if (rig.legR) rig.legR.rotation.x = (-stumble * 0.30 + collapse * 0.38) * remain
-            if (rig.legL) rig.legL.rotation.z = -sideDir * collapse * 0.18 * remain
-            if (rig.legR) rig.legR.rotation.z = sideDir * collapse * 0.12 * remain
+            const armReach = key([[0, 0], [0.10, 0.08], [0.24, 0.48], [0.43, 1.18], [0.58, 1.42], [0.74, 1.28], [0.84, 0.82], [0.93, 0.16], [1, 0]]) * fallMotion
+            if (nearArm) { nearArm.rotation.x = armReach; nearArm.rotation.z = sideDir * key([[0, 0], [0.43, 0.18], [0.58, 0.08], [0.74, 0.02], [0.93, 0], [1, 0]]) * fallMotion }
+            if (farArm) { farArm.rotation.x = armReach * 0.92; farArm.rotation.z = -sideDir * key([[0, 0], [0.43, 0.38], [0.58, 0.62], [0.74, 0.56], [0.84, 0.28], [1, 0]]) * fallMotion }
+            if (nearForearm) nearForearm.rotation.x = key([[0, 0], [0.24, -0.18], [0.43, -0.48], [0.58, -0.86], [0.74, -0.66], [0.84, -0.34], [1, 0]]) * fallMotion
+            if (farForearm) farForearm.rotation.x = key([[0, 0], [0.24, -0.12], [0.43, -0.38], [0.58, -0.72], [0.74, -0.58], [0.84, -0.28], [1, 0]]) * fallMotion
+            if (nearLeg) { nearLeg.rotation.x = key([[0, 0], [0.10, 0.42], [0.24, -0.52], [0.58, -0.68], [0.74, -0.62], [0.84, -0.92], [0.93, -0.34], [1, 0]]) * fallMotion; nearLeg.rotation.z = sideDir * key([[0, 0], [0.58, 0.10], [0.84, 0.22], [1, 0]]) * fallMotion }
+            if (farLeg) { farLeg.rotation.x = key([[0, 0], [0.10, -0.30], [0.24, -0.38], [0.58, 0.18], [0.74, 0.26], [0.84, -0.18], [1, 0]]) * fallMotion; farLeg.rotation.z = -sideDir * key([[0, 0], [0.58, 0.18], [0.84, 0.08], [1, 0]]) * fallMotion }
+            if (nearShin) nearShin.rotation.x = key([[0, 0], [0.24, 1.04], [0.58, 1.28], [0.74, 1.18], [0.84, 1.48], [0.93, 0.58], [1, 0]]) * fallMotion
+            if (farShin) farShin.rotation.x = key([[0, 0], [0.24, 0.72], [0.58, 0.92], [0.74, 0.84], [0.84, 0.62], [1, 0]]) * fallMotion
           } else {
-            // Side falls use the same grounded anchor, with enough local lift
-            // for the shoulder and outside arm to land on—not under—the floor.
-            pose.rotation.x = collapse * 0.10 * remain * fallMotion
-            pose.rotation.z = sideDir * (collapse * 0.92 + settle * 0.12) * remain * fallMotion
-            pose.position.y = (collapse * 0.44 + settle * 0.08) * remain * fallMotion
+            // Side falls also bend knees and elbows before the shoulder lands,
+            // then recover through a planted palm and near-side knee.
+            pose.rotation.x = key([[0, 0], [0.16, 0.07], [0.48, 0.13], [0.70, 0.10], [0.88, 0.04], [1, 0]]) * fallMotion
+            pose.rotation.z = sideDir * key([[0, 0], [0.12, 0.16], [0.30, 0.58], [0.50, 1.06], [0.70, 1.02], [0.82, 0.72], [0.92, 0.28], [1, 0]]) * fallMotion
+            pose.position.y = key([[0, 0], [0.12, 0.06], [0.30, 0.28], [0.50, 0.54], [0.70, 0.51], [0.82, 0.41], [0.92, 0.20], [1, 0]]) * fallMotion
             pose.position.z = 0
-            pose.position.x = 0
+            pose.position.x = sideDir * key([[0, 0], [0.30, 0.06], [0.50, 0.16], [0.70, 0.18], [0.92, 0.05], [1, 0]]) * fallMotion
             if (rig.upperBody) {
-              rig.upperBody.rotation.x = collapse * 0.08 * remain * fallMotion
-              rig.upperBody.rotation.z = sideDir * (collapse * 0.26 + settle * 0.08) * remain * fallMotion
-              rig.upperBody.position.y = (rig.hipY ?? 0) - collapse * 0.05 * remain
+              rig.upperBody.rotation.x = key([[0, 0], [0.30, 0.10], [0.50, 0.18], [0.70, 0.14], [0.92, 0.04], [1, 0]]) * fallMotion
+              rig.upperBody.rotation.z = sideDir * key([[0, 0], [0.30, 0.20], [0.50, 0.38], [0.70, 0.42], [0.82, 0.28], [0.92, 0.10], [1, 0]]) * fallMotion
+              rig.upperBody.position.y = (rig.hipY ?? 0) + key([[0, 0], [0.30, -0.04], [0.50, -0.11], [0.70, -0.09], [0.82, -0.04], [1, 0]]) * fallMotion
             }
-            if (rig.armL) rig.armL.rotation.x = -0.72 * armReach
-            if (rig.armR) rig.armR.rotation.x = -0.72 * armReach
-            if (rig.armL) rig.armL.rotation.z = -sideDir * 0.45 * armReach
-            if (rig.armR) rig.armR.rotation.z = sideDir * 0.18 * armReach
-            if (rig.legL) rig.legL.rotation.x = stumble * 0.34 * remain
-            if (rig.legR) rig.legR.rotation.x = -stumble * 0.26 * remain
-            if (rig.legL) rig.legL.rotation.z = -sideDir * collapse * 0.14 * remain
-            if (rig.legR) rig.legR.rotation.z = sideDir * collapse * 0.10 * remain
+            if (nearArm) { nearArm.rotation.x = key([[0, 0], [0.30, -0.54], [0.50, -0.86], [0.70, -0.72], [0.82, -0.34], [1, 0]]) * fallMotion; nearArm.rotation.z = sideDir * key([[0, 0], [0.30, 0.16], [0.50, 0.08], [0.82, 0], [1, 0]]) * fallMotion }
+            if (farArm) { farArm.rotation.x = key([[0, 0], [0.30, -0.26], [0.50, -0.52], [0.70, -0.44], [0.82, -0.18], [1, 0]]) * fallMotion; farArm.rotation.z = -sideDir * key([[0, 0], [0.30, 0.42], [0.50, 0.64], [0.70, 0.58], [0.82, 0.28], [1, 0]]) * fallMotion }
+            if (nearForearm) nearForearm.rotation.x = key([[0, 0], [0.30, -0.42], [0.50, -0.92], [0.70, -0.76], [0.82, -0.34], [1, 0]]) * fallMotion
+            if (farForearm) farForearm.rotation.x = key([[0, 0], [0.30, -0.24], [0.50, -0.58], [0.70, -0.48], [0.82, -0.22], [1, 0]]) * fallMotion
+            if (nearLeg) { nearLeg.rotation.x = key([[0, 0], [0.30, -0.56], [0.50, -0.72], [0.70, -0.68], [0.82, -0.96], [0.92, -0.38], [1, 0]]) * fallMotion; nearLeg.rotation.z = sideDir * key([[0, 0], [0.50, 0.18], [0.82, 0.24], [1, 0]]) * fallMotion }
+            if (farLeg) { farLeg.rotation.x = key([[0, 0], [0.30, 0.22], [0.50, 0.38], [0.70, 0.34], [0.82, -0.14], [1, 0]]) * fallMotion; farLeg.rotation.z = -sideDir * key([[0, 0], [0.50, 0.14], [0.82, 0.06], [1, 0]]) * fallMotion }
+            if (nearShin) nearShin.rotation.x = key([[0, 0], [0.30, 0.84], [0.50, 1.22], [0.70, 1.12], [0.82, 1.46], [0.92, 0.62], [1, 0]]) * fallMotion
+            if (farShin) farShin.rotation.x = key([[0, 0], [0.30, 0.52], [0.50, 0.76], [0.70, 0.68], [0.82, 0.48], [1, 0]]) * fallMotion
           }
         } else {
           pose.rotation.x = 0
@@ -616,6 +628,10 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
             rig.upperBody.rotation.z = 0
             rig.upperBody.position.set(0, rig.hipY ?? 0, 0)
           }
+          if (rig.shinL) rig.shinL.rotation.set(0, 0, 0)
+          if (rig.shinR) rig.shinR.rotation.set(0, 0, 0)
+          if (rig.forearmL) rig.forearmL.rotation.set(0, 0, 0)
+          if (rig.forearmR) rig.forearmR.rotation.set(0, 0, 0)
         }
       }
       if (!fallen) {
@@ -639,6 +655,10 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
         if (rig?.legR) rig.legR.rotation.x = THREE.MathUtils.lerp(rig.legR.rotation.x, legRTarget, poseBlend)
         if (rig?.armL) rig.armL.rotation.x = THREE.MathUtils.lerp(rig.armL.rotation.x, armLTarget, poseBlend)
         if (rig?.armR) rig.armR.rotation.x = THREE.MathUtils.lerp(rig.armR.rotation.x, armRTarget, poseBlend)
+        if (rig?.shinL) rig.shinL.rotation.x = THREE.MathUtils.lerp(rig.shinL.rotation.x, locomoting ? Math.max(0, gaitSin) * 0.42 : 0, poseBlend)
+        if (rig?.shinR) rig.shinR.rotation.x = THREE.MathUtils.lerp(rig.shinR.rotation.x, locomoting ? Math.max(0, -gaitSin) * 0.42 : 0, poseBlend)
+        if (rig?.forearmL) rig.forearmL.rotation.x = THREE.MathUtils.lerp(rig.forearmL.rotation.x, locomoting ? Math.max(0, -gaitSin) * -0.18 : -readyLift * 0.35, poseBlend)
+        if (rig?.forearmR) rig.forearmR.rotation.x = THREE.MathUtils.lerp(rig.forearmR.rotation.x, locomoting ? Math.max(0, gaitSin) * -0.18 : -readyLift * 0.35, poseBlend)
         if (rig?.legL) rig.legL.position.y = THREE.MathUtils.lerp(rig.legL.position.y, (rig.hipY ?? 0) + (locomoting ? Math.max(0, gaitSin) * footLift : 0), poseBlend)
         if (rig?.legR) rig.legR.position.y = THREE.MathUtils.lerp(rig.legR.position.y, (rig.hipY ?? 0) + (locomoting ? Math.max(0, -gaitSin) * footLift : 0), poseBlend)
         if (pose) pose.rotation.y = THREE.MathUtils.lerp(pose.rotation.y, locomoting ? gaitSin * 0.055 * motionScale : 0, poseBlend)
@@ -647,6 +667,8 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
         if (rig?.legR) rig.legR.rotation.z = 0
         if (rig?.armL) rig.armL.rotation.z = 0
         if (rig?.armR) rig.armR.rotation.z = 0
+        if (rig?.forearmL) rig.forearmL.rotation.z = 0
+        if (rig?.forearmR) rig.forearmR.rotation.z = 0
       }
     }
 
