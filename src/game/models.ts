@@ -131,7 +131,7 @@ export function makePlayer() {
   const player = makeCharacter({
     skin: C.skin2, top: C.yellow, bottom: C.aubergine, hair: C.paper,
     accent: C.red, body: 'normal', feature: 'bag',
-  }, true)
+  })
   const ringInk = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.17, 6, 20), new THREE.MeshBasicMaterial({ color: C.ink }))
   ringInk.rotation.x = Math.PI / 2
   ringInk.position.y = 0.035
@@ -154,7 +154,7 @@ export function makePlayer() {
   playerLight.position.set(0, 1.15, 0)
   playerLight.userData.playerLight = true
   player.add(aura, ringInk, ring, playerLight)
-  player.add(box(0.54, 0.09, 0.055, C.paper, 0, 1.38, -0.51, true))
+  player.add(box(0.54, 0.09, 0.055, C.paper, 0, 1.38, -0.51))
   player.scale.setScalar(1.03)
   return player
 }

@@ -3,7 +3,7 @@ import TrainScene from './game/TrainScene'
 import { getLevelConfig, type HudState, type InputVector, type Phase } from './game/types'
 import { sound } from './audio/sound'
 import { locale, t } from './i18n'
-import { ArrowIcon, BalanceIcon, ExitAheadIcon, PauseIcon, TrainIcon } from './ui/Icons'
+import { ArrowIcon, BalanceIcon, ExitSideIcon, PauseIcon, TrainIcon } from './ui/Icons'
 import { Joystick } from './ui/Joystick'
 import { Leaderboard } from './shared/leaderboard/Leaderboard'
 import { useGameScore, type LeaderboardEntry } from './shared/leaderboard/useGameScore'
@@ -53,12 +53,6 @@ export default function App() {
   const preRunBest = useRef(0)
   const { submitScore, fetchLeaderboard } = useGameScore()
   const events = useGameEvent()
-
-  useEffect(() => {
-    if (!QA_AUTORUN || phase !== 'playing') return
-    input.current = { x: 0, z: -1 }
-    return () => { input.current = { x: 0, z: 0 } }
-  }, [level, phase])
 
   useEffect(() => {
     let alive = true
@@ -184,7 +178,7 @@ export default function App() {
         <div className="got-hud__cell"><span>{t('distance')}</span><strong>{hud.distance.toFixed(1)}<small>{t('meters')}</small></strong></div>
       </header>
       <div className="got-level-tag"><TrainIcon size={18} /><b>{copy.name}</b><span>{runStarted ? copy.subtitle : t('dragUp')}</span></div>
-      <div className="got-exit-cue" aria-hidden="true"><ExitAheadIcon size={18} /><b>{t('exitAhead')}</b></div>
+      <div className="got-exit-cue got-exit-cue--side" aria-hidden="true"><ExitSideIcon size={18} /><b>{t('exitAhead')}</b></div>
       <button className="got-pause" aria-label={t('pause')} onPointerDown={pause}><PauseIcon /></button>
       {phase === 'playing' && <div className="got-player-label" aria-hidden="true"><b>{t('you')}</b><span /></div>}
 

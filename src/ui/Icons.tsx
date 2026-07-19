@@ -13,8 +13,8 @@ export function MutedIcon({ size = 24 }: IconProps) {
 export function ArrowIcon({ size = 24 }: IconProps) {
   return <svg {...base(size)}><path d="M5 12h14M14 7l5 5-5 5" /></svg>
 }
-export function ExitAheadIcon({ size = 24 }: IconProps) {
-  return <svg {...base(size)}><path d="M12 20V5M6.5 10.5 12 5l5.5 5.5" /><path d="M5 20h14" /></svg>
+export function ExitSideIcon({ size = 24 }: IconProps) {
+  return <svg {...base(size)}><path d="M4 19h5a8 8 0 0 0 8-8V5" /><path d="m12 10 5-5 5 5" /></svg>
 }
 export function TrainIcon({ size = 24 }: IconProps) {
   return <svg {...base(size)}><path d="M7 3h10a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /><path d="M8 7h8v5H8zM8 21l2-3m6 3-2-3M8 15h.01M16 15h.01" /></svg>
