@@ -27,6 +27,9 @@ interface Body {
   mass: number
   stability: number
   fallenUntil: number
+  fallStarted: number
+  fallDuration: number
+  fallKind: 'side' | 'tumble'
   protectedUntil: number
   phase: number
   homeX: number
@@ -49,6 +52,7 @@ const FORWARD_Z = 0
 const RIGHT_X = 0
 const RIGHT_Z = 1
 const QA_AUTORUN = import.meta.env.DEV && new URLSearchParams(location.search).has('qaRun')
+const QA_TUMBLE = import.meta.env.DEV && new URLSearchParams(location.search).has('qaTumble')
 
 function mulberry32(seed: number) {
   return () => {
@@ -76,11 +80,12 @@ function buildTrain(config: LevelConfig) {
   const handles: THREE.Group[] = []
   const carriageLights: THREE.PointLight[] = []
   const obstacles: Obstacle[] = []
-  const bench = config.variant === 'ad-wrap' ? 0x9b5b43 : config.variant === 'maintenance' ? 0x5a5148 : C.green
-  const wall = config.variant === 'long-seat' ? 0xd8c7a3 : C.paper
+  const bench = config.variant === 'ad-wrap' ? 0x3d6680 : config.variant === 'maintenance' ? 0x555d61 : 0x315f76
+  const wall = config.variant === 'long-seat' ? 0xd9dddc : 0xcbd0d1
 
   root.add(box(16.4, 0.32, 5.55, C.ink, 0, -0.04, 0))
-  root.add(box(16.05, 0.18, 5.18, C.floor, 0, 0.12, 0))
+  root.add(box(16.05, 0.18, 5.18, 0x62686b, 0, 0.12, 0))
+  for (let x = -7.2; x <= 7.2; x += 0.72) root.add(box(0.025, 0.012, 4.96, 0x878d8f, x, 0.218, 0))
   // The left wall remains continuous; the passenger door opens in the right wall.
   root.add(box(16.2, 1.6, 0.18, wall, 0, 1.0, CAR_MIN_Z - 0.31, true))
 
@@ -104,6 +109,25 @@ function buildTrain(config: LevelConfig) {
   // The forward end is now visibly closed, removing the false suggestion that
   // players should run through the front of the train.
   root.add(box(0.22, 2.5, 5.18, wall, CAR_MAX_X + 0.25, 1.42, 0, true))
+  // Parked sliding-door leaves, dark glazing, and signal lamps make the side
+  // opening read as a real subway doorway instead of a gap in a toy wall.
+  root.add(box(0.38, 2.25, 0.16, 0xaeb4b6, EXIT_X - exitHalf - 0.29, 1.45, CAR_MAX_Z + 0.17))
+  root.add(box(0.38, 2.25, 0.16, 0xaeb4b6, EXIT_X + exitHalf + 0.29, 1.45, CAR_MAX_Z + 0.17))
+  root.add(box(0.22, 0.72, 0.04, 0x26343c, EXIT_X - exitHalf - 0.29, 1.72, CAR_MAX_Z + 0.075))
+  root.add(box(0.22, 0.72, 0.04, 0x26343c, EXIT_X + exitHalf + 0.29, 1.72, CAR_MAX_Z + 0.075))
+  for (const x of [EXIT_X - 0.48, EXIT_X, EXIT_X + 0.48]) {
+    const signal = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.055, 12), new THREE.MeshStandardMaterial({ color: 0x8ff0aa, emissive: 0x43c96d, emissiveIntensity: 2.8 }))
+    signal.rotation.x = Math.PI / 2
+    signal.position.set(x, 2.69, CAR_MAX_Z + 0.015)
+    signal.userData.ownsMaterial = true
+    root.add(signal)
+  }
+  const exitWarm = new THREE.PointLight(0xffd56a, 2.9, 5.3, 1.55)
+  exitWarm.position.set(EXIT_X, 2.12, CAR_MAX_Z + 0.02)
+  root.add(exitWarm)
+  const exitGreen = new THREE.PointLight(0x66e293, 1.45, 3.5, 1.7)
+  exitGreen.position.set(EXIT_X, 2.72, CAR_MAX_Z - 0.12)
+  root.add(exitGreen)
 
   // Benches read as authored subway furniture, with dark end caps.
   const benchSegments = config.variant === 'long-seat' ? [[-3.5, 6.7], [3.0, 2.8]] : [[-4.2, 4.8], [0.0, 2.0]]
@@ -128,6 +152,7 @@ function buildTrain(config: LevelConfig) {
     root.add(box(1.35, 0.42, 0.055, adColors[i], x, 2.02, CAR_MIN_Z - 0.16, true))
     root.add(box(0.82, 0.07, 0.02, C.ink, x, 2.07, CAR_MIN_Z - 0.11))
   }
+  for (let i = 0; i < 11; i++) root.add(box(0.025, 2.15, 0.025, 0x8f979a, -7.0 + i * 1.38, 1.42, CAR_MIN_Z - 0.13))
 
   // Route strip + station lights.
   root.add(box(10.8, 0.18, 0.08, C.ink, -0.45, 2.52, CAR_MIN_Z - 0.12))
@@ -193,6 +218,28 @@ function buildTrain(config: LevelConfig) {
   addFloorArrow(root, EXIT_X, 0.75, 0.72, -Math.PI / 2)
   addFloorArrow(root, EXIT_X, 1.55, 0.72, -Math.PI / 2)
 
+  // Environment-only material pass: characters keep their authored low-poly
+  // materials, while the carriage gets physically lit rough metal/plastic.
+  root.traverse((object) => {
+    const m = object as THREE.Mesh
+    if (m.userData.outlineShell) { m.visible = false; return }
+    if (!(m.material instanceof THREE.MeshToonMaterial)) return
+    const color = m.material.color.clone()
+    const hex = color.getHex()
+    const metal = hex === C.steel || hex === C.ink
+    const guide = hex === C.yellow
+    m.material = new THREE.MeshStandardMaterial({
+      color,
+      roughness: metal ? 0.34 : 0.72,
+      metalness: metal ? 0.72 : 0.04,
+      emissive: guide ? color : new THREE.Color(0x000000),
+      emissiveIntensity: guide ? 0.22 : 0,
+      transparent: m.material.transparent,
+      opacity: m.material.opacity,
+    })
+    m.userData.ownsMaterial = true
+  })
+
   return { root, handles, carriageLights, obstacles, exitHalf }
 }
 
@@ -200,6 +247,7 @@ function dispose(root: THREE.Object3D) {
   root.traverse((o) => {
     const m = o as THREE.Mesh
     if (m.geometry) m.geometry.dispose()
+    if (m.userData.ownsMaterial && m.material) (m.material as THREE.Material).dispose()
   })
 }
 
@@ -208,11 +256,12 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
   const train = useMemo(() => buildTrain(config), [config])
   const fx = useMemo(() => new THREE.Group(), [])
   const cameraGoal = useRef(new THREE.Vector3())
-  const cameraLook = useRef(new THREE.Vector3(START_X + FORWARD_X * 4.8, 0.85, START_Z + FORWARD_Z * 4.8))
+  const cameraLook = useRef(new THREE.Vector3(START_X + FORWARD_X * 4.8, 0.70, START_Z + FORWARD_Z * 4.8))
   const state = useRef({
     bodies: [] as Body[], player: null as Body | null, time: 0, timeLeft: config.time,
     nextSway: config.swayPeriod, warningSent: false, swayDirection: (level % 2 ? -1 : 1) as -1 | 1,
     swayKick: 0, falls: 0, braceTime: 0, braced: false, hudT: 0, ended: false, lastFrame: 0,
+    qaTumbleDone: false,
   })
 
   useEffect(() => {
@@ -222,10 +271,10 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     playerGroup.position.set(START_X, 0.24, START_Z)
     playerGroup.rotation.y = Math.atan2(FORWARD_X, FORWARD_Z)
     train.root.add(playerGroup)
-    const player: Body = { group: playerGroup, x: START_X, z: START_Z, vx: 0, vz: 0, r: 0.38, mass: 1.28, stability: 2.25, fallenUntil: 0, protectedUntil: 0, phase: 0, homeX: START_X, homeZ: START_Z, player: true }
+    const player: Body = { group: playerGroup, x: START_X, z: START_Z, vx: 0, vz: 0, r: 0.34, mass: 1.28, stability: 2.25, fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side', protectedUntil: 0, phase: 0, homeX: START_X, homeZ: START_Z, player: true }
     S.player = player
     S.bodies.push(player)
-    camera.position.set(START_X - FORWARD_X * 5.2, 5.35, START_Z - FORWARD_Z * 5.2)
+    camera.position.set(START_X - FORWARD_X * 5.2, 6.05, START_Z - FORWARD_Z * 5.2)
     camera.lookAt(cameraLook.current)
 
     const rand = mulberry32(9017 + level * 103)
@@ -247,9 +296,10 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
         const broad = monsterKind === 'werewolf' || (!monsterKind && style.body === 'broad')
         const ghost = monsterKind === 'ghost'
         S.bodies.push({
-          group, x, z, vx: 0, vz: 0, r: broad ? 0.49 : style.body === 'small' ? 0.32 : 0.40,
+          group, x, z, vx: 0, vz: 0, r: broad ? 0.44 : style.body === 'small' ? 0.29 : 0.36,
           mass: broad ? 1.72 : ghost ? 0.58 : style.body === 'small' ? 0.72 : 1.05,
-          stability: ghost ? 1.55 : broad ? 2.9 : 1.8 + rand() * 1.2, fallenUntil: 0, protectedUntil: 0,
+          stability: ghost ? 1.55 : broad ? 2.9 : 1.8 + rand() * 1.2,
+          fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side', protectedUntil: 0,
           phase: rand() * Math.PI * 2, homeX: x, homeZ: z, player: false,
         })
         made++
@@ -275,6 +325,25 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     S.timeLeft = Math.max(0, S.timeLeft - dt)
     S.hudT -= dt
 
+    const eventChance = (b: Body, salt: number) => {
+      const raw = Math.sin((S.time * 17.13 + b.phase * 9.71 + salt) * 12.9898) * 43758.5453
+      return raw - Math.floor(raw)
+    }
+    const knockDown = (b: Body, kind: 'side' | 'tumble', duration: number) => {
+      if (S.time < b.protectedUntil) return false
+      b.fallKind = kind
+      b.fallStarted = S.time
+      b.fallDuration = duration
+      b.fallenUntil = S.time + duration
+      b.protectedUntil = b.fallenUntil + 0.30
+      if (b.player) { S.falls++; kind === 'tumble' ? sound.tumble() : sound.fall() }
+      return true
+    }
+
+    if (QA_TUMBLE && !S.qaTumbleDone && S.time > 0.9) {
+      S.qaTumbleDone = knockDown(S.player, 'tumble', 1.56)
+    }
+
     const mag = Math.hypot(input.current.x, input.current.z)
     S.braceTime = mag < 0.12 ? S.braceTime + dt : 0
     S.braced = S.braceTime > 0.18 && S.player.fallenUntil <= S.time
@@ -296,9 +365,9 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
         const braceFactor = b.player && S.braced ? 0.68 : 1
         const loss = config.impulse * (0.78 + opposite * 0.22) / b.mass * braceFactor
         if (loss > b.stability) {
-          b.fallenUntil = S.time + (b.player ? 0.95 : 0.8 + ((b.phase * 97) % 0.6))
-          b.protectedUntil = b.fallenUntil + 0.26
-          if (b.player) { S.falls++; sound.fall() }
+          const nearDoor = THREE.MathUtils.clamp((b.x - (EXIT_X - 3.2)) / 3.2, 0, 1)
+          const tumble = eventChance(b, 3.7) < config.swayTumbleChance + nearDoor * 0.16
+          knockDown(b, tumble ? 'tumble' : 'side', tumble ? (b.player ? 1.48 : 1.22) : (b.player ? 1.02 : 0.82 + ((b.phase * 97) % 0.52)))
         }
       }
       S.nextSway += config.swayPeriod * (0.92 + ((level * 31 + Math.floor(S.time)) % 17) / 100)
@@ -328,16 +397,20 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
         if (!fallen) {
           // Temple-run style mapping: dragging toward the top of the screen moves
           // along the camera's forward route to the door; horizontal drag strafes.
-          const forward = -input.current.z
-          const targetVx = (FORWARD_X * forward + RIGHT_X * input.current.x) * 4.1
-          const targetVz = (FORWARD_Z * forward + RIGHT_Z * input.current.x) * 4.1
+          const rawMag = Math.hypot(input.current.x, input.current.z)
+          const stickX = rawMag > 0.1 ? input.current.x / rawMag : 0
+          const stickZ = rawMag > 0.1 ? input.current.z / rawMag : 0
+          const forward = -stickZ
+          const targetVx = (FORWARD_X * forward + RIGHT_X * stickX) * 4.1
+          const targetVz = (FORWARD_Z * forward + RIGHT_Z * stickX) * 4.1
           b.vx += (targetVx - b.vx) * Math.min(1, 18 * dt)
           b.vz += (targetVz - b.vz) * Math.min(1, 18 * dt)
         }
       } else if (!fallen) {
-        const wander = 0.18 + ((b.phase * 13) % 0.34)
-        const tx = b.homeX + Math.sin(S.time * 0.48 + b.phase) * 0.34
-        const tz = b.homeZ + Math.cos(S.time * 0.55 + b.phase) * 0.22
+        const nearDoor = THREE.MathUtils.clamp((b.homeX - (EXIT_X - 3.5)) / 3.5, 0, 1)
+        const wander = config.wander * (0.55 + ((b.phase * 13) % 0.35))
+        const tx = b.homeX + Math.sin(S.time * (0.62 + nearDoor * 0.28) + b.phase) * (0.42 + nearDoor * 0.46)
+        const tz = b.homeZ + Math.cos(S.time * (0.70 + nearDoor * 0.35) + b.phase * 1.3) * (0.30 + nearDoor * 0.58)
         b.vx += THREE.MathUtils.clamp(tx - b.x, -1, 1) * wander * dt
         b.vz += THREE.MathUtils.clamp(tz - b.z, -1, 1) * wander * dt
       }
@@ -389,9 +462,17 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
           a.vx -= impulse * nx * invA * 0.35; a.vz -= impulse * nz * invA * 0.35
           b.vx += impulse * nx * invB * 0.35; b.vz += impulse * nz * invB * 0.35
           if ((a.player || b.player) && Math.abs(rel) > 0.55) sound.bump()
-          if (Math.abs(rel) > 3.2) {
-            const victim = a.mass < b.mass ? a : b
-            if (S.time > victim.protectedUntil) victim.fallenUntil = S.time + (victim.player ? 0.95 : 0.85)
+          const impact = Math.abs(rel)
+          if (impact > 0.55) {
+            const playerVictim = a.player ? a : b.player ? b : null
+            const victim = playerVictim ?? (a.mass < b.mass ? a : b)
+            const nearDoor = THREE.MathUtils.clamp((victim.x - (EXIT_X - 3.2)) / 3.2, 0, 1)
+            const chance = (playerVictim ? config.tumbleChance : config.tumbleChance * 0.48) + nearDoor * 0.20 + S.swayKick * 0.16 + Math.min(0.14, (impact - 0.55) * 0.055)
+            if (eventChance(victim, i * 7.3 + j * 3.1) < chance) {
+              knockDown(victim, 'tumble', victim.player ? 1.34 + nearDoor * 0.24 : 1.08 + nearDoor * 0.18)
+            } else if (impact > 3.2) {
+              knockDown(victim, 'side', victim.player ? 1.02 : 0.88)
+            }
           }
         }
       }
@@ -404,9 +485,21 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       const idleAir = Math.abs(Math.sin(S.time * 3.2 + b.phase))
       const idleBounce = (b.player ? 0.075 : 0.045) * idleAir * motionScale
       const stepBounce = Math.abs(Math.sin(S.time * 7 + b.phase)) * Math.min(0.065, speed * 0.018) * motionScale
-      b.group.position.set(b.x, 0.24 + (fallen ? 0 : idleBounce + stepBounce), b.z)
-      const targetRot = fallen ? (b.vz >= 0 ? 1.35 : -1.35) : 0
-      b.group.rotation.x = THREE.MathUtils.lerp(b.group.rotation.x, targetRot, Math.min(1, dt * (fallen ? 10 : 7)))
+      const tumbleProgress = b.fallKind === 'tumble' && b.fallDuration > 0
+        ? THREE.MathUtils.clamp((S.time - b.fallStarted) / b.fallDuration, 0, 1)
+        : 0
+      const tumbleLift = fallen && b.fallKind === 'tumble' ? Math.sin(tumbleProgress * Math.PI) * 0.48 * motionScale : 0
+      b.group.position.set(b.x, 0.24 + (fallen ? tumbleLift : idleBounce + stepBounce), b.z)
+      if (fallen && b.fallKind === 'tumble') {
+        const dir = b.vz >= 0 ? 1 : -1
+        b.group.rotation.x = tumbleProgress * Math.PI * 2 * dir
+        b.group.rotation.z = Math.sin(tumbleProgress * Math.PI) * 0.18 * dir
+      } else {
+        if (!fallen && b.fallKind === 'tumble' && Math.abs(b.group.rotation.x) > Math.PI * 1.5) b.group.rotation.x = 0
+        const targetRot = fallen ? (b.vz >= 0 ? 1.35 : -1.35) : 0
+        b.group.rotation.x = THREE.MathUtils.lerp(b.group.rotation.x, targetRot, Math.min(1, dt * (fallen ? 10 : 7)))
+        b.group.rotation.z = THREE.MathUtils.lerp(b.group.rotation.z, 0, Math.min(1, dt * 9))
+      }
       if (!fallen) {
         if (speed > 0.08) b.group.rotation.y = Math.atan2(b.vx, b.vz)
         const rig = b.group.userData.rig as { legL?: THREE.Group; legR?: THREE.Group; armL?: THREE.Group; armR?: THREE.Group } | undefined
@@ -423,10 +516,10 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     // A stable third-person chase camera keeps the player in the lower-middle
     // foreground while the yellow exit remains ahead at the top of the screen.
     const cameraTrackZ = player.z * 0.35
-    cameraGoal.current.set(player.x - 5.2, 5.35, cameraTrackZ)
+    cameraGoal.current.set(player.x - 5.2, 6.05, cameraTrackZ)
     camera.position.lerp(cameraGoal.current, 1 - Math.exp(-dt * 7.5))
     cameraLook.current.lerp(
-      cameraGoal.current.set(player.x + 4.8, 0.85, cameraTrackZ),
+      cameraGoal.current.set(player.x + 4.8, 0.70, cameraTrackZ),
       1 - Math.exp(-dt * 9),
     )
     camera.lookAt(cameraLook.current)
@@ -467,20 +560,20 @@ export default function TrainScene(props: Props) {
       shadows
       dpr={[1, 1.65]}
       gl={{ antialias: true, alpha: false }}
-      onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.05 }}
+      onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 0.96 }}
     >
       <color attach="background" args={[0x0d0b12]} />
       <fog attach="fog" args={[0x0d0b12, 21, 42]} />
       <PerspectiveCamera
         makeDefault
-        position={[START_X - FORWARD_X * 5.2, 5.35, START_Z - FORWARD_Z * 5.2]}
+        position={[START_X - FORWARD_X * 5.2, 6.05, START_Z - FORWARD_Z * 5.2]}
         fov={55}
         near={0.15}
         far={100}
       />
-      <hemisphereLight args={[0xaeb1bd, 0x2b202b, 0.78]} />
-      <directionalLight position={[-6, 12, 8]} intensity={1.72} color={0xffe5b6} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={10} shadow-camera-bottom={-10} />
-      <directionalLight position={[8, 6, -9]} intensity={0.68} color={0x8db9c3} />
+      <hemisphereLight args={[0xaeb1bd, 0x2b202b, 0.64]} />
+      <directionalLight position={[-6, 12, 8]} intensity={1.46} color={0xffe5b6} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={10} shadow-camera-bottom={-10} />
+      <directionalLight position={[8, 6, -9]} intensity={0.54} color={0x8db9c3} />
       <World {...props} />
     </Canvas>
   )

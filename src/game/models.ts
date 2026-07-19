@@ -41,6 +41,7 @@ function mesh(geometry: THREE.BufferGeometry, color: number, x: number, y: numbe
   if (outline) {
     const shell = new THREE.Mesh(geometry, inkMat)
     shell.scale.setScalar(1.055)
+    shell.userData.outlineShell = true
     group.add(shell)
   }
   const body = new THREE.Mesh(geometry, toon(color))
@@ -104,7 +105,7 @@ export function makeCharacter(style: CharacterStyle, player = false) {
     g.add(cyl(0.22, 0.22, style.hair, 0, headY + 0.49, -0.04, ol, 7))
   }
   g.userData.rig = { legL, legR, armL, armR }
-  g.scale.setScalar(player ? 0.96 : style.body === 'small' ? 0.9 : 0.92)
+  g.scale.setScalar(player ? 0.86 : style.body === 'small' ? 0.82 : 0.84)
   return g
 }
 
@@ -155,7 +156,7 @@ export function makePlayer() {
   playerLight.userData.playerLight = true
   player.add(aura, ringInk, ring, playerLight)
   player.add(box(0.54, 0.09, 0.055, C.paper, 0, 1.38, -0.51))
-  player.scale.setScalar(1.03)
+  player.scale.setScalar(0.90)
   return player
 }
 
@@ -173,7 +174,7 @@ export function makeMonsterPassenger(kind: MonsterKind) {
     g.add(box(0.14, 0.18, 0.045, C.ink, -0.16, 1.96, 0.27), box(0.14, 0.18, 0.045, C.ink, 0.16, 1.96, 0.27))
     for (const x of [-0.28, 0, 0.28]) g.add(box(0.2, 0.42 + (x === 0 ? 0.12 : 0), 0.38, C.cyan, x, 0.48, 0))
     g.position.y = 0.08
-    g.scale.setScalar(0.9)
+    g.scale.setScalar(0.82)
     g.userData.monsterKind = kind
     return g
   }

@@ -22,7 +22,7 @@ const zh = {
   leaderboard: '最高分榜', rankRule: '整局累计分 · 只保留个人最高', board: '排行榜',
   you: '你', yourRun: '你的纪录', openProfile: '打开主页', close: '关闭', loading: '正在读取车厢记录',
   openAlterU: '在 AlterU 中打开即可查看真实排行榜', getAlterU: '下载 AlterU', emptyRank: '还没人挤到这里，等你上榜',
-  dragUp: '任意位置向上拖动', exitAhead: '出口',
+  dragUp: '任意位置拖动移动', exitAhead: '出口',
 }
 
 const en: typeof zh = {
@@ -37,7 +37,7 @@ const en: typeof zh = {
   leaderboard: 'HIGH SCORE', rankRule: 'RUN TOTAL · PERSONAL BEST ONLY', board: 'LEADERBOARD',
   you: 'YOU', yourRun: 'YOUR RECORD', openProfile: 'OPEN PROFILE', close: 'CLOSE', loading: 'READING CAR RECORDS',
   openAlterU: 'Open in AlterU to view the live leaderboard.', getAlterU: 'GET ALTERU', emptyRank: 'No one made it this far. Be first.',
-  dragUp: 'DRAG UP ANYWHERE', exitAhead: 'EXIT',
+  dragUp: 'DRAG ANYWHERE TO MOVE', exitAhead: 'EXIT',
 }
 
 const dict = locale === 'zh' ? zh : en

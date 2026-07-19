@@ -41,6 +41,7 @@ export const sound = {
   warn: () => { tone(420, 0.09, 'square', 0.04, 310); tone(420, 0.09, 'square', 0.04, 310, 0.18) },
   sway: () => tone(120, 0.18, 'triangle', 0.075, 75),
   fall: () => tone(110, 0.22, 'sawtooth', 0.065, 62),
+  tumble: () => { tone(170, 0.12, 'triangle', 0.05, 120); tone(120, 0.14, 'triangle', 0.055, 82, 0.11); tone(82, 0.18, 'sawtooth', 0.06, 54, 0.23) },
   win: () => { [520, 660, 820].forEach((f, i) => tone(f, 0.14, 'sine', 0.055, undefined, i * 0.09)) },
   lose: () => tone(180, 0.42, 'square', 0.065, 95),
 }
