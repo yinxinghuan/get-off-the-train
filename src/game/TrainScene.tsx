@@ -399,18 +399,24 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
 
     for (const b of S.bodies) {
       const fallen = b.fallenUntil > S.time
-      b.group.position.set(b.x, 0.24, b.z)
+      const speed = Math.hypot(b.vx, b.vz)
+      const motionScale = reducedMotion ? 0.35 : 1
+      const idleAir = Math.abs(Math.sin(S.time * 3.2 + b.phase))
+      const idleBounce = (b.player ? 0.075 : 0.045) * idleAir * motionScale
+      const stepBounce = Math.abs(Math.sin(S.time * 7 + b.phase)) * Math.min(0.065, speed * 0.018) * motionScale
+      b.group.position.set(b.x, 0.24 + (fallen ? 0 : idleBounce + stepBounce), b.z)
       const targetRot = fallen ? (b.vz >= 0 ? 1.35 : -1.35) : 0
       b.group.rotation.x = THREE.MathUtils.lerp(b.group.rotation.x, targetRot, Math.min(1, dt * (fallen ? 10 : 7)))
       if (!fallen) {
-        const speed = Math.hypot(b.vx, b.vz)
         if (speed > 0.08) b.group.rotation.y = Math.atan2(b.vx, b.vz)
         const rig = b.group.userData.rig as { legL?: THREE.Group; legR?: THREE.Group; armL?: THREE.Group; armR?: THREE.Group } | undefined
         const swing = Math.sin(S.time * 7 + b.phase) * Math.min(0.46, speed * 0.16)
-        if (rig?.legL) rig.legL.rotation.x = swing
-        if (rig?.legR) rig.legR.rotation.x = -swing
-        if (rig?.armL) rig.armL.rotation.x = -swing * 0.75
-        if (rig?.armR) rig.armR.rotation.x = swing * 0.75
+        const readyLift = (0.09 + idleAir * 0.07) * motionScale
+        const readyStep = Math.sin(S.time * 3.2 + b.phase) * 0.035 * motionScale
+        if (rig?.legL) rig.legL.rotation.x = swing + readyStep
+        if (rig?.legR) rig.legR.rotation.x = -swing - readyStep
+        if (rig?.armL) rig.armL.rotation.x = -swing * 0.75 - readyLift
+        if (rig?.armR) rig.armR.rotation.x = swing * 0.75 - readyLift
       }
     }
 
