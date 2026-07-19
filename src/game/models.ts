@@ -153,6 +153,30 @@ export function makeCharacter(style: CharacterStyle, player = false) {
   return g
 }
 
+export function makeSeatedPassenger(style: CharacterStyle, withPhone = false) {
+  const g = makeCharacter(style)
+  const rig = g.userData.rig as CharacterRig
+  g.scale.setScalar(style.body === 'small' ? 0.56 : 0.60)
+  if (rig.legL) rig.legL.rotation.x = -1.28
+  if (rig.legR) rig.legR.rotation.x = -1.28
+  if (rig.shinL) rig.shinL.rotation.x = 1.32
+  if (rig.shinR) rig.shinR.rotation.x = 1.32
+  if (rig.armL) { rig.armL.rotation.x = -0.56; rig.armL.rotation.z = -0.10 }
+  if (rig.armR) { rig.armR.rotation.x = -0.56; rig.armR.rotation.z = 0.10 }
+  if (rig.forearmL) rig.forearmL.rotation.x = -0.72
+  if (rig.forearmR) rig.forearmR.rotation.x = -0.72
+  if (rig.upperBody) {
+    rig.upperBody.rotation.x = 0.08
+    if (withPhone) {
+      const phone = box(0.22, 0.045, 0.34, C.ink, 0, 0.02, 0.42)
+      phone.rotation.x = 0.38
+      rig.upperBody.add(phone)
+    }
+  }
+  g.userData.seated = true
+  return g
+}
+
 const skins = [C.skin1, C.skin2, C.skin3, C.skin4]
 const tops = [0x547c6b, 0x77517d, 0x315b71, 0x9c5b46, 0x82744b, 0x4f5663]
 const bottoms = [0x343948, 0x514334, 0x3a4d4a, 0x5b4a67]

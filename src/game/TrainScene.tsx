@@ -2,7 +2,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { PerspectiveCamera } from '@react-three/drei'
 import { MutableRefObject, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { box, C, cyl, makeCharacter, makeMonsterPassenger, makePlayer, MONSTER_KINDS, passengerStyle, toon } from './models'
+import { box, C, cyl, makeCharacter, makeMonsterPassenger, makePlayer, makeSeatedPassenger, MONSTER_KINDS, passengerStyle, toon } from './models'
 import type { CharacterRig } from './models'
 import type { HudState, InputVector, LevelConfig } from './types'
 import { sound } from '../audio/sound'
@@ -44,9 +44,12 @@ interface Body {
   lastX: number
   lastZ: number
   player: boolean
+  behavior: 'player' | 'stationary' | 'exiting'
 }
 
 interface Obstacle { x: number; z: number; r: number }
+interface SeatSlot { x: number; z: number; yaw: number }
+interface SeatedVisual { group: THREE.Group; phase: number; baseY: number; baseUpperX: number }
 
 const CAR_MIN_X = -7.65
 const CAR_MAX_X = 7.65
@@ -91,6 +94,7 @@ function buildTrain(config: LevelConfig) {
   const handles: THREE.Group[] = []
   const carriageLights: THREE.PointLight[] = []
   const obstacles: Obstacle[] = []
+  const seatSlots: SeatSlot[] = []
   const bench = config.variant === 'ad-wrap' ? 0x3d6680 : config.variant === 'maintenance' ? 0x555d61 : 0x315f76
   const wall = config.variant === 'long-seat' ? 0xd9dddc : 0xcbd0d1
 
@@ -149,6 +153,15 @@ function buildTrain(config: LevelConfig) {
       root.add(box(len, 0.85, 0.16, bench, x, 1.05, z + side * 0.31, true))
       root.add(box(0.16, 0.75, 0.72, C.ink, x - len / 2, 0.67, z))
       root.add(box(0.16, 0.75, 0.72, C.ink, x + len / 2, 0.67, z))
+      const seatCount = Math.max(1, Math.floor((len - 0.2) / 0.72))
+      const seatSpacing = len / seatCount
+      for (let seat = 0; seat < seatCount; seat++) {
+        seatSlots.push({
+          x: x - len / 2 + seatSpacing * (seat + 0.5),
+          z,
+          yaw: side < 0 ? 0 : Math.PI,
+        })
+      }
     }
   }
 
@@ -251,7 +264,7 @@ function buildTrain(config: LevelConfig) {
     m.userData.ownsMaterial = true
   })
 
-  return { root, handles, carriageLights, obstacles, exitHalf }
+  return { root, handles, carriageLights, obstacles, seatSlots, poleXs, exitHalf }
 }
 
 function dispose(root: THREE.Object3D) {
@@ -269,7 +282,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
   const cameraGoal = useRef(new THREE.Vector3())
   const cameraLook = useRef(new THREE.Vector3(START_X + FORWARD_X * 4.8, 0.70, START_Z + FORWARD_Z * 4.8))
   const state = useRef({
-    bodies: [] as Body[], player: null as Body | null, time: 0, timeLeft: config.time,
+    bodies: [] as Body[], seated: [] as SeatedVisual[], player: null as Body | null, time: 0, timeLeft: config.time,
     nextSway: config.swayPeriod, warningSent: false, swayDirection: (level % 2 ? -1 : 1) as -1 | 1,
     swayKick: 0, falls: 0, braceTime: 0, braced: false, hudT: 0, ended: false, lastFrame: 0,
     qaFallDone: false,
@@ -286,7 +299,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       group: playerGroup, x: START_X, z: START_Z, vx: 0, vz: 0, r: 0.25, mass: 1.28, stability: 2.25,
       fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side', protectedUntil: 0, phase: 0,
       homeX: START_X, homeZ: START_Z, targetX: START_X, targetZ: START_Z, nextWander: 0, pauseUntil: 0,
-      wanderSpeed: 0, gaitPhase: 0, lastX: START_X, lastZ: START_Z, player: true,
+      wanderSpeed: 0, gaitPhase: 0, lastX: START_X, lastZ: START_Z, player: true, behavior: 'player',
     }
     S.player = player
     S.bodies.push(player)
@@ -294,22 +307,42 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     camera.lookAt(cameraLook.current)
 
     const rand = mulberry32(9017 + level * 103)
-    const passengerTarget = QA_WALK ? 0 : config.passengers
+    if (!QA_WALK) {
+      const emptyCount = 1 + ((level * 7 + 3) % 2)
+      const emptySeats = new Set<number>()
+      while (emptySeats.size < Math.min(emptyCount, train.seatSlots.length)) emptySeats.add(Math.floor(rand() * train.seatSlots.length))
+      train.seatSlots.forEach((slot, index) => {
+        if (emptySeats.has(index)) return
+        const style = passengerStyle(index + 80, level)
+        const group = makeSeatedPassenger(style, (index + level) % 3 !== 0)
+        const rig = group.userData.rig as CharacterRig
+        const baseY = 0.75 - (rig.hipY ?? 1) * group.scale.y
+        group.position.set(slot.x, baseY, slot.z)
+        group.rotation.y = slot.yaw
+        train.root.add(group)
+        S.seated.push({ group, phase: rand() * Math.PI * 2, baseY, baseUpperX: rig.upperBody?.rotation.x ?? 0 })
+      })
+    }
+
+    const passengerTarget = QA_WALK ? 0 : Math.max(10, Math.round(config.passengers * 0.68))
+    const moverTarget = Math.min(3, Math.max(1, Math.round(passengerTarget * 0.12)))
     let made = 0
     let attempts = 0
     while (made < passengerTarget && attempts < 2400) {
       attempts++
+      const behavior: Body['behavior'] = made < moverTarget ? 'exiting' : 'stationary'
       const monsterEvery = level < 3 ? 0 : level === 3 ? 7 : level === 4 ? 4 : level < 10 ? 3 : 2
       const monsterKind = monsterEvery > 0 && made % monsterEvery === 0 ? MONSTER_KINDS[(made / monsterEvery + level) % MONSTER_KINDS.length | 0] : null
       const style = passengerStyle(made, level)
       const broad = monsterKind === 'werewolf' || (!monsterKind && style.body === 'broad')
       const ghost = monsterKind === 'ghost'
       const r = broad ? 0.32 : style.body === 'small' ? 0.20 : 0.26
-      const x = -6.55 + rand() * 12.35
-      const sideBand = rand() < 0.38
-      const z = sideBand
-        ? (rand() < 0.5 ? -1 : 1) * (0.75 + rand() * 0.60)
-        : (rand() + rand() - 1) * 1.25
+      const poleStand = behavior === 'stationary' && rand() >= 0.66
+      const poleX = poleStand ? train.poleXs[Math.floor(rand() * train.poleXs.length)] : 0
+      const x = behavior === 'exiting' ? -5.8 + rand() * 8.6 : poleStand ? poleX + (rand() - 0.5) * 0.84 : -6.45 + rand() * 11.95
+      const z = behavior === 'exiting'
+        ? (rand() * 2 - 1) * 0.48
+        : (rand() < 0.5 ? -1 : 1) * (poleStand ? 0.38 + rand() * 0.30 : 0.86 + rand() * 0.44)
       if (Math.hypot(x - START_X, z - START_Z) < 1.35) continue
       if (Math.abs(x - EXIT_X) < train.exitHalf + 0.32 && z > 1.05) continue
       if (train.obstacles.some((o) => Math.hypot(x - o.x, z - o.z) < r + o.r + 0.10)) continue
@@ -317,16 +350,19 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
 
       const group = monsterKind ? makeMonsterPassenger(monsterKind) : makeCharacter(style)
       group.position.set(x, 0.24, z)
-      group.rotation.y = rand() * Math.PI * 2
+      group.rotation.y = behavior === 'exiting' ? Math.PI / 2 : (z < 0 ? 0 : Math.PI) + (rand() - 0.5) * 0.16
       train.root.add(group)
+      const targetX = behavior === 'exiting' ? Math.min(EXIT_X - 0.75, x + 1.8 + rand() * 2.2) : x
+      const targetZ = behavior === 'exiting' ? 0.35 + rand() * 0.48 : z
       S.bodies.push({
         group, x, z, vx: 0, vz: 0, r,
         mass: broad ? 1.72 : ghost ? 0.58 : style.body === 'small' ? 0.72 : 1.05,
         stability: ghost ? 1.55 : broad ? 2.9 : 1.8 + rand() * 1.2,
         fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side', protectedUntil: 0,
-        phase: rand() * Math.PI * 2, homeX: x, homeZ: z, targetX: x, targetZ: z,
-        nextWander: 0.35 + rand() * 1.45, pauseUntil: 0, wanderSpeed: 0.30 + rand() * 0.14,
-        gaitPhase: rand() * Math.PI * 2, lastX: x, lastZ: z, player: false,
+        phase: rand() * Math.PI * 2, homeX: x, homeZ: z, targetX, targetZ,
+        nextWander: Number.POSITIVE_INFINITY, pauseUntil: behavior === 'exiting' ? 0.8 + rand() * 1.5 : Number.POSITIVE_INFINITY,
+        wanderSpeed: behavior === 'exiting' ? 0.26 + rand() * 0.14 : 0,
+        gaitPhase: rand() * Math.PI * 2, lastX: x, lastZ: z, player: false, behavior,
       })
       made++
     }
@@ -413,6 +449,18 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       const impactDip = S.swayKick > 0.55 && (i + Math.floor(S.time * 18)) % 3 === 0 ? 0.38 : 1
       lamp.intensity = (reducedMotion ? 1.0 : slowBreath * looseLamp * impactDip) * 1.24
     }
+    for (const seated of S.seated) {
+      const rig = seated.group.userData.rig as CharacterRig
+      const rate = 2.7 + (Math.sin(seated.phase) + 1) * 0.25
+      const breath = Math.sin(S.time * rate + seated.phase)
+      const seatedMotion = reducedMotion ? 0.35 : 1
+      seated.group.position.y = seated.baseY + Math.max(0, breath) * 0.012 * seatedMotion
+      rig.pose.rotation.z = breath * 0.018 * seatedMotion
+      if (rig.upperBody) {
+        rig.upperBody.rotation.x = seated.baseUpperX + Math.max(0, breath) * 0.012 * seatedMotion
+        rig.upperBody.rotation.z = -breath * 0.012 * seatedMotion
+      }
+    }
 
     const player = S.player
     if (QA_AUTORUN) input.current = player.x < EXIT_X - 0.2 ? { x: QA_WALK ? 0.24 : 0, z: QA_WALK ? -0.97 : -1 } : { x: 1, z: 0 }
@@ -432,27 +480,33 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
           b.vx += (targetVx - b.vx) * Math.min(1, 18 * dt)
           b.vz += (targetVz - b.vz) * Math.min(1, 18 * dt)
         }
-      } else if (!fallen) {
-        const nearDoor = THREE.MathUtils.clamp((b.x - (EXIT_X - 3.5)) / 3.5, 0, 1)
+      } else if (!fallen && b.behavior === 'exiting') {
         const toTarget = Math.hypot(b.targetX - b.x, b.targetZ - b.z)
-        if (S.time >= b.nextWander || (toTarget < 0.10 && S.time >= b.pauseUntil)) {
-          const stopFirst = eventChance(b, 11.3) < 0.28
-          b.pauseUntil = stopFirst ? S.time + 0.35 + eventChance(b, 12.1) * 0.75 : S.time
-          b.nextWander = b.pauseUntil + 1.10 + eventChance(b, 13.7) * 1.70
-          const xRange = 0.52 + nearDoor * 0.40
-          const zRange = 0.42 + nearDoor * 0.54
-          b.targetX = THREE.MathUtils.clamp(b.homeX + (eventChance(b, 15.1) * 2 - 1) * xRange, CAR_MIN_X + b.r + 0.20, CAR_MAX_X - b.r - 0.55)
-          b.targetZ = THREE.MathUtils.clamp(b.homeZ + (eventChance(b, 16.9) * 2 - 1) * zRange, -1.48, 1.48)
-          b.wanderSpeed = 0.22 + config.wander * 0.22 + nearDoor * 0.12 + eventChance(b, 18.3) * 0.08
-        }
-        if (S.time >= b.pauseUntil) {
+        if (toTarget < 0.12) {
+          if (!Number.isFinite(b.nextWander)) b.nextWander = S.time + 1.8 + eventChance(b, 13.7) * 2.0
+          if (S.time >= b.nextWander) {
+            if (b.x >= EXIT_X - 1.05) {
+              b.behavior = 'stationary'
+              b.homeX = b.x
+              b.homeZ = b.z
+              b.vx = 0
+              b.vz = 0
+            } else {
+              b.targetX = Math.min(EXIT_X - 0.75, b.x + 1.6 + eventChance(b, 15.1) * 1.7)
+              const doorBlend = THREE.MathUtils.clamp((b.targetX - 2.2) / 3.3, 0, 1)
+              b.targetZ = THREE.MathUtils.lerp(0.25, 0.55 + eventChance(b, 16.9) * 0.50, doorBlend)
+              b.wanderSpeed = 0.26 + config.wander * 0.12 + eventChance(b, 18.3) * 0.06
+              b.nextWander = Number.POSITIVE_INFINITY
+            }
+          }
+        } else if (S.time >= b.pauseUntil) {
           const dx = b.targetX - b.x
           const dz = b.targetZ - b.z
           const distance = Math.hypot(dx, dz)
-          if (distance > 0.10) {
+          if (distance > 0.12) {
             const desiredVx = dx / distance * b.wanderSpeed
             const desiredVz = dz / distance * b.wanderSpeed
-            const steer = Math.min(1, dt * 3.4)
+            const steer = Math.min(1, dt * 2.8)
             b.vx += (desiredVx - b.vx) * steer
             b.vz += (desiredVz - b.vz) * steer
             npcWalking = true
@@ -635,7 +689,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
         }
       }
       if (!fallen) {
-        if (speed > 0.08) {
+        if (speed > 0.08 && (b.player || b.behavior === 'exiting')) {
           const desiredYaw = Math.atan2(b.vx, b.vz)
           const yawDelta = Math.atan2(Math.sin(desiredYaw - b.group.rotation.y), Math.cos(desiredYaw - b.group.rotation.y))
           b.group.rotation.y += yawDelta * Math.min(1, dt * (b.player ? 11 : 4.8))
