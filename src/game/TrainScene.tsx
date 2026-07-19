@@ -3,6 +3,7 @@ import { PerspectiveCamera } from '@react-three/drei'
 import { MutableRefObject, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { box, C, cyl, makeCharacter, makeMonsterPassenger, makePlayer, MONSTER_KINDS, passengerStyle, toon } from './models'
+import type { CharacterRig } from './models'
 import type { HudState, InputVector, LevelConfig } from './types'
 import { sound } from '../audio/sound'
 
@@ -29,7 +30,7 @@ interface Body {
   fallenUntil: number
   fallStarted: number
   fallDuration: number
-  fallKind: 'side' | 'tumble'
+  fallKind: 'side' | 'forward'
   protectedUntil: number
   phase: number
   homeX: number
@@ -52,7 +53,7 @@ const FORWARD_Z = 0
 const RIGHT_X = 0
 const RIGHT_Z = 1
 const QA_AUTORUN = import.meta.env.DEV && new URLSearchParams(location.search).has('qaRun')
-const QA_TUMBLE = import.meta.env.DEV && new URLSearchParams(location.search).has('qaTumble')
+const QA_FALL = import.meta.env.DEV && new URLSearchParams(location.search).has('qaFall')
 
 function mulberry32(seed: number) {
   return () => {
@@ -261,7 +262,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     bodies: [] as Body[], player: null as Body | null, time: 0, timeLeft: config.time,
     nextSway: config.swayPeriod, warningSent: false, swayDirection: (level % 2 ? -1 : 1) as -1 | 1,
     swayKick: 0, falls: 0, braceTime: 0, braced: false, hudT: 0, ended: false, lastFrame: 0,
-    qaTumbleDone: false,
+    qaFallDone: false,
   })
 
   useEffect(() => {
@@ -271,7 +272,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     playerGroup.position.set(START_X, 0.24, START_Z)
     playerGroup.rotation.y = Math.atan2(FORWARD_X, FORWARD_Z)
     train.root.add(playerGroup)
-    const player: Body = { group: playerGroup, x: START_X, z: START_Z, vx: 0, vz: 0, r: 0.34, mass: 1.28, stability: 2.25, fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side', protectedUntil: 0, phase: 0, homeX: START_X, homeZ: START_Z, player: true }
+    const player: Body = { group: playerGroup, x: START_X, z: START_Z, vx: 0, vz: 0, r: 0.28, mass: 1.28, stability: 2.25, fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side', protectedUntil: 0, phase: 0, homeX: START_X, homeZ: START_Z, player: true }
     S.player = player
     S.bodies.push(player)
     camera.position.set(START_X - FORWARD_X * 5.2, 6.05, START_Z - FORWARD_Z * 5.2)
@@ -296,7 +297,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
         const broad = monsterKind === 'werewolf' || (!monsterKind && style.body === 'broad')
         const ghost = monsterKind === 'ghost'
         S.bodies.push({
-          group, x, z, vx: 0, vz: 0, r: broad ? 0.44 : style.body === 'small' ? 0.29 : 0.36,
+          group, x, z, vx: 0, vz: 0, r: broad ? 0.36 : style.body === 'small' ? 0.23 : 0.29,
           mass: broad ? 1.72 : ghost ? 0.58 : style.body === 'small' ? 0.72 : 1.05,
           stability: ghost ? 1.55 : broad ? 2.9 : 1.8 + rand() * 1.2,
           fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side', protectedUntil: 0,
@@ -329,19 +330,19 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       const raw = Math.sin((S.time * 17.13 + b.phase * 9.71 + salt) * 12.9898) * 43758.5453
       return raw - Math.floor(raw)
     }
-    const knockDown = (b: Body, kind: 'side' | 'tumble', duration: number) => {
+    const knockDown = (b: Body, kind: 'side' | 'forward', duration: number) => {
       if (S.time < b.protectedUntil) return false
       b.fallKind = kind
       b.fallStarted = S.time
       b.fallDuration = duration
       b.fallenUntil = S.time + duration
-      b.protectedUntil = b.fallenUntil + 0.30
-      if (b.player) { S.falls++; kind === 'tumble' ? sound.tumble() : sound.fall() }
+      b.protectedUntil = b.fallenUntil + (b.player ? 1.0 : 0.45)
+      if (b.player) { S.falls++; kind === 'forward' ? sound.trip() : sound.fall() }
       return true
     }
 
-    if (QA_TUMBLE && !S.qaTumbleDone && S.time > 0.9) {
-      S.qaTumbleDone = knockDown(S.player, 'tumble', 1.56)
+    if (QA_FALL && !S.qaFallDone && S.time > 0.9) {
+      S.qaFallDone = knockDown(S.player, 'forward', 1.56)
     }
 
     const mag = Math.hypot(input.current.x, input.current.z)
@@ -366,8 +367,8 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
         const loss = config.impulse * (0.78 + opposite * 0.22) / b.mass * braceFactor
         if (loss > b.stability) {
           const nearDoor = THREE.MathUtils.clamp((b.x - (EXIT_X - 3.2)) / 3.2, 0, 1)
-          const tumble = eventChance(b, 3.7) < config.swayTumbleChance + nearDoor * 0.16
-          knockDown(b, tumble ? 'tumble' : 'side', tumble ? (b.player ? 1.48 : 1.22) : (b.player ? 1.02 : 0.82 + ((b.phase * 97) % 0.52)))
+          const forwardFall = eventChance(b, 3.7) < config.swayFallChance + nearDoor * 0.16
+          knockDown(b, forwardFall ? 'forward' : 'side', forwardFall ? (b.player ? 1.48 : 1.22) : (b.player ? 1.02 : 0.82 + ((b.phase * 97) % 0.52)))
         }
       }
       S.nextSway += config.swayPeriod * (0.92 + ((level * 31 + Math.floor(S.time)) % 17) / 100)
@@ -467,9 +468,9 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
             const playerVictim = a.player ? a : b.player ? b : null
             const victim = playerVictim ?? (a.mass < b.mass ? a : b)
             const nearDoor = THREE.MathUtils.clamp((victim.x - (EXIT_X - 3.2)) / 3.2, 0, 1)
-            const chance = (playerVictim ? config.tumbleChance : config.tumbleChance * 0.48) + nearDoor * 0.20 + S.swayKick * 0.16 + Math.min(0.14, (impact - 0.55) * 0.055)
+            const chance = (playerVictim ? config.fallChance : config.fallChance * 0.48) + nearDoor * 0.20 + S.swayKick * 0.16 + Math.min(0.14, (impact - 0.55) * 0.055)
             if (eventChance(victim, i * 7.3 + j * 3.1) < chance) {
-              knockDown(victim, 'tumble', victim.player ? 1.34 + nearDoor * 0.24 : 1.08 + nearDoor * 0.18)
+              knockDown(victim, 'forward', victim.player ? 1.34 + nearDoor * 0.24 : 1.08 + nearDoor * 0.18)
             } else if (impact > 3.2) {
               knockDown(victim, 'side', victim.player ? 1.02 : 0.88)
             }
@@ -485,24 +486,82 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       const idleAir = Math.abs(Math.sin(S.time * 3.2 + b.phase))
       const idleBounce = (b.player ? 0.075 : 0.045) * idleAir * motionScale
       const stepBounce = Math.abs(Math.sin(S.time * 7 + b.phase)) * Math.min(0.065, speed * 0.018) * motionScale
-      const tumbleProgress = b.fallKind === 'tumble' && b.fallDuration > 0
-        ? THREE.MathUtils.clamp((S.time - b.fallStarted) / b.fallDuration, 0, 1)
-        : 0
-      const tumbleLift = fallen && b.fallKind === 'tumble' ? Math.sin(tumbleProgress * Math.PI) * 0.48 * motionScale : 0
-      b.group.position.set(b.x, 0.24 + (fallen ? tumbleLift : idleBounce + stepBounce), b.z)
-      if (fallen && b.fallKind === 'tumble') {
-        const dir = b.vz >= 0 ? 1 : -1
-        b.group.rotation.x = tumbleProgress * Math.PI * 2 * dir
-        b.group.rotation.z = Math.sin(tumbleProgress * Math.PI) * 0.18 * dir
-      } else {
-        if (!fallen && b.fallKind === 'tumble' && Math.abs(b.group.rotation.x) > Math.PI * 1.5) b.group.rotation.x = 0
-        const targetRot = fallen ? (b.vz >= 0 ? 1.35 : -1.35) : 0
-        b.group.rotation.x = THREE.MathUtils.lerp(b.group.rotation.x, targetRot, Math.min(1, dt * (fallen ? 10 : 7)))
-        b.group.rotation.z = THREE.MathUtils.lerp(b.group.rotation.z, 0, Math.min(1, dt * 9))
+      b.group.position.set(b.x, 0.24 + (fallen ? 0 : idleBounce + stepBounce), b.z)
+      // The world-space anchor never rotates: collision, floor marker, and player
+      // light stay on the floor while only the articulated body pose falls.
+      b.group.rotation.x = 0
+      b.group.rotation.z = 0
+      const rig = b.group.userData.rig as CharacterRig | undefined
+      const pose = rig?.pose
+      if (pose) {
+        const p = b.fallDuration > 0 ? THREE.MathUtils.clamp((S.time - b.fallStarted) / b.fallDuration, 0, 1) : 1
+        const segment = (from: number, to: number) => THREE.MathUtils.smoothstep(THREE.MathUtils.clamp((p - from) / (to - from), 0, 1), 0, 1)
+        if (fallen) {
+          const sideDir = b.vz >= 0 ? 1 : -1
+          const fallMotion = reducedMotion ? 0.65 : 1
+          const stumble = Math.sin(segment(0, 0.18) * Math.PI)
+          const collapse = segment(0.14, 0.52)
+          const settle = segment(0.52, 0.70)
+          const recover = segment(0.84, 1)
+          const remain = 1 - recover
+          const armReach = segment(0.10, 0.46) * remain
+
+          if (b.fallKind === 'forward') {
+            // A foot-pivoted stumble and braced forward fall. The 82° cap and
+            // small lift keep the head/torso above the carriage floor.
+            pose.rotation.x = -(stumble * 0.08 + collapse * 0.22 + settle * 0.06) * remain * fallMotion
+            pose.rotation.z = sideDir * (stumble * 0.08 + collapse * 0.68 + settle * 0.10) * remain * fallMotion
+            pose.position.y = (collapse * 0.30 + settle * 0.08) * remain * fallMotion
+            pose.position.z = -collapse * 0.10 * remain * fallMotion
+            pose.position.x = sideDir * collapse * 0.12 * remain * fallMotion
+            if (rig.upperBody) {
+              rig.upperBody.rotation.x = -(collapse * 0.30 + settle * 0.10) * remain * fallMotion
+              rig.upperBody.rotation.z = sideDir * (collapse * 0.24 + settle * 0.07) * remain * fallMotion
+              rig.upperBody.position.y = (rig.hipY ?? 0) - collapse * 0.07 * remain
+            }
+            if (rig.armL) rig.armL.rotation.x = 1.05 * armReach
+            if (rig.armR) rig.armR.rotation.x = 1.05 * armReach
+            if (rig.armL) rig.armL.rotation.z = -sideDir * 0.58 * armReach
+            if (rig.armR) rig.armR.rotation.z = sideDir * 0.22 * armReach
+            if (rig.legL) rig.legL.rotation.x = (stumble * 0.42 - collapse * 0.24) * remain
+            if (rig.legR) rig.legR.rotation.x = (-stumble * 0.30 + collapse * 0.38) * remain
+            if (rig.legL) rig.legL.rotation.z = -sideDir * collapse * 0.18 * remain
+            if (rig.legR) rig.legR.rotation.z = sideDir * collapse * 0.12 * remain
+          } else {
+            // Side falls use the same grounded anchor, with enough local lift
+            // for the shoulder and outside arm to land on—not under—the floor.
+            pose.rotation.x = collapse * 0.10 * remain * fallMotion
+            pose.rotation.z = sideDir * (collapse * 0.92 + settle * 0.12) * remain * fallMotion
+            pose.position.y = (collapse * 0.44 + settle * 0.08) * remain * fallMotion
+            pose.position.z = 0
+            pose.position.x = 0
+            if (rig.upperBody) {
+              rig.upperBody.rotation.x = collapse * 0.08 * remain * fallMotion
+              rig.upperBody.rotation.z = sideDir * (collapse * 0.26 + settle * 0.08) * remain * fallMotion
+              rig.upperBody.position.y = (rig.hipY ?? 0) - collapse * 0.05 * remain
+            }
+            if (rig.armL) rig.armL.rotation.x = -0.72 * armReach
+            if (rig.armR) rig.armR.rotation.x = -0.72 * armReach
+            if (rig.armL) rig.armL.rotation.z = -sideDir * 0.45 * armReach
+            if (rig.armR) rig.armR.rotation.z = sideDir * 0.18 * armReach
+            if (rig.legL) rig.legL.rotation.x = stumble * 0.34 * remain
+            if (rig.legR) rig.legR.rotation.x = -stumble * 0.26 * remain
+            if (rig.legL) rig.legL.rotation.z = -sideDir * collapse * 0.14 * remain
+            if (rig.legR) rig.legR.rotation.z = sideDir * collapse * 0.10 * remain
+          }
+        } else {
+          pose.rotation.x = 0
+          pose.rotation.z = 0
+          pose.position.set(0, 0, 0)
+          if (rig.upperBody) {
+            rig.upperBody.rotation.x = 0
+            rig.upperBody.rotation.z = 0
+            rig.upperBody.position.set(0, rig.hipY ?? 0, 0)
+          }
+        }
       }
       if (!fallen) {
         if (speed > 0.08) b.group.rotation.y = Math.atan2(b.vx, b.vz)
-        const rig = b.group.userData.rig as { legL?: THREE.Group; legR?: THREE.Group; armL?: THREE.Group; armR?: THREE.Group } | undefined
         const swing = Math.sin(S.time * 7 + b.phase) * Math.min(0.46, speed * 0.16)
         const readyLift = (0.09 + idleAir * 0.07) * motionScale
         const readyStep = Math.sin(S.time * 3.2 + b.phase) * 0.035 * motionScale
@@ -510,6 +569,10 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
         if (rig?.legR) rig.legR.rotation.x = -swing - readyStep
         if (rig?.armL) rig.armL.rotation.x = -swing * 0.75 - readyLift
         if (rig?.armR) rig.armR.rotation.x = swing * 0.75 - readyLift
+        if (rig?.legL) rig.legL.rotation.z = 0
+        if (rig?.legR) rig.legR.rotation.z = 0
+        if (rig?.armL) rig.armL.rotation.z = 0
+        if (rig?.armR) rig.armR.rotation.z = 0
       }
     }
 

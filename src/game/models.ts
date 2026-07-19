@@ -70,42 +70,58 @@ export interface CharacterStyle {
   feature: 'tie' | 'bag' | 'hat' | 'bun' | 'vest' | 'scarf'
 }
 
+export interface CharacterRig {
+  pose: THREE.Group
+  upperBody?: THREE.Group
+  hipY?: number
+  legL?: THREE.Group
+  legR?: THREE.Group
+  armL?: THREE.Group
+  armR?: THREE.Group
+}
+
 export function makeCharacter(style: CharacterStyle, player = false) {
   const g = new THREE.Group()
+  const pose = new THREE.Group()
+  g.add(pose)
   const s = style.body === 'broad' ? 1.13 : style.body === 'small' ? 0.82 : 1
   const legH = style.body === 'small' ? 0.55 : 0.82
+  const hipY = 0.18 + legH
   const torsoY = 0.18 + legH + 0.39
   const headY = torsoY + 0.73
   const ol = player
+  const upperBody = new THREE.Group()
+  upperBody.position.y = hipY
 
   const legL = box(0.27 * s, legH, 0.34, style.bottom, -0.19 * s, 0.18 + legH / 2, 0, ol)
   const legR = box(0.27 * s, legH, 0.34, style.bottom, 0.19 * s, 0.18 + legH / 2, 0, ol)
-  const armL = box(0.22, 0.74, 0.34, style.top, -0.57 * s, torsoY - 0.04, 0, ol)
-  const armR = box(0.22, 0.74, 0.34, style.top, 0.57 * s, torsoY - 0.04, 0, ol)
-  g.add(legL, legR, armL, armR)
-  g.add(box(0.92 * s, 0.78, 0.48, style.top, 0, torsoY, 0, ol))
-  g.add(box(0.54, 0.58, 0.48, style.skin, 0, headY, 0, ol))
-  g.add(box(0.58, 0.18, 0.52, style.hair, 0, headY + 0.32, -0.01, ol))
-  g.add(box(0.09, 0.11, 0.035, C.ink, -0.14, headY + 0.01, 0.255))
-  g.add(box(0.09, 0.11, 0.035, C.ink, 0.14, headY + 0.01, 0.255))
+  const armL = box(0.22, 0.74, 0.34, style.top, -0.57 * s, torsoY - hipY - 0.04, 0, ol)
+  const armR = box(0.22, 0.74, 0.34, style.top, 0.57 * s, torsoY - hipY - 0.04, 0, ol)
+  pose.add(legL, legR, upperBody)
+  upperBody.add(armL, armR)
+  upperBody.add(box(0.92 * s, 0.78, 0.48, style.top, 0, torsoY - hipY, 0, ol))
+  upperBody.add(box(0.54, 0.58, 0.48, style.skin, 0, headY - hipY, 0, ol))
+  upperBody.add(box(0.58, 0.18, 0.52, style.hair, 0, headY + 0.32 - hipY, -0.01, ol))
+  upperBody.add(box(0.09, 0.11, 0.035, C.ink, -0.14, headY + 0.01 - hipY, 0.255))
+  upperBody.add(box(0.09, 0.11, 0.035, C.ink, 0.14, headY + 0.01 - hipY, 0.255))
 
-  if (style.feature === 'tie') g.add(box(0.12, 0.48, 0.06, style.accent, 0, torsoY + 0.05, 0.27, ol))
-  if (style.feature === 'vest') g.add(box(0.62 * s, 0.56, 0.06, style.accent, 0, torsoY - 0.02, 0.27, ol))
-  if (style.feature === 'scarf') g.add(box(0.64, 0.14, 0.55, style.accent, 0, headY - 0.37, 0, ol))
+  if (style.feature === 'tie') upperBody.add(box(0.12, 0.48, 0.06, style.accent, 0, torsoY + 0.05 - hipY, 0.27, ol))
+  if (style.feature === 'vest') upperBody.add(box(0.62 * s, 0.56, 0.06, style.accent, 0, torsoY - 0.02 - hipY, 0.27, ol))
+  if (style.feature === 'scarf') upperBody.add(box(0.64, 0.14, 0.55, style.accent, 0, headY - 0.37 - hipY, 0, ol))
   if (style.feature === 'bag') {
-    g.add(box(0.72 * s, 0.62, 0.25, style.accent, 0, torsoY, -0.36, ol))
-    g.add(box(0.10, 0.74, 0.06, C.ink, -0.27, torsoY, 0.27, false))
-    g.add(box(0.10, 0.74, 0.06, C.ink, 0.27, torsoY, 0.27, false))
+    upperBody.add(box(0.72 * s, 0.62, 0.25, style.accent, 0, torsoY - hipY, -0.36, ol))
+    upperBody.add(box(0.10, 0.74, 0.06, C.ink, -0.27, torsoY - hipY, 0.27, false))
+    upperBody.add(box(0.10, 0.74, 0.06, C.ink, 0.27, torsoY - hipY, 0.27, false))
   }
   if (style.feature === 'hat') {
-    g.add(box(0.66, 0.18, 0.56, style.accent, 0, headY + 0.39, 0, ol))
-    g.add(box(0.48, 0.06, 0.22, style.accent, 0, headY + 0.34, 0.34, ol))
+    upperBody.add(box(0.66, 0.18, 0.56, style.accent, 0, headY + 0.39 - hipY, 0, ol))
+    upperBody.add(box(0.48, 0.06, 0.22, style.accent, 0, headY + 0.34 - hipY, 0.34, ol))
   }
   if (style.feature === 'bun') {
-    g.add(cyl(0.22, 0.22, style.hair, 0, headY + 0.49, -0.04, ol, 7))
+    upperBody.add(cyl(0.22, 0.22, style.hair, 0, headY + 0.49 - hipY, -0.04, ol, 7))
   }
-  g.userData.rig = { legL, legR, armL, armR }
-  g.scale.setScalar(player ? 0.86 : style.body === 'small' ? 0.82 : 0.84)
+  g.userData.rig = { pose, upperBody, hipY, legL, legR, armL, armR } satisfies CharacterRig
+  g.scale.setScalar(player ? 0.76 : style.body === 'small' ? 0.68 : 0.72)
   return g
 }
 
@@ -156,7 +172,7 @@ export function makePlayer() {
   playerLight.userData.playerLight = true
   player.add(aura, ringInk, ring, playerLight)
   player.add(box(0.54, 0.09, 0.055, C.paper, 0, 1.38, -0.51))
-  player.scale.setScalar(0.90)
+  player.scale.setScalar(0.76)
   return player
 }
 
@@ -167,14 +183,17 @@ export const MONSTER_KINDS: MonsterKind[] = ['vampire', 'zombie', 'mummy', 'skel
 export function makeMonsterPassenger(kind: MonsterKind) {
   if (kind === 'ghost') {
     const g = new THREE.Group()
+    const pose = new THREE.Group()
+    g.add(pose)
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.84, 1.0, 0.48), toon(C.cyan, true, 0.72))
-    body.position.y = 1.14; body.castShadow = true; g.add(body)
+    body.position.y = 1.14; body.castShadow = true; pose.add(body)
     const head = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.58, 0.5), toon(0xc7e1df, true, 0.78))
-    head.position.y = 1.9; head.castShadow = true; g.add(head)
-    g.add(box(0.14, 0.18, 0.045, C.ink, -0.16, 1.96, 0.27), box(0.14, 0.18, 0.045, C.ink, 0.16, 1.96, 0.27))
-    for (const x of [-0.28, 0, 0.28]) g.add(box(0.2, 0.42 + (x === 0 ? 0.12 : 0), 0.38, C.cyan, x, 0.48, 0))
+    head.position.y = 1.9; head.castShadow = true; pose.add(head)
+    pose.add(box(0.14, 0.18, 0.045, C.ink, -0.16, 1.96, 0.27), box(0.14, 0.18, 0.045, C.ink, 0.16, 1.96, 0.27))
+    for (const x of [-0.28, 0, 0.28]) pose.add(box(0.2, 0.42 + (x === 0 ? 0.12 : 0), 0.38, C.cyan, x, 0.48, 0))
     g.position.y = 0.08
-    g.scale.setScalar(0.82)
+    g.scale.setScalar(0.68)
+    g.userData.rig = { pose } satisfies CharacterRig
     g.userData.monsterKind = kind
     return g
   }
@@ -187,26 +206,32 @@ export function makeMonsterPassenger(kind: MonsterKind) {
     werewolf: { skin: 0x6e5944, top: 0x594535, bottom: 0x3d3540, hair: 0x33281f, accent: C.cyan, body: 'broad', feature: 'vest' },
   }
   const g = makeCharacter(styles[kind])
+  const rig = g.userData.rig as CharacterRig
+  const upper = rig.upperBody ?? rig.pose
+  const upperAdd = (...objects: THREE.Object3D[]) => {
+    for (const object of objects) object.position.y -= rig.hipY ?? 0
+    upper.add(...objects)
+  }
   if (kind === 'vampire') {
-    g.add(box(0.12, 0.22, 0.05, C.paper, -0.08, 1.86, 0.28), box(0.12, 0.22, 0.05, C.paper, 0.08, 1.86, 0.28))
-    const capeL = box(0.18, 0.72, 0.14, C.red, -0.48, 1.42, -0.18); capeL.rotation.z = -0.28; g.add(capeL)
-    const capeR = box(0.18, 0.72, 0.14, C.red, 0.48, 1.42, -0.18); capeR.rotation.z = 0.28; g.add(capeR)
+    upperAdd(box(0.12, 0.22, 0.05, C.paper, -0.08, 1.86, 0.28), box(0.12, 0.22, 0.05, C.paper, 0.08, 1.86, 0.28))
+    const capeL = box(0.18, 0.72, 0.14, C.red, -0.48, 1.42, -0.18); capeL.rotation.z = -0.28; upperAdd(capeL)
+    const capeR = box(0.18, 0.72, 0.14, C.red, 0.48, 1.42, -0.18); capeR.rotation.z = 0.28; upperAdd(capeR)
   }
   if (kind === 'zombie') {
-    g.rotation.z = -0.035
-    g.add(box(0.33, 0.09, 0.06, C.paper, 0, 1.16, 0.29))
+    upper.rotation.z = -0.035
+    upperAdd(box(0.33, 0.09, 0.06, C.paper, 0, 1.16, 0.29))
   }
   if (kind === 'mummy') {
-    for (let i = 0; i < 5; i++) g.add(box(0.98, 0.055, 0.53, i % 2 ? 0xb6aa8f : C.paper, (i % 2 ? 0.03 : -0.03), 0.91 + i * 0.17, 0, false))
+    for (let i = 0; i < 5; i++) upperAdd(box(0.98, 0.055, 0.53, i % 2 ? 0xb6aa8f : C.paper, (i % 2 ? 0.03 : -0.03), 0.91 + i * 0.17, 0, false))
   }
   if (kind === 'skeleton') {
-    g.add(box(0.52, 0.12, 0.055, C.paper, 0, 1.35, 0.29), box(0.42, 0.1, 0.055, C.paper, 0, 1.53, 0.29))
+    upperAdd(box(0.52, 0.12, 0.055, C.paper, 0, 1.35, 0.29), box(0.42, 0.1, 0.055, C.paper, 0, 1.53, 0.29))
   }
   if (kind === 'werewolf') {
     const earGeo = new THREE.ConeGeometry(0.17, 0.34, 4)
     const earL = mesh(earGeo, 0x33281f, -0.2, 2.35, 0, true)
     const earR = mesh(earGeo.clone(), 0x33281f, 0.2, 2.35, 0, true)
-    g.add(earL, earR, box(0.36, 0.24, 0.24, 0x806950, 0, 1.96, 0.34, true))
+    upperAdd(earL, earR, box(0.36, 0.24, 0.24, 0x806950, 0, 1.96, 0.34, true))
   }
   g.userData.monsterKind = kind
   return g
