@@ -93,8 +93,12 @@ export function makeCharacter(style: CharacterStyle, player = false) {
   const upperBody = new THREE.Group()
   upperBody.position.y = hipY
 
-  const legL = box(0.27 * s, legH, 0.34, style.bottom, -0.19 * s, 0.18 + legH / 2, 0, ol)
-  const legR = box(0.27 * s, legH, 0.34, style.bottom, 0.19 * s, 0.18 + legH / 2, 0, ol)
+  const legL = new THREE.Group()
+  const legR = new THREE.Group()
+  legL.position.set(-0.19 * s, hipY, 0)
+  legR.position.set(0.19 * s, hipY, 0)
+  legL.add(box(0.27 * s, legH, 0.34, style.bottom, 0, -legH / 2, 0, ol))
+  legR.add(box(0.27 * s, legH, 0.34, style.bottom, 0, -legH / 2, 0, ol))
   const armL = box(0.22, 0.74, 0.34, style.top, -0.57 * s, torsoY - hipY - 0.04, 0, ol)
   const armR = box(0.22, 0.74, 0.34, style.top, 0.57 * s, torsoY - hipY - 0.04, 0, ol)
   pose.add(legL, legR, upperBody)

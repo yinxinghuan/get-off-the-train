@@ -88,13 +88,6 @@ button { font: inherit; }
   &--side { left: auto; right: 18%; transform: rotate(1deg); }
 }
 
-.got-player-label {
-  position: absolute; z-index: 11; left: 50%; top: 40%; transform: translateX(-50%); pointer-events: none;
-  display: flex; flex-direction: column; align-items: center;
-  b { min-width: 42px; padding: 5px 8px; color: @ink; background: @yellow; border: 3px solid @ink; box-shadow: 3px 3px 0 @red; font: 950 13px/1 ui-monospace, monospace; text-align: center; }
-  span { width: 0; height: 0; margin-top: 1px; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 10px solid @yellow; filter: drop-shadow(0 3px 0 @ink); }
-}
-
 .got-pause {
   position: absolute; z-index: 12; right: 17px; top: calc(87px + env(safe-area-inset-top)); width: 48px; height: 48px;
   display: grid; place-items: center; color: @paper; background: @aubergine; border: 3px solid @ink; box-shadow: 3px 3px 0 @ink;
@@ -107,12 +100,6 @@ button { font: inherit; }
   animation: got-warning 180ms steps(2, end) infinite alternate; pointer-events: none;
   span { font: 900 10px/1 ui-monospace, monospace; letter-spacing: .14em; }
   strong { margin-top: 3px; font: 950 clamp(32px, 11vw, 52px)/.9 Impact, "Arial Black", "Noto Sans SC", sans-serif; text-shadow: 3px 3px 0 @ink; }
-}
-
-.got-braced {
-  position: absolute; z-index: 11; left: 50%; bottom: calc(145px + env(safe-area-inset-bottom)); transform: translateX(-50%) rotate(-1deg);
-  display: flex; align-items: center; gap: 6px; min-height: 38px; padding: 7px 11px; color: @ink; background: @yellow; border: 3px solid @ink; box-shadow: 3px 3px 0 @ink;
-  font-size: 13px; font-weight: 950; white-space: nowrap; pointer-events: none;
 }
 
 .got-input-surface {
@@ -211,7 +198,6 @@ button { font: inherit; }
   .got-level-tag, .got-pause { top: calc(72px + env(safe-area-inset-top)); }
   .got-exit-cue { top: calc(120px + env(safe-area-inset-top)); }
   .got-level-tag span { display: none; }
-  .got-braced { bottom: calc(115px + env(safe-area-inset-bottom)); }
   .got-cover__bottom { bottom: calc(19px + env(safe-area-inset-bottom)); gap: 8px; }
   .got-cover__local-title h1 { font-size: 26px; }
   .got-cover__bottom p { font-size: 14px; line-height: 1.35; }

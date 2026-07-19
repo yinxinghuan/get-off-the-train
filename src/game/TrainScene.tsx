@@ -35,6 +35,14 @@ interface Body {
   phase: number
   homeX: number
   homeZ: number
+  targetX: number
+  targetZ: number
+  nextWander: number
+  pauseUntil: number
+  wanderSpeed: number
+  gaitPhase: number
+  lastX: number
+  lastZ: number
   player: boolean
 }
 
@@ -54,6 +62,7 @@ const RIGHT_X = 0
 const RIGHT_Z = 1
 const QA_AUTORUN = import.meta.env.DEV && new URLSearchParams(location.search).has('qaRun')
 const QA_FALL = import.meta.env.DEV && new URLSearchParams(location.search).has('qaFall')
+const QA_WALK = import.meta.env.DEV && new URLSearchParams(location.search).has('qaWalk')
 
 function mulberry32(seed: number) {
   return () => {
@@ -272,39 +281,53 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     playerGroup.position.set(START_X, 0.24, START_Z)
     playerGroup.rotation.y = Math.atan2(FORWARD_X, FORWARD_Z)
     train.root.add(playerGroup)
-    const player: Body = { group: playerGroup, x: START_X, z: START_Z, vx: 0, vz: 0, r: 0.28, mass: 1.28, stability: 2.25, fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side', protectedUntil: 0, phase: 0, homeX: START_X, homeZ: START_Z, player: true }
+    const player: Body = {
+      group: playerGroup, x: START_X, z: START_Z, vx: 0, vz: 0, r: 0.28, mass: 1.28, stability: 2.25,
+      fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side', protectedUntil: 0, phase: 0,
+      homeX: START_X, homeZ: START_Z, targetX: START_X, targetZ: START_Z, nextWander: 0, pauseUntil: 0,
+      wanderSpeed: 0, gaitPhase: 0, lastX: START_X, lastZ: START_Z, player: true,
+    }
     S.player = player
     S.bodies.push(player)
     camera.position.set(START_X - FORWARD_X * 5.2, 6.05, START_Z - FORWARD_Z * 5.2)
     camera.lookAt(cameraLook.current)
 
     const rand = mulberry32(9017 + level * 103)
+    const passengerTarget = QA_WALK ? 0 : config.passengers
     let made = 0
-    const cols = 9
-    const rows = 6
-    for (let row = 0; row < rows && made < config.passengers; row++) {
-      for (let col = 0; col < cols && made < config.passengers; col++) {
-        const x = -6.6 + col * 1.58 + (rand() - 0.5) * 0.28
-        const z = -1.34 + row * 0.54 + (rand() - 0.5) * 0.12
-        if (Math.hypot(x - START_X, z - START_Z) < 1.25 || (Math.abs(x - EXIT_X) < train.exitHalf + 0.25 && z > CAR_MAX_Z - 1.15)) continue
-        const monsterEvery = level === 3 ? 7 : level === 4 ? 4 : level < 10 ? 3 : 2
-        const monsterKind = monsterEvery && made % monsterEvery === 0 ? MONSTER_KINDS[(made / monsterEvery + level) % MONSTER_KINDS.length | 0] : null
-        const style = passengerStyle(made, level)
-        const group = monsterKind ? makeMonsterPassenger(monsterKind) : makeCharacter(style)
-        group.position.set(x, 0.24, z)
-        group.rotation.y = (rand() - 0.5) * 0.65
-        train.root.add(group)
-        const broad = monsterKind === 'werewolf' || (!monsterKind && style.body === 'broad')
-        const ghost = monsterKind === 'ghost'
-        S.bodies.push({
-          group, x, z, vx: 0, vz: 0, r: broad ? 0.36 : style.body === 'small' ? 0.23 : 0.29,
-          mass: broad ? 1.72 : ghost ? 0.58 : style.body === 'small' ? 0.72 : 1.05,
-          stability: ghost ? 1.55 : broad ? 2.9 : 1.8 + rand() * 1.2,
-          fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side', protectedUntil: 0,
-          phase: rand() * Math.PI * 2, homeX: x, homeZ: z, player: false,
-        })
-        made++
-      }
+    let attempts = 0
+    while (made < passengerTarget && attempts < 2400) {
+      attempts++
+      const monsterEvery = level < 3 ? 0 : level === 3 ? 7 : level === 4 ? 4 : level < 10 ? 3 : 2
+      const monsterKind = monsterEvery > 0 && made % monsterEvery === 0 ? MONSTER_KINDS[(made / monsterEvery + level) % MONSTER_KINDS.length | 0] : null
+      const style = passengerStyle(made, level)
+      const broad = monsterKind === 'werewolf' || (!monsterKind && style.body === 'broad')
+      const ghost = monsterKind === 'ghost'
+      const r = broad ? 0.36 : style.body === 'small' ? 0.23 : 0.29
+      const x = -6.55 + rand() * 12.35
+      const sideBand = rand() < 0.38
+      const z = sideBand
+        ? (rand() < 0.5 ? -1 : 1) * (0.75 + rand() * 0.60)
+        : (rand() + rand() - 1) * 1.25
+      if (Math.hypot(x - START_X, z - START_Z) < 1.35) continue
+      if (Math.abs(x - EXIT_X) < train.exitHalf + 0.32 && z > 1.05) continue
+      if (train.obstacles.some((o) => Math.hypot(x - o.x, z - o.z) < r + o.r + 0.10)) continue
+      if (S.bodies.some((other) => Math.hypot(x - other.x, z - other.z) < r + other.r + 0.16)) continue
+
+      const group = monsterKind ? makeMonsterPassenger(monsterKind) : makeCharacter(style)
+      group.position.set(x, 0.24, z)
+      group.rotation.y = rand() * Math.PI * 2
+      train.root.add(group)
+      S.bodies.push({
+        group, x, z, vx: 0, vz: 0, r,
+        mass: broad ? 1.72 : ghost ? 0.58 : style.body === 'small' ? 0.72 : 1.05,
+        stability: ghost ? 1.55 : broad ? 2.9 : 1.8 + rand() * 1.2,
+        fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side', protectedUntil: 0,
+        phase: rand() * Math.PI * 2, homeX: x, homeZ: z, targetX: x, targetZ: z,
+        nextWander: 0.35 + rand() * 1.45, pauseUntil: 0, wanderSpeed: 0.30 + rand() * 0.14,
+        gaitPhase: rand() * Math.PI * 2, lastX: x, lastZ: z, player: false,
+      })
+      made++
     }
     return () => {
       train.root.remove(playerGroup)
@@ -391,9 +414,10 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     }
 
     const player = S.player
-    if (QA_AUTORUN) input.current = player.x < EXIT_X - 0.2 ? { x: 0, z: -1 } : { x: 1, z: 0 }
+    if (QA_AUTORUN) input.current = player.x < EXIT_X - 0.2 ? { x: QA_WALK ? 0.24 : 0, z: QA_WALK ? -0.97 : -1 } : { x: 1, z: 0 }
     for (const b of S.bodies) {
       const fallen = b.fallenUntil > S.time
+      let npcWalking = false
       if (b.player) {
         if (!fallen) {
           // Temple-run style mapping: dragging toward the top of the screen moves
@@ -408,14 +432,34 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
           b.vz += (targetVz - b.vz) * Math.min(1, 18 * dt)
         }
       } else if (!fallen) {
-        const nearDoor = THREE.MathUtils.clamp((b.homeX - (EXIT_X - 3.5)) / 3.5, 0, 1)
-        const wander = config.wander * (0.55 + ((b.phase * 13) % 0.35))
-        const tx = b.homeX + Math.sin(S.time * (0.62 + nearDoor * 0.28) + b.phase) * (0.42 + nearDoor * 0.46)
-        const tz = b.homeZ + Math.cos(S.time * (0.70 + nearDoor * 0.35) + b.phase * 1.3) * (0.30 + nearDoor * 0.58)
-        b.vx += THREE.MathUtils.clamp(tx - b.x, -1, 1) * wander * dt
-        b.vz += THREE.MathUtils.clamp(tz - b.z, -1, 1) * wander * dt
+        const nearDoor = THREE.MathUtils.clamp((b.x - (EXIT_X - 3.5)) / 3.5, 0, 1)
+        const toTarget = Math.hypot(b.targetX - b.x, b.targetZ - b.z)
+        if (S.time >= b.nextWander || (toTarget < 0.10 && S.time >= b.pauseUntil)) {
+          const stopFirst = eventChance(b, 11.3) < 0.28
+          b.pauseUntil = stopFirst ? S.time + 0.35 + eventChance(b, 12.1) * 0.75 : S.time
+          b.nextWander = b.pauseUntil + 1.10 + eventChance(b, 13.7) * 1.70
+          const xRange = 0.52 + nearDoor * 0.40
+          const zRange = 0.42 + nearDoor * 0.54
+          b.targetX = THREE.MathUtils.clamp(b.homeX + (eventChance(b, 15.1) * 2 - 1) * xRange, CAR_MIN_X + b.r + 0.20, CAR_MAX_X - b.r - 0.55)
+          b.targetZ = THREE.MathUtils.clamp(b.homeZ + (eventChance(b, 16.9) * 2 - 1) * zRange, -1.48, 1.48)
+          b.wanderSpeed = 0.22 + config.wander * 0.22 + nearDoor * 0.12 + eventChance(b, 18.3) * 0.08
+        }
+        if (S.time >= b.pauseUntil) {
+          const dx = b.targetX - b.x
+          const dz = b.targetZ - b.z
+          const distance = Math.hypot(dx, dz)
+          if (distance > 0.10) {
+            const desiredVx = dx / distance * b.wanderSpeed
+            const desiredVz = dz / distance * b.wanderSpeed
+            const steer = Math.min(1, dt * 3.4)
+            b.vx += (desiredVx - b.vx) * steer
+            b.vz += (desiredVz - b.vz) * steer
+            npcWalking = true
+          }
+        }
       }
-      const damping = Math.exp(-(fallen ? 2.4 : 5.6) * dt)
+      const dampingRate = fallen ? 2.4 : b.player ? 5.6 : npcWalking ? 1.1 : 4.8
+      const damping = Math.exp(-dampingRate * dt)
       b.vx *= damping
       b.vz *= damping
       b.x += b.vx * dt
@@ -482,10 +526,18 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     for (const b of S.bodies) {
       const fallen = b.fallenUntil > S.time
       const speed = Math.hypot(b.vx, b.vz)
+      const travelled = Math.hypot(b.x - b.lastX, b.z - b.lastZ)
+      b.lastX = b.x
+      b.lastZ = b.z
+      const locomoting = !fallen && speed > 0.08 && travelled > 0.0004
+      if (locomoting) {
+        const strideLength = b.player ? 1.05 : 0.58
+        b.gaitPhase = (b.gaitPhase + travelled / strideLength * Math.PI * 2) % (Math.PI * 2)
+      }
       const motionScale = reducedMotion ? 0.35 : 1
       const idleAir = Math.abs(Math.sin(S.time * 3.2 + b.phase))
-      const idleBounce = (b.player ? 0.075 : 0.045) * idleAir * motionScale
-      const stepBounce = Math.abs(Math.sin(S.time * 7 + b.phase)) * Math.min(0.065, speed * 0.018) * motionScale
+      const idleBounce = locomoting ? 0 : (b.player ? 0.052 : 0.032) * idleAir * motionScale
+      const stepBounce = locomoting ? Math.abs(Math.sin(b.gaitPhase)) * (b.player ? 0.038 : 0.026) * motionScale : 0
       b.group.position.set(b.x, 0.24 + (fallen ? 0 : idleBounce + stepBounce), b.z)
       // The world-space anchor never rotates: collision, floor marker, and player
       // light stay on the floor while only the articulated body pose falls.
@@ -505,6 +557,10 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
           const recover = segment(0.84, 1)
           const remain = 1 - recover
           const armReach = segment(0.10, 0.46) * remain
+          pose.rotation.y = 0
+          if (rig.upperBody) rig.upperBody.rotation.y = 0
+          if (rig.legL) { rig.legL.position.y = rig.hipY ?? rig.legL.position.y; rig.legL.position.z = 0 }
+          if (rig.legR) { rig.legR.position.y = rig.hipY ?? rig.legR.position.y; rig.legR.position.z = 0 }
 
           if (b.fallKind === 'forward') {
             // A foot-pivoted stumble and braced forward fall. The 82° cap and
@@ -551,24 +607,42 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
           }
         } else {
           pose.rotation.x = 0
+          pose.rotation.y = 0
           pose.rotation.z = 0
           pose.position.set(0, 0, 0)
           if (rig.upperBody) {
             rig.upperBody.rotation.x = 0
+            rig.upperBody.rotation.y = 0
             rig.upperBody.rotation.z = 0
             rig.upperBody.position.set(0, rig.hipY ?? 0, 0)
           }
         }
       }
       if (!fallen) {
-        if (speed > 0.08) b.group.rotation.y = Math.atan2(b.vx, b.vz)
-        const swing = Math.sin(S.time * 7 + b.phase) * Math.min(0.46, speed * 0.16)
+        if (speed > 0.08) {
+          const desiredYaw = Math.atan2(b.vx, b.vz)
+          const yawDelta = Math.atan2(Math.sin(desiredYaw - b.group.rotation.y), Math.cos(desiredYaw - b.group.rotation.y))
+          b.group.rotation.y += yawDelta * Math.min(1, dt * (b.player ? 11 : 4.8))
+        }
+        const swingMax = b.player ? 0.56 : 0.42
+        const swing = locomoting ? Math.sin(b.gaitPhase) * Math.min(swingMax, speed * (b.player ? 0.16 : 0.72)) : 0
+        const gaitSin = Math.sin(b.gaitPhase)
+        const footLift = b.player ? 0.12 : 0.075
         const readyLift = (0.09 + idleAir * 0.07) * motionScale
         const readyStep = Math.sin(S.time * 3.2 + b.phase) * 0.035 * motionScale
-        if (rig?.legL) rig.legL.rotation.x = swing + readyStep
-        if (rig?.legR) rig.legR.rotation.x = -swing - readyStep
-        if (rig?.armL) rig.armL.rotation.x = -swing * 0.75 - readyLift
-        if (rig?.armR) rig.armR.rotation.x = swing * 0.75 - readyLift
+        const poseBlend = Math.min(1, dt * 10)
+        const legLTarget = locomoting ? swing : readyStep
+        const legRTarget = locomoting ? -swing : -readyStep
+        const armLTarget = locomoting ? -swing * 0.72 : -readyLift
+        const armRTarget = locomoting ? swing * 0.72 : -readyLift
+        if (rig?.legL) rig.legL.rotation.x = THREE.MathUtils.lerp(rig.legL.rotation.x, legLTarget, poseBlend)
+        if (rig?.legR) rig.legR.rotation.x = THREE.MathUtils.lerp(rig.legR.rotation.x, legRTarget, poseBlend)
+        if (rig?.armL) rig.armL.rotation.x = THREE.MathUtils.lerp(rig.armL.rotation.x, armLTarget, poseBlend)
+        if (rig?.armR) rig.armR.rotation.x = THREE.MathUtils.lerp(rig.armR.rotation.x, armRTarget, poseBlend)
+        if (rig?.legL) rig.legL.position.y = THREE.MathUtils.lerp(rig.legL.position.y, (rig.hipY ?? 0) + (locomoting ? Math.max(0, gaitSin) * footLift : 0), poseBlend)
+        if (rig?.legR) rig.legR.position.y = THREE.MathUtils.lerp(rig.legR.position.y, (rig.hipY ?? 0) + (locomoting ? Math.max(0, -gaitSin) * footLift : 0), poseBlend)
+        if (pose) pose.rotation.y = THREE.MathUtils.lerp(pose.rotation.y, locomoting ? gaitSin * 0.055 * motionScale : 0, poseBlend)
+        if (rig?.upperBody) rig.upperBody.rotation.y = THREE.MathUtils.lerp(rig.upperBody.rotation.y, locomoting ? -gaitSin * 0.085 * motionScale : 0, poseBlend)
         if (rig?.legL) rig.legL.rotation.z = 0
         if (rig?.legR) rig.legR.rotation.z = 0
         if (rig?.armL) rig.armL.rotation.z = 0

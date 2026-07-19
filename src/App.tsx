@@ -3,7 +3,7 @@ import TrainScene from './game/TrainScene'
 import { getLevelConfig, type HudState, type InputVector, type Phase } from './game/types'
 import { sound } from './audio/sound'
 import { locale, t } from './i18n'
-import { ArrowIcon, BalanceIcon, ExitSideIcon, PauseIcon, TrainIcon } from './ui/Icons'
+import { ArrowIcon, ExitSideIcon, PauseIcon, TrainIcon } from './ui/Icons'
 import { Joystick } from './ui/Joystick'
 import { Leaderboard } from './shared/leaderboard/Leaderboard'
 import { useGameScore, type LeaderboardEntry } from './shared/leaderboard/useGameScore'
@@ -180,12 +180,10 @@ export default function App() {
       <div className="got-level-tag"><TrainIcon size={18} /><b>{copy.name}</b><span>{runStarted ? copy.subtitle : t('dragUp')}</span></div>
       <div className="got-exit-cue got-exit-cue--side" aria-hidden="true"><ExitSideIcon size={18} /><b>{t('exitAhead')}</b></div>
       <button className="got-pause" aria-label={t('pause')} onPointerDown={pause}><PauseIcon /></button>
-      {phase === 'playing' && <div className="got-player-label" aria-hidden="true"><b>{t('you')}</b><span /></div>}
 
       {phase === 'playing' && (
         <>
           {hud.swayWarning && <div className="got-warning"><span>{hud.swayDirection > 0 ? t('right') : t('left')}</span><strong>{t('warning')}</strong></div>}
-          {hud.braced && <div className="got-braced"><BalanceIcon size={18} /> {t('brace')}</div>}
           <Joystick input={input} enabled={phase === 'playing'} showGuide={showGuide} onFirstInput={beginFromInput} />
         </>
       )}
