@@ -73,6 +73,7 @@ export interface CharacterStyle {
 export interface CharacterRig {
   pose: THREE.Group
   upperBody?: THREE.Group
+  head?: THREE.Group
   hipY?: number
   legL?: THREE.Group
   legR?: THREE.Group
@@ -128,10 +129,13 @@ export function makeCharacter(style: CharacterStyle, player = false) {
   pose.add(legL, legR, upperBody)
   upperBody.add(armL, armR)
   upperBody.add(box(0.92 * s, 0.78, 0.48, style.top, 0, torsoY - hipY, 0, ol))
-  upperBody.add(box(0.54, 0.58, 0.48, style.skin, 0, headY - hipY, 0, ol))
-  upperBody.add(box(0.58, 0.18, 0.52, style.hair, 0, headY + 0.32 - hipY, -0.01, ol))
-  upperBody.add(box(0.09, 0.11, 0.035, C.ink, -0.14, headY + 0.01 - hipY, 0.255))
-  upperBody.add(box(0.09, 0.11, 0.035, C.ink, 0.14, headY + 0.01 - hipY, 0.255))
+  const head = new THREE.Group()
+  head.position.y = headY - hipY
+  head.add(box(0.54, 0.58, 0.48, style.skin, 0, 0, 0, ol))
+  head.add(box(0.58, 0.18, 0.52, style.hair, 0, 0.32, -0.01, ol))
+  head.add(box(0.09, 0.11, 0.035, C.ink, -0.14, 0.01, 0.255))
+  head.add(box(0.09, 0.11, 0.035, C.ink, 0.14, 0.01, 0.255))
+  upperBody.add(head)
 
   if (style.feature === 'tie') upperBody.add(box(0.12, 0.48, 0.06, style.accent, 0, torsoY + 0.05 - hipY, 0.27, ol))
   if (style.feature === 'vest') upperBody.add(box(0.62 * s, 0.56, 0.06, style.accent, 0, torsoY - 0.02 - hipY, 0.27, ol))
@@ -142,21 +146,21 @@ export function makeCharacter(style: CharacterStyle, player = false) {
     upperBody.add(box(0.10, 0.74, 0.06, C.ink, 0.27, torsoY - hipY, 0.27, false))
   }
   if (style.feature === 'hat') {
-    upperBody.add(box(0.66, 0.18, 0.56, style.accent, 0, headY + 0.39 - hipY, 0, ol))
-    upperBody.add(box(0.48, 0.06, 0.22, style.accent, 0, headY + 0.34 - hipY, 0.34, ol))
+    head.add(box(0.66, 0.18, 0.56, style.accent, 0, 0.39, 0, ol))
+    head.add(box(0.48, 0.06, 0.22, style.accent, 0, 0.34, 0.34, ol))
   }
   if (style.feature === 'bun') {
-    upperBody.add(cyl(0.22, 0.22, style.hair, 0, headY + 0.49 - hipY, -0.04, ol, 7))
+    head.add(cyl(0.22, 0.22, style.hair, 0, 0.49, -0.04, ol, 7))
   }
-  g.userData.rig = { pose, upperBody, hipY, legL, legR, shinL, shinR, armL, armR, forearmL, forearmR } satisfies CharacterRig
-  g.scale.setScalar(player ? 0.68 : style.body === 'small' ? 0.60 : 0.64)
+  g.userData.rig = { pose, upperBody, head, hipY, legL, legR, shinL, shinR, armL, armR, forearmL, forearmR } satisfies CharacterRig
+  g.scale.setScalar(player ? 0.58 : style.body === 'small' ? 0.50 : 0.54)
   return g
 }
 
 export function makeSeatedPassenger(style: CharacterStyle, withPhone = false) {
   const g = makeCharacter(style)
   const rig = g.userData.rig as CharacterRig
-  g.scale.setScalar(style.body === 'small' ? 0.56 : 0.60)
+  g.scale.setScalar(style.body === 'small' ? 0.46 : 0.50)
   if (rig.legL) rig.legL.rotation.x = -1.28
   if (rig.legR) rig.legR.rotation.x = -1.28
   if (rig.shinL) rig.shinL.rotation.x = 1.32
@@ -222,13 +226,13 @@ export function makePlayer() {
   const playerLight = new THREE.PointLight(0xffe7a0, 2.35, 4.2, 1.65)
   playerLight.position.set(0, 1.15, 0)
   playerLight.userData.playerLight = true
-  const markerScale = 0.76 / 0.68
+  const markerScale = 0.68 / 0.58
   aura.scale.setScalar(markerScale)
   ringInk.scale.setScalar(markerScale)
   ring.scale.setScalar(markerScale)
   player.add(aura, ringInk, ring, playerLight)
   player.add(box(0.54, 0.09, 0.055, C.paper, 0, 1.38, -0.51))
-  player.scale.setScalar(0.68)
+  player.scale.setScalar(0.58)
   return player
 }
 
@@ -248,7 +252,7 @@ export function makeMonsterPassenger(kind: MonsterKind) {
     pose.add(box(0.14, 0.18, 0.045, C.ink, -0.16, 1.96, 0.27), box(0.14, 0.18, 0.045, C.ink, 0.16, 1.96, 0.27))
     for (const x of [-0.28, 0, 0.28]) pose.add(box(0.2, 0.42 + (x === 0 ? 0.12 : 0), 0.38, C.cyan, x, 0.48, 0))
     g.position.y = 0.08
-    g.scale.setScalar(0.60)
+    g.scale.setScalar(0.50)
     g.userData.rig = { pose } satisfies CharacterRig
     g.userData.monsterKind = kind
     return g
