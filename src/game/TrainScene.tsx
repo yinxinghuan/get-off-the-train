@@ -398,7 +398,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
     swayKick: 0, falls: 0, braceTime: 0, braced: false, hudT: 0, ended: false, lastFrame: 0,
     qaFallDone: false, lastSeatBump: Number.NEGATIVE_INFINITY,
     boardingsSpawned: 0,
-    nextBoardingAt: config.stationEvent === 'inflow' ? 3.6 : 4.0 + ((level * 17) % 12) / 10,
+    nextBoardingAt: config.stationEvent === 'inflow' ? 3.2 : 3.7 + ((level * 17) % 10) / 10,
   })
 
   useEffect(() => {
@@ -458,7 +458,10 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
       const eligibleRisers = S.seated
         .filter((seat) => seat.seatX >= -3.8 && seat.seatX <= 4.6)
         .sort((a, b) => a.seatX - b.seatX)
-      const riserCount = Math.min(config.alightingCount, eligibleRisers.length)
+      const riserCount = Math.min(
+        config.stationEvent === 'all-exit' ? config.alightingCount : Math.max(1, Math.ceil(config.alightingCount * 0.55)),
+        eligibleRisers.length,
+      )
       const chosen = new Set<SeatedVisual>()
       for (let i = 0; i < riserCount && chosen.size < eligibleRisers.length; i++) {
         let pick = Math.floor((i + 1) * eligibleRisers.length / (riserCount + 1))
@@ -474,6 +477,9 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
 
     const passengerTarget = QA_WALK ? 0 : Math.min(20, config.passengers)
     const moverTarget = Math.min(4, Math.max(2, Math.round(passengerTarget * 0.16)))
+    const standingExitCount = config.stationEvent === 'all-exit'
+      ? passengerTarget
+      : Math.max(0, config.alightingCount - Math.max(1, Math.ceil(config.alightingCount * 0.55)))
     let made = 0
     let attempts = 0
     while (made < passengerTarget && attempts < 2400) {
@@ -525,7 +531,11 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
         nextWander: Number.POSITIVE_INFINITY, pauseUntil: behavior === 'wandering' ? 0.8 + rand() * 1.5 : Number.POSITIVE_INFINITY,
         wanderSpeed: behavior === 'wandering' ? 0.28 + rand() * 0.16 : 0,
         gaitPhase: rand() * Math.PI * 2, lastX: x, lastZ: z, player: false, behavior,
-        exitAt: config.stationEvent === 'all-exit' ? 2.8 + made * (0.18 + rand() * 0.08) : Number.POSITIVE_INFINITY,
+        exitAt: config.stationEvent === 'all-exit'
+          ? 2.8 + made * (0.18 + rand() * 0.08)
+          : made >= passengerTarget - standingExitCount
+            ? 5.4 + (made - (passengerTarget - standingExitCount)) * (1.7 + rand() * 1.1)
+            : Number.POSITIVE_INFINITY,
       })
       made++
     }
@@ -747,9 +757,10 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
         gaitPhase: 0, lastX: x, lastZ: z, player: false, behavior: 'boarding', exitAt: Number.POSITIVE_INFINITY,
       })
       S.boardingsSpawned++
+      const lateFlow = THREE.MathUtils.clamp((level - 5) / 15, 0, 1)
       S.nextBoardingAt += config.stationEvent === 'inflow'
-        ? 1.15 + ((index * 7 + level) % 5) * 0.10
-        : 2.4 + ((index * 11 + level) % 8) * 0.20
+        ? 0.82 + (1 - lateFlow) * 0.23 + ((index * 7 + level) % 4) * 0.10
+        : 1.60 + (1 - lateFlow) * 0.80 + ((index * 11 + level) % 4) * 0.15
       sound.boarding()
     }
 

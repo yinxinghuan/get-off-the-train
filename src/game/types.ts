@@ -66,6 +66,11 @@ export function getLevelConfig(index: number): LevelConfig {
                           : stationEvent === 'blackout' ? '停电区间'
                             : stationEvent === 'red-alert' ? '红色警报' : ''
   const basePassengers = Math.min(20, 19 + Math.floor(extra / 3))
+  const flowTier = Math.floor(extra / 5)
+  const normalBoarding = Math.min(7, 2 + flowTier + (index * 7 % 3))
+  const normalAlighting = Math.min(7, 2 + flowTier + (index * 5 % 3))
+  const storyBoarding = Math.min(7, 3 + flowTier + (index % 2))
+  const storyAlighting = Math.min(7, 3 + flowTier + ((index + 1) % 2))
   const config: LevelConfig = {
     name: specialName ? `第 ${index + 1} 节 · ${specialName}` : `第 ${index + 1} 节 · ${ENDLESS_NAMES[extra % ENDLESS_NAMES.length]}`,
     subtitle: stationEvent === 'police' ? '前一站似乎刚封锁过什么'
@@ -84,17 +89,17 @@ export function getLevelConfig(index: number): LevelConfig {
                               : stationEvent === 'red-alert' ? '广播没有解释原因，整节车厢突然变红' : ENDLESS_SUBTITLES[extra % ENDLESS_SUBTITLES.length],
     time: stationEvent === 'all-exit' ? 28 : stationEvent !== 'normal' ? 27 : Math.max(20, 24 - Math.floor(extra / 5) * 0.5),
     passengers: stationEvent === 'inflow' ? 10 : stationEvent === 'pig' ? Math.min(16, basePassengers) : basePassengers,
-    swayPeriod: Math.max(3.45, 4.35 - extra * 0.11),
-    warning: Math.max(0.44, 0.60 - extra * 0.018),
-    impulse: Math.min(4.5, 3.5 + extra * 0.09),
-    roll: Math.min(6.0, 4.5 + extra * 0.12),
+    swayPeriod: Math.max(2.65, 4.25 - extra * 0.13),
+    warning: Math.max(0.36, 0.60 - extra * 0.020),
+    impulse: Math.min(4.8, 3.55 + extra * 0.10),
+    roll: Math.min(6.5, 4.6 + extra * 0.13),
     wander: Math.min(1.28, 1.02 + extra * 0.025),
     fallChance: Math.min(0.32, 0.21 + extra * 0.012),
     swayFallChance: Math.min(0.46, 0.32 + extra * 0.014),
     variant: (['maintenance', 'ad-wrap', 'narrow-door', 'long-seat'] as const)[extra % 4],
     stationEvent,
-    boardingCount: stationEvent === 'all-exit' ? 0 : stationEvent === 'inflow' ? 9 : stationEvent === 'normal' ? 1 + (index * 7 % 3) : 2,
-    alightingCount: stationEvent === 'all-exit' ? 99 : stationEvent === 'inflow' ? 1 : stationEvent === 'normal' ? 1 + (index * 5 % 3) : 2,
+    boardingCount: stationEvent === 'all-exit' ? 0 : stationEvent === 'inflow' ? Math.min(14, 10 + flowTier) : stationEvent === 'normal' ? normalBoarding : storyBoarding,
+    alightingCount: stationEvent === 'all-exit' ? 99 : stationEvent === 'inflow' ? Math.min(5, 2 + flowTier) : stationEvent === 'normal' ? normalAlighting : storyAlighting,
   }
   endlessCache.set(index, config)
   return config
