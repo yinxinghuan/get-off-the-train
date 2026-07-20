@@ -54,7 +54,7 @@
 
 ### 场景照明与主角识别
 
-Canvas 使用与《急刹车》一致的 ACES Filmic 和 1.0 曝光；白/冷灰半球光 0.55，镜头前上方白色主光 3.05，冷填光 0.18，暖轮廓光 0.28。主光阴影为 PCFSoft、2048²、半径 2.4、bias -0.0004，背景与雾使用冷中性深蓝灰。`models.ts` 的人物统一为 `roughness=0.88 / metalness=0 / flatShading=true / emissive=0`；车厢金属为 `roughness=0.58 / metalness=0.28`，非金属为 `roughness=0.86 / metalness=0`。只有显式 guide、门灯与绿色 3D 箭头允许功能性 emissive。所有主角携带局部 SpotLight：`intensity=5.4 / distance=5.2 / angle=0.88 / penumbra=0.82 / decay=1.45`，光源与 target 都是玩家 group 子节点，因此换装和移动后暖光域同步跟随，但不会压过三值基础光。商店隐藏模型自带灯，并使用同一套《急刹车》三值摄影棚灯。界面和场景不绘制脚底圈、固定头顶标签或二维出口标签。
+Canvas 使用与《急刹车》一致的 ACES Filmic 和 1.0 曝光；白/冷灰半球光 0.55，镜头前上方白色主光 3.05，冷填光 0.18，暖轮廓光 0.28。主光阴影为 PCFSoft、2048²、半径 2.4、bias -0.0004，背景与雾使用冷中性深蓝灰。`models.ts` 的人物统一为 `roughness=0.88 / metalness=0 / flatShading=true / emissive=0`；车厢不锈钢主体为 `roughness=0.34 / metalness=0.66`，窄高光条为 `roughness=0.22 / metalness=0.58`，旧暖钢件为 `roughness=0.48 / metalness=0.38`，非金属为 `roughness=0.86 / metalness=0`。只有显式 guide、门灯与绿色 3D 箭头允许功能性 emissive。所有主角携带局部 SpotLight：`intensity=5.4 / distance=5.2 / angle=0.88 / penumbra=0.82 / decay=1.45`，光源与 target 都是玩家 group 子节点，因此换装和移动后暖光域同步跟随，但不会压过三值基础光。商店隐藏模型自带灯，并使用同一套《急刹车》三值摄影棚灯。界面和场景不绘制脚底圈、固定头顶标签或二维出口标签。
 
 ### 音频、多语言、排行榜与通知
 

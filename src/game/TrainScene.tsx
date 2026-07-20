@@ -140,7 +140,7 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
     root.add(box(afterLen, 2.5, 0.22, wall, afterStart + afterLen / 2, 1.42, wallZ, true))
     root.add(box(0.24, 2.7, 0.34, C.red, EXIT_X - exitHalf - 0.1, 1.48, wallZ, true))
     root.add(box(0.24, 2.7, 0.34, C.red, EXIT_X + exitHalf + 0.1, 1.48, wallZ, true))
-    root.add(box(exitHalf * 2.65, 0.28, 0.34, C.ink, EXIT_X, 2.76, wallZ, true))
+    root.add(box(exitHalf * 2.65, 0.28, 0.34, C.stainless, EXIT_X, 2.76, wallZ, true))
     root.add(box(exitHalf * 2.25, 0.16, 0.37, isOpen ? C.yellow : C.red, EXIT_X, 2.77, wallZ - side * 0.04, true))
     root.add(box(exitHalf * 2.12, 0.08, 0.68, isOpen ? C.yellow : C.red, EXIT_X, 0.23, wallZ - side * 0.04, true))
     root.add(box(exitHalf * 2.4, 0.12, 1.3, C.floor, EXIT_X, 0.10, wallZ + side * 0.75))
@@ -193,8 +193,8 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
       const z = side * 2.08
       root.add(box(len, 0.42, 0.58, bench, x, 0.54, z, true))
       root.add(box(len, 0.85, 0.16, bench, x, 1.05, z + side * 0.31, true))
-      root.add(box(0.16, 0.75, 0.72, C.ink, x - len / 2, 0.67, z))
-      root.add(box(0.16, 0.75, 0.72, C.ink, x + len / 2, 0.67, z))
+      root.add(box(0.16, 0.75, 0.72, C.stainless, x - len / 2, 0.67, z))
+      root.add(box(0.16, 0.75, 0.72, C.stainless, x + len / 2, 0.67, z))
       // Dense circles along the bench front approximate a continuous collider.
       // They keep the player out of both occupied and empty seat geometry.
       for (let colliderX = x - len / 2 + 0.12; colliderX <= x + len / 2 - 0.12; colliderX += 0.32) {
@@ -219,7 +219,7 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
     const wallZ = side > 0 ? CAR_MAX_Z + 0.25 : CAR_MIN_Z - 0.25
     const insideZ = wallZ - side * 0.09
     for (const x of [-5.8, -3.2, -0.6, 2.0]) {
-      root.add(box(1.65, 0.72, 0.05, C.ink, x, 1.28, insideZ))
+      root.add(box(1.65, 0.72, 0.05, C.stainless, x, 1.28, insideZ))
       root.add(box(1.44, 0.54, 0.045, C.cyan, x, 1.29, insideZ - side * 0.04))
     }
     for (let i = 0; i < 4; i++) {
@@ -228,24 +228,24 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
       root.add(box(0.82, 0.07, 0.02, C.ink, x, 2.07, insideZ - side * 0.09))
     }
     for (let i = 0; i < 11; i++) root.add(box(0.025, 2.15, 0.025, 0x8f979a, -7.0 + i * 1.38, 1.42, insideZ))
-    root.add(box(10.8, 0.18, 0.08, C.ink, -0.45, 2.52, insideZ))
+    root.add(box(10.8, 0.18, 0.08, C.stainless, -0.45, 2.52, insideZ))
     root.add(box(10.5, 0.11, 0.05, C.paper, -0.45, 2.53, insideZ - side * 0.06))
     for (let i = 0; i < 9; i++) root.add(cyl(0.07, 0.04, i > 6 ? C.red : C.yellow, -5.1 + i * 1.17, 2.56, insideZ - side * 0.10, false, 8).rotateX(Math.PI / 2))
   }
 
   // Poles, rail and hanging straps remain visible because the roof is absent.
-  root.add(cyl(0.055, 15.0, C.ink, 0, 3.0, 0, false, 8).rotateZ(Math.PI / 2))
-  root.add(cyl(0.038, 14.8, C.steel, 0, 3.0, 0, false, 8).rotateZ(Math.PI / 2))
+  root.add(cyl(0.055, 15.0, C.stainless, 0, 3.0, 0, false, 8).rotateZ(Math.PI / 2))
+  root.add(cyl(0.026, 14.8, 0xe8edef, 0, 3.0, -0.022, false, 8).rotateZ(Math.PI / 2))
   const poleXs = config.variant === 'commuter' ? [-5.4, -1.9, 1.7] : [-5.6, -2.7, 0.2, 3.0]
   for (const x of poleXs) {
-    root.add(cyl(0.11, 2.82, C.ink, x, 1.55, 0, true, 8))
-    root.add(cyl(0.075, 2.78, C.steel, x, 1.55, 0, false, 8))
+    root.add(cyl(0.11, 2.82, C.stainless, x, 1.55, 0, true, 8))
+    root.add(cyl(0.055, 2.78, 0xe8edef, x - 0.035, 1.55, -0.035, false, 8))
     obstacles.push({ x, z: 0, r: 0.24 })
   }
   for (let i = 0; i < 8; i++) {
     const h = new THREE.Group()
     h.position.set(-5.9 + i * 1.68, 2.92, 0)
-    h.add(box(0.055, 1.0, 0.055, C.ink, 0, -0.55, 0))
+    h.add(box(0.055, 1.0, 0.055, C.stainless, 0, -0.55, 0))
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.05, 6, 8), toon(i % 3 === 0 ? C.yellow : C.paper))
     ring.rotation.x = Math.PI / 2
     ring.position.y = -1.13
@@ -259,7 +259,7 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
   // and their light sources move with the train instead of floating in screen space.
   for (let i = 0; i < 5; i++) {
     const x = -5.6 + i * 2.85
-    root.add(box(1.18, 0.09, 0.16, C.ink, x, 3.23, -1.42))
+    root.add(box(1.18, 0.09, 0.16, C.stainless, x, 3.23, -1.42))
     const tube = new THREE.Mesh(
       new THREE.BoxGeometry(1.02, 0.055, 0.11),
       new THREE.MeshBasicMaterial({ color: i === 3 ? 0xd9decb : 0xffedbd }),
@@ -300,12 +300,13 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
     if (!(m.material instanceof THREE.MeshStandardMaterial)) return
     const color = m.material.color.clone()
     const hex = color.getHex()
-    const metal = hex === C.steel || hex === C.ink
+    const stainless = hex === C.stainless || hex === 0xe8edef
+    const metal = stainless || hex === C.steel
     const guide = m.userData.guide === true
     m.material = new THREE.MeshStandardMaterial({
       color,
-      roughness: metal ? 0.58 : 0.86,
-      metalness: metal ? 0.28 : 0,
+      roughness: stainless ? (hex === 0xe8edef ? 0.22 : 0.34) : metal ? 0.48 : 0.86,
+      metalness: stainless ? (hex === 0xe8edef ? 0.58 : 0.66) : metal ? 0.38 : 0,
       flatShading: true,
       emissive: guide ? color : new THREE.Color(0x000000),
       emissiveIntensity: guide ? 0.22 : 0,

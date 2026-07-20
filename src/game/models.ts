@@ -9,6 +9,7 @@ export const C = {
   green: 0x2e5b45,
   cyan: 0x65b9ae,
   steel: 0x8a8378,
+  stainless: 0xc2c9cb,
   floor: 0xc9bfa7,
   skin1: 0xf2c79a,
   skin2: 0xd99d69,
