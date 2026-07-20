@@ -74,6 +74,14 @@ export interface CharacterRig {
   armR?: THREE.Group
   forearmL?: THREE.Group
   forearmR?: THREE.Group
+  motion: CharacterMotionProfile
+  rest: {
+    pose: THREE.Euler
+    legL?: THREE.Euler
+    legR?: THREE.Euler
+    armL?: THREE.Euler
+    armR?: THREE.Euler
+  }
 }
 
 export type PassengerActivity = 'natural' | 'strap-left' | 'strap-right' | 'reading' | 'calling' | 'phone'
@@ -88,6 +96,71 @@ export const ANIMAL_LIBRARY_IDS = ['pig', 'cow', 'cat', 'fox', 'chicken', 'frog'
 export const HERO_IDS = [...HUMAN_LIBRARY_IDS, ...MONSTER_LIBRARY_IDS, ...ANIMAL_LIBRARY_IDS] as const
 export type HeroId = (typeof HERO_IDS)[number]
 export type AnimalKind = (typeof ANIMAL_LIBRARY_IDS)[number]
+
+export type MotionStyle =
+  | 'commuter' | 'formal' | 'elder' | 'child' | 'athletic' | 'heavy' | 'mech'
+  | 'vampire' | 'werewolf' | 'zombie' | 'ghost' | 'skeleton' | 'mummy'
+  | 'quadruped' | 'bulky-quadruped' | 'hopper' | 'waddle'
+
+export interface CharacterMotionProfile {
+  style: MotionStyle
+  strideScale: number
+  legSwing: number
+  armSwing: number
+  footLift: number
+  bounce: number
+  lean: number
+  sway: number
+  asymmetry: number
+}
+
+const STYLE_BY_ID: Record<HeroId, MotionStyle> = {
+  commuter: 'commuter', shopkeeper: 'commuter', granny: 'elder', oldman: 'elder', blonde: 'formal', kid: 'child',
+  businessman: 'formal', officeWoman: 'formal', student: 'child', darkWoman: 'commuter', worker: 'heavy', teen: 'child',
+  fitWoman: 'athletic', chef: 'commuter', bigGuy: 'heavy', cop: 'formal', nurse: 'commuter', firefighter: 'heavy',
+  construction: 'heavy', delivery: 'athletic', cowboy: 'commuter', punk: 'athletic', rapper: 'commuter', biker: 'heavy',
+  goth: 'formal', executive: 'formal', courier: 'athletic', janitor: 'elder', barista: 'commuter', securityGuard: 'heavy',
+  swat: 'heavy', viking: 'heavy', combatMech: 'mech', minotaur: 'heavy', paramedic: 'athletic',
+  vampire: 'vampire', werewolf: 'werewolf', zombie: 'zombie', ghost: 'ghost', skeleton: 'skeleton', mummy: 'mummy',
+  pig: 'bulky-quadruped', cow: 'bulky-quadruped', cat: 'quadruped', fox: 'quadruped', chicken: 'waddle', frog: 'hopper',
+  dog: 'quadruped', sheep: 'bulky-quadruped', rabbit: 'hopper', bear: 'bulky-quadruped', duck: 'waddle',
+}
+
+const MOTION_BASE: Record<MotionStyle, CharacterMotionProfile> = {
+  commuter: { style: 'commuter', strideScale: 1, legSwing: 1, armSwing: 1, footLift: 1, bounce: 1, lean: 0, sway: 1, asymmetry: 0 },
+  formal: { style: 'formal', strideScale: 1.08, legSwing: 0.82, armSwing: 0.66, footLift: 0.78, bounce: 0.68, lean: 0.015, sway: 0.55, asymmetry: 0 },
+  elder: { style: 'elder', strideScale: 1.24, legSwing: 0.68, armSwing: 0.52, footLift: 0.58, bounce: 0.62, lean: 0.10, sway: 1.18, asymmetry: 0.12 },
+  child: { style: 'child', strideScale: 0.78, legSwing: 1.14, armSwing: 1.20, footLift: 1.18, bounce: 1.22, lean: -0.02, sway: 1.12, asymmetry: 0.03 },
+  athletic: { style: 'athletic', strideScale: 0.76, legSwing: 1.22, armSwing: 1.18, footLift: 1.14, bounce: 1.12, lean: 0.10, sway: 0.82, asymmetry: 0 },
+  heavy: { style: 'heavy', strideScale: 1.22, legSwing: 0.88, armSwing: 0.72, footLift: 0.74, bounce: 1.15, lean: 0.06, sway: 0.72, asymmetry: 0.02 },
+  mech: { style: 'mech', strideScale: 1.38, legSwing: 0.76, armSwing: 0.30, footLift: 0.62, bounce: 1.28, lean: 0.02, sway: 0.22, asymmetry: 0 },
+  vampire: { style: 'vampire', strideScale: 1.30, legSwing: 0.52, armSwing: 0.24, footLift: 0.42, bounce: 0.38, lean: -0.025, sway: 0.42, asymmetry: 0 },
+  werewolf: { style: 'werewolf', strideScale: 0.72, legSwing: 1.34, armSwing: 1.22, footLift: 1.32, bounce: 1.18, lean: 0.20, sway: 1.16, asymmetry: 0.04 },
+  zombie: { style: 'zombie', strideScale: 1.28, legSwing: 0.72, armSwing: 0.18, footLift: 0.50, bounce: 0.72, lean: 0.14, sway: 1.35, asymmetry: 0.24 },
+  ghost: { style: 'ghost', strideScale: 1.12, legSwing: 0, armSwing: 0, footLift: 0, bounce: 1.08, lean: -0.02, sway: 1.28, asymmetry: 0 },
+  skeleton: { style: 'skeleton', strideScale: 0.70, legSwing: 1.28, armSwing: 1.38, footLift: 1.34, bounce: 0.94, lean: 0.02, sway: 1.42, asymmetry: 0.08 },
+  mummy: { style: 'mummy', strideScale: 1.34, legSwing: 0.54, armSwing: 0.12, footLift: 0.46, bounce: 0.54, lean: 0.09, sway: 0.36, asymmetry: 0.16 },
+  quadruped: { style: 'quadruped', strideScale: 0.68, legSwing: 0, armSwing: 0, footLift: 0, bounce: 0.82, lean: 0.04, sway: 1.08, asymmetry: 0 },
+  'bulky-quadruped': { style: 'bulky-quadruped', strideScale: 1.18, legSwing: 0, armSwing: 0, footLift: 0, bounce: 1.12, lean: 0.02, sway: 0.62, asymmetry: 0.03 },
+  hopper: { style: 'hopper', strideScale: 0.86, legSwing: 0, armSwing: 0, footLift: 0, bounce: 1.36, lean: 0.08, sway: 0.72, asymmetry: 0 },
+  waddle: { style: 'waddle', strideScale: 0.82, legSwing: 0, armSwing: 0, footLift: 0, bounce: 0.92, lean: -0.01, sway: 1.58, asymmetry: 0.05 },
+}
+
+export function motionProfileFor(id: HeroId): CharacterMotionProfile {
+  const base = MOTION_BASE[STYLE_BY_ID[id]]
+  const index = HERO_IDS.indexOf(id)
+  // Each library entry keeps its archetype, with a stable small timing/weight
+  // variation so two commuters do not move as cloned actors.
+  const timing = ((index * 37) % 9 - 4) * 0.012
+  const weight = ((index * 19) % 7 - 3) * 0.014
+  return {
+    ...base,
+    strideScale: base.strideScale * (1 + timing),
+    legSwing: base.legSwing * (1 - weight),
+    armSwing: base.armSwing * (1 + weight),
+    bounce: base.bounce * (1 + timing * 0.65),
+  }
+}
 
 export const HERO_COSTS = Object.fromEntries(HERO_IDS.map((id, index) => [id, index === 0 ? 0 : Math.min(945, 45 + index * 18)])) as Record<HeroId, number>
 
@@ -122,7 +195,15 @@ function makeCatalogCharacter(id: HeroId) {
   const armL = asset.getObjectByName('rig_armL') as THREE.Group | undefined
   const armR = asset.getObjectByName('rig_armR') as THREE.Group | undefined
   const hipY = legL?.position.y ?? legR?.position.y ?? 1
-  g.userData.rig = { pose, hipY, seatedLegX: -0.72, legL, legR, armL, armR } satisfies CharacterRig
+  g.userData.rig = {
+    pose, hipY, seatedLegX: -0.72, legL, legR, armL, armR,
+    motion: motionProfileFor(id),
+    rest: {
+      pose: pose.rotation.clone(),
+      legL: legL?.rotation.clone(), legR: legR?.rotation.clone(),
+      armL: armL?.rotation.clone(), armR: armR?.rotation.clone(),
+    },
+  } satisfies CharacterRig
   g.userData.libraryId = id
   g.scale.setScalar(0.58)
   return g

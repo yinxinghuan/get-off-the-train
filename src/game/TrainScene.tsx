@@ -1100,6 +1100,8 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
 
     for (const b of S.bodies) {
       if (b.behavior === 'departed') continue
+      const rig = b.group.userData.rig as CharacterRig | undefined
+      const motion = rig?.motion
       const fallen = b.fallenUntil > S.time
       const speed = Math.hypot(b.vx, b.vz)
       const travelled = Math.hypot(b.x - b.lastX, b.z - b.lastZ)
@@ -1107,19 +1109,20 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
       b.lastZ = b.z
       const locomoting = !fallen && speed > 0.08 && travelled > 0.0004
       if (locomoting) {
-        const strideLength = b.player ? 1.05 : 0.58
+        const strideLength = (b.player ? 1.05 : 0.58) * (motion?.strideScale ?? 1)
         b.gaitPhase = (b.gaitPhase + travelled / strideLength * Math.PI * 2) % (Math.PI * 2)
       }
       const motionScale = reducedMotion ? 0.35 : 1
       const idleAir = Math.abs(Math.sin(S.time * 3.2 + b.phase))
-      const idleBounce = locomoting ? 0 : (b.player ? 0.052 : 0.032) * idleAir * motionScale
-      const stepBounce = locomoting ? Math.abs(Math.sin(b.gaitPhase)) * (b.player ? 0.038 : 0.026) * motionScale : 0
-      b.group.position.set(b.x, 0.24 + (fallen ? 0 : idleBounce + stepBounce), b.z)
+      const bounceWeight = motion?.bounce ?? 1
+      const ghostFloat = motion?.style === 'ghost' && !fallen ? 0.065 + Math.sin(S.time * 3.7 + b.phase) * 0.035 * motionScale : 0
+      const idleBounce = locomoting ? 0 : (b.player ? 0.052 : 0.032) * idleAir * bounceWeight * motionScale
+      const stepBounce = locomoting ? Math.abs(Math.sin(b.gaitPhase)) * (b.player ? 0.038 : 0.026) * bounceWeight * motionScale : 0
+      b.group.position.set(b.x, 0.24 + (fallen ? 0 : idleBounce + stepBounce + ghostFloat), b.z)
       // The world-space anchor never rotates: collision, floor marker, and player
       // light stay on the floor while only the articulated body pose falls.
       b.group.rotation.x = 0
       b.group.rotation.z = 0
-      const rig = b.group.userData.rig as CharacterRig | undefined
       const pose = rig?.pose
       if (pose) {
         const rawP = b.fallDuration > 0 ? THREE.MathUtils.clamp((S.time - b.fallStarted) / b.fallDuration, 0, 1) : 1
@@ -1213,9 +1216,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
             if (farShin) farShin.rotation.x = key([[0, 0], [0.30, 0.52], [0.50, 0.76], [0.70, 0.68], [0.82, 0.48], [1, 0]]) * fallMotion
           }
         } else {
-          pose.rotation.x = 0
-          pose.rotation.y = 0
-          pose.rotation.z = 0
+          pose.rotation.copy(rig.rest.pose)
           pose.position.set(0, 0, 0)
           if (rig.upperBody) {
             rig.upperBody.rotation.x = 0
@@ -1237,18 +1238,33 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
           b.group.rotation.y += yawDelta * Math.min(1, dt * (b.player ? 11 : 4.8))
         }
         const swingMax = b.player ? 0.56 : 0.42
-        const swing = locomoting ? Math.sin(b.gaitPhase) * Math.min(swingMax, speed * (b.player ? 0.16 : 0.72)) : 0
+        const profile = motion ?? { style: 'commuter', legSwing: 1, armSwing: 1, footLift: 1, lean: 0, sway: 1, asymmetry: 0 }
+        const swing = locomoting ? Math.sin(b.gaitPhase) * Math.min(swingMax, speed * (b.player ? 0.16 : 0.72)) * profile.legSwing : 0
         const gaitSin = Math.sin(b.gaitPhase)
-        const footLift = b.player ? 0.12 : 0.075
+        const gaitCos = Math.cos(b.gaitPhase)
+        const footLift = (b.player ? 0.12 : 0.075) * profile.footLift
         const readyLift = (0.09 + idleAir * 0.07) * motionScale
         const readyStep = Math.sin(S.time * 3.2 + b.phase) * 0.035 * motionScale
         const poseBlend = Math.min(1, dt * 10)
         const activity = (!b.player && !locomoting ? b.group.userData.activity : 'natural') as PassengerActivity
         const gesture = Math.sin(S.time * 1.8 + b.phase) * 0.035 * motionScale
-        const legLTarget = locomoting ? swing : readyStep
-        const legRTarget = locomoting ? -swing : -readyStep
-        const armLTarget = locomoting ? -swing * 0.72 : activity === 'reading' ? -0.92 + gesture : activity === 'phone' ? -0.30 : -readyLift
-        const armRTarget = locomoting ? swing * 0.72 : activity === 'reading' ? -0.92 - gesture : activity === 'calling' ? -0.18 : activity === 'phone' ? -0.92 + gesture : -readyLift
+        const restLegLX = rig?.rest.legL?.x ?? 0
+        const restLegRX = rig?.rest.legR?.x ?? 0
+        const restArmLX = rig?.rest.armL?.x ?? 0
+        const restArmRX = rig?.rest.armR?.x ?? 0
+        const restLegLZ = rig?.rest.legL?.z ?? 0
+        const restLegRZ = rig?.rest.legR?.z ?? 0
+        const restArmLZ = rig?.rest.armL?.z ?? 0
+        const restArmRZ = rig?.rest.armR?.z ?? 0
+        const drag = locomoting ? profile.asymmetry * (0.5 + 0.5 * gaitCos) : 0
+        const legLTarget = restLegLX + (locomoting ? swing * (1 + profile.asymmetry) : readyStep)
+        const legRTarget = restLegRX + (locomoting ? -swing * (1 - profile.asymmetry * 0.55) - drag : -readyStep)
+        const armLTarget = locomoting
+          ? restArmLX - swing * 0.72 * profile.armSwing
+          : restArmLX + (activity === 'reading' ? -0.92 + gesture : activity === 'phone' ? -0.30 : -readyLift)
+        const armRTarget = locomoting
+          ? restArmRX + swing * 0.72 * profile.armSwing
+          : restArmRX + (activity === 'reading' ? -0.92 - gesture : activity === 'calling' ? -0.18 : activity === 'phone' ? -0.92 + gesture : -readyLift)
         const armLZ = activity === 'strap-left' ? 2.88 + gesture : activity === 'reading' ? 0.20 : 0
         const armRZ = activity === 'strap-right' ? -2.88 - gesture : activity === 'calling' ? -2.28 - gesture : activity === 'reading' ? -0.20 : activity === 'phone' ? -0.22 : 0
         const forearmLTarget = locomoting ? Math.max(0, -gaitSin) * -0.18 : activity === 'reading' ? -1.08 : activity === 'strap-left' ? -0.12 : -readyLift * 0.35
@@ -1263,7 +1279,20 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
         if (rig?.forearmR) rig.forearmR.rotation.x = THREE.MathUtils.lerp(rig.forearmR.rotation.x, forearmRTarget, poseBlend)
         if (rig?.legL) rig.legL.position.y = THREE.MathUtils.lerp(rig.legL.position.y, (rig.hipY ?? 0) + (locomoting ? Math.max(0, gaitSin) * footLift : 0), poseBlend)
         if (rig?.legR) rig.legR.position.y = THREE.MathUtils.lerp(rig.legR.position.y, (rig.hipY ?? 0) + (locomoting ? Math.max(0, -gaitSin) * footLift : 0), poseBlend)
-        if (pose) pose.rotation.y = THREE.MathUtils.lerp(pose.rotation.y, locomoting ? gaitSin * 0.055 * motionScale : 0, poseBlend)
+        if (pose) {
+          const isWaddle = profile.style === 'waddle'
+          const isHopper = profile.style === 'hopper'
+          const isQuadruped = profile.style === 'quadruped' || profile.style === 'bulky-quadruped'
+          const isGhost = profile.style === 'ghost'
+          const locomotionLean = locomoting ? profile.lean + (isHopper ? -Math.max(0, gaitSin) * 0.10 : 0) : profile.lean * 0.55
+          const locomotionRoll = locomoting
+            ? gaitSin * 0.028 * profile.sway + (isWaddle ? gaitSin * 0.13 : isQuadruped ? gaitSin * 0.025 : 0)
+            : isGhost ? Math.sin(S.time * 1.9 + b.phase) * 0.035 : 0
+          const locomotionYaw = locomoting ? gaitSin * 0.055 * profile.sway * motionScale : 0
+          pose.rotation.x = THREE.MathUtils.lerp(pose.rotation.x, rig!.rest.pose.x + locomotionLean * motionScale, poseBlend)
+          pose.rotation.y = THREE.MathUtils.lerp(pose.rotation.y, rig!.rest.pose.y + locomotionYaw, poseBlend)
+          pose.rotation.z = THREE.MathUtils.lerp(pose.rotation.z, rig!.rest.pose.z + locomotionRoll * motionScale, poseBlend)
+        }
         if (rig?.upperBody) {
           rig.upperBody.rotation.x = THREE.MathUtils.lerp(rig.upperBody.rotation.x, activity === 'reading' || activity === 'phone' ? 0.10 : 0, poseBlend)
           rig.upperBody.rotation.y = THREE.MathUtils.lerp(rig.upperBody.rotation.y, locomoting ? -gaitSin * 0.085 * motionScale : 0, poseBlend)
@@ -1272,10 +1301,10 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
           rig.head.rotation.x = THREE.MathUtils.lerp(rig.head.rotation.x, activity === 'reading' || activity === 'phone' ? 0.16 : 0, poseBlend)
           rig.head.rotation.z = THREE.MathUtils.lerp(rig.head.rotation.z, activity === 'calling' ? -0.08 : 0, poseBlend)
         }
-        if (rig?.legL) rig.legL.rotation.z = 0
-        if (rig?.legR) rig.legR.rotation.z = 0
-        if (rig?.armL) rig.armL.rotation.z = THREE.MathUtils.lerp(rig.armL.rotation.z, armLZ, poseBlend)
-        if (rig?.armR) rig.armR.rotation.z = THREE.MathUtils.lerp(rig.armR.rotation.z, armRZ, poseBlend)
+        if (rig?.legL) rig.legL.rotation.z = THREE.MathUtils.lerp(rig.legL.rotation.z, restLegLZ, poseBlend)
+        if (rig?.legR) rig.legR.rotation.z = THREE.MathUtils.lerp(rig.legR.rotation.z, restLegRZ, poseBlend)
+        if (rig?.armL) rig.armL.rotation.z = THREE.MathUtils.lerp(rig.armL.rotation.z, restArmLZ + armLZ, poseBlend)
+        if (rig?.armR) rig.armR.rotation.z = THREE.MathUtils.lerp(rig.armR.rotation.z, restArmRZ + armRZ, poseBlend)
         if (rig?.forearmL) rig.forearmL.rotation.z = 0
         if (rig?.forearmR) rig.forearmR.rotation.z = 0
       }
