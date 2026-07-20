@@ -11,7 +11,7 @@ async function capture(width, height, level = 1) {
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text())
   })
-  await page.goto(`http://127.0.0.1:5174/?qaLevel=${level}&qaSeatStand=1&lang=zh`, { waitUntil: 'networkidle' })
+  await page.goto(`http://127.0.0.1:5173/?qaLevel=${level}&qaSeatStand=1&lang=zh`, { waitUntil: 'networkidle' })
   await page.waitForTimeout(420)
   await page.screenshot({ path: `${out}/01-stainless-seated-${width}x${height}.png` })
   await page.waitForTimeout(720)

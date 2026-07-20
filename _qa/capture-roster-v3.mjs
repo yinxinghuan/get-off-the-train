@@ -1,7 +1,7 @@
 import { chromium } from '/Users/yin/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs'
 import fs from 'node:fs'
 
-const out = '_qa/ui/full-roster-render-v3'
+const out = '_qa/ui/full-roster-render-v4'
 fs.mkdirSync(out, { recursive: true })
 const browser = await chromium.launch({ headless: true })
 
@@ -9,7 +9,7 @@ async function capture(hero, width, height, shop = false, name = hero) {
   const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 })
   const errors = []
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
-  await page.goto(`http://127.0.0.1:5174/?qaLevel=5&qaHero=${hero}&lang=zh`, { waitUntil: 'networkidle' })
+  await page.goto(`http://127.0.0.1:5173/?qaLevel=5&qaHero=${hero}&lang=zh`, { waitUntil: 'networkidle' })
   await page.waitForTimeout(1300)
   if (shop) {
     await page.getByRole('button', { name: '暂停' }).dispatchEvent('pointerdown')
@@ -33,12 +33,12 @@ await capture('duck', 320, 568, false, '12-recheck-game-duck-special-crowd-short
 const audit = await browser.newPage({ viewport: { width: 390, height: 844 } })
 const auditErrors = []
 audit.on('console', message => { if (message.type() === 'error') auditErrors.push(message.text()) })
-await audit.goto('http://127.0.0.1:5174/?qaLevel=5&qaHero=commuter&lang=zh', { waitUntil: 'networkidle' })
+await audit.goto('http://127.0.0.1:5173/?qaLevel=5&qaHero=commuter&lang=zh', { waitUntil: 'networkidle' })
 await audit.getByRole('button', { name: '暂停' }).dispatchEvent('pointerdown')
 await audit.getByRole('button', { name: /角色收藏/ }).click()
 await audit.waitForTimeout(500)
 const names = []
-for (let index = 0; index < 51; index += 1) {
+for (let index = 0; index < 52; index += 1) {
   names.push(await audit.locator('.got-collection__identity > strong').innerText())
   await audit.getByRole('button', { name: '下一个角色' }).click()
   await audit.waitForTimeout(35)

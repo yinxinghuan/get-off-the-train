@@ -596,8 +596,9 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
         seated.group.position.y = seated.baseY
         if (rig.upperBody) rig.upperBody.rotation.x = seated.baseUpperX + p * 0.43
         if (rig.head) rig.head.rotation.x = -p * 0.16
-        if (rig.legL) rig.legL.rotation.x = THREE.MathUtils.lerp(-Math.PI / 2, -1.34, p)
-        if (rig.legR) rig.legR.rotation.x = THREE.MathUtils.lerp(-Math.PI / 2, -1.24, p)
+        const seatedLegX = rig.seatedLegX ?? -Math.PI / 2
+        if (rig.legL) rig.legL.rotation.x = THREE.MathUtils.lerp(seatedLegX, -1.12, p)
+        if (rig.legR) rig.legR.rotation.x = THREE.MathUtils.lerp(seatedLegX, -1.04, p)
         if (rig.shinL) rig.shinL.rotation.x = THREE.MathUtils.lerp(Math.PI / 2, 1.34, p)
         if (rig.shinR) rig.shinR.rotation.x = THREE.MathUtils.lerp(Math.PI / 2, 1.22, p)
         const prop = seated.group.userData.activityProp as THREE.Object3D | undefined
@@ -621,8 +622,8 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
         if (rig.pose) rig.pose.rotation.z = 0
         if (rig.upperBody) rig.upperBody.rotation.x = THREE.MathUtils.lerp(seated.baseUpperX + 0.43, 0, p)
         if (rig.head) rig.head.rotation.x = THREE.MathUtils.lerp(-0.16, 0, p)
-        if (rig.legL) rig.legL.rotation.x = THREE.MathUtils.lerp(-1.34, -0.08, p)
-        if (rig.legR) rig.legR.rotation.x = THREE.MathUtils.lerp(-1.24, 0.10, p)
+        if (rig.legL) rig.legL.rotation.x = THREE.MathUtils.lerp(-1.12, -0.08, p)
+        if (rig.legR) rig.legR.rotation.x = THREE.MathUtils.lerp(-1.04, 0.10, p)
         if (rig.shinL) { rig.shinL.rotation.x = THREE.MathUtils.lerp(1.34, 0.08, p); rig.shinL.scale.y = THREE.MathUtils.lerp(1.92, 1, p) }
         if (rig.shinR) { rig.shinR.rotation.x = THREE.MathUtils.lerp(1.22, 0, p); rig.shinR.scale.y = THREE.MathUtils.lerp(1.92, 1, p) }
         if (rig.footL) { rig.footL.position.z = THREE.MathUtils.lerp(0.16, 0.07, p); rig.footL.scale.z = THREE.MathUtils.lerp(1.35, 1, p) }

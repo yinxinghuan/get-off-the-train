@@ -54,13 +54,13 @@ export function t(key: keyof typeof zh) { return dict[key] }
 const heroNames = {
   zh: {
     commuter: '赶班族', shopkeeper: '店员', granny: '奶奶', oldman: '老先生', blonde: '金发女士', kid: '小学生', businessman: '商务主管', officeWoman: '办公室职员', student: '学生', darkWoman: '都市女士', worker: '工人', teen: '少年', fitWoman: '健身达人', chef: '厨师', bigGuy: '壮汉',
-    cop: '警察', nurse: '护士', firefighter: '消防员', construction: '建筑工', delivery: '报童', cowboy: '牛仔', punk: '朋克', rapper: '说唱歌手', biker: '机车客', goth: '哥特女士', executive: '高管', courier: '快递员', janitor: '清洁工', barista: '咖啡师', securityGuard: '保安', swat: '特警', viking: '维京战士', combatMech: '战斗机器人', minotaur: '牛头战士',
+    cop: '警察', nurse: '护士', firefighter: '消防员', construction: '建筑工', delivery: '报童', cowboy: '牛仔', punk: '朋克', rapper: '说唱歌手', biker: '机车客', goth: '哥特女士', executive: '高管', courier: '快递员', janitor: '清洁工', barista: '咖啡师', securityGuard: '保安', swat: '特警', viking: '维京战士', combatMech: '战斗机器人', minotaur: '牛头战士', paramedic: '急救员',
     vampire: '吸血鬼', werewolf: '狼人', zombie: '僵尸', ghost: '幽灵', skeleton: '骷髅', mummy: '木乃伊',
     pig: '小猪', cow: '奶牛', cat: '地铁猫', fox: '狐狸', chicken: '小鸡', frog: '青蛙', dog: '通勤犬', sheep: '绵羊', rabbit: '兔子', bear: '棕熊', duck: '鸭子',
   },
   en: {
     commuter: 'COMMUTER', shopkeeper: 'SHOPKEEPER', granny: 'GRANNY', oldman: 'OLD MAN', blonde: 'BLONDE', kid: 'KID', businessman: 'BUSINESSMAN', officeWoman: 'OFFICE WOMAN', student: 'STUDENT', darkWoman: 'CITY WOMAN', worker: 'WORKER', teen: 'TEEN', fitWoman: 'FIT WOMAN', chef: 'CHEF', bigGuy: 'BIG GUY',
-    cop: 'COP', nurse: 'NURSE', firefighter: 'FIREFIGHTER', construction: 'CONSTRUCTION', delivery: 'NEWSIE', cowboy: 'COWBOY', punk: 'PUNK', rapper: 'RAPPER', biker: 'BIKER', goth: 'GOTH', executive: 'EXECUTIVE', courier: 'COURIER', janitor: 'JANITOR', barista: 'BARISTA', securityGuard: 'SECURITY', swat: 'SWAT', viking: 'VIKING', combatMech: 'COMBAT MECH', minotaur: 'MINOTAUR',
+    cop: 'COP', nurse: 'NURSE', firefighter: 'FIREFIGHTER', construction: 'CONSTRUCTION', delivery: 'NEWSIE', cowboy: 'COWBOY', punk: 'PUNK', rapper: 'RAPPER', biker: 'BIKER', goth: 'GOTH', executive: 'EXECUTIVE', courier: 'COURIER', janitor: 'JANITOR', barista: 'BARISTA', securityGuard: 'SECURITY', swat: 'SWAT', viking: 'VIKING', combatMech: 'COMBAT MECH', minotaur: 'MINOTAUR', paramedic: 'PARAMEDIC',
     vampire: 'VAMPIRE', werewolf: 'WEREWOLF', zombie: 'ZOMBIE', ghost: 'GHOST', skeleton: 'SKELETON', mummy: 'MUMMY',
     pig: 'PIG', cow: 'COW', cat: 'METRO CAT', fox: 'FOX', chicken: 'CHICKEN', frog: 'FROG', dog: 'COMMUTER DOG', sheep: 'SHEEP', rabbit: 'RABBIT', bear: 'BEAR', duck: 'DUCK',
   },
