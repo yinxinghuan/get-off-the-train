@@ -2,8 +2,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { PerspectiveCamera } from '@react-three/drei'
 import { MutableRefObject, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { box, C, cyl, makeCharacter, makeMonsterPassenger, makePlayer, makeSeatedPassenger, MONSTER_KINDS, passengerStyle, toon } from './models'
-import type { CharacterRig } from './models'
+import { applyPassengerActivity, box, C, cyl, makeMonsterPassenger, makePlayer, makeProfessionPassenger, makeSeatedProfessionPassenger, MONSTER_KINDS, PROFESSION_KINDS, toon } from './models'
+import type { CharacterRig, PassengerActivity } from './models'
 import type { HudState, InputVector, LevelConfig } from './types'
 import { sound } from '../audio/sound'
 
@@ -44,7 +44,7 @@ interface Body {
   lastX: number
   lastZ: number
   player: boolean
-  behavior: 'player' | 'stationary' | 'exiting'
+  behavior: 'player' | 'stationary' | 'wandering'
 }
 
 interface Obstacle { x: number; z: number; r: number }
@@ -195,10 +195,10 @@ function buildTrain(config: LevelConfig) {
   for (let i = 0; i < 8; i++) {
     const h = new THREE.Group()
     h.position.set(-5.9 + i * 1.68, 2.92, 0)
-    h.add(box(0.055, 0.42, 0.055, C.ink, 0, -0.22, 0))
+    h.add(box(0.055, 1.0, 0.055, C.ink, 0, -0.55, 0))
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.05, 6, 8), toon(i % 3 === 0 ? C.yellow : C.paper))
     ring.rotation.x = Math.PI / 2
-    ring.position.y = -0.5
+    ring.position.y = -1.13
     ring.castShadow = true
     h.add(ring)
     handles.push(h)
@@ -313,8 +313,10 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       while (emptySeats.size < Math.min(emptyCount, train.seatSlots.length)) emptySeats.add(Math.floor(rand() * train.seatSlots.length))
       train.seatSlots.forEach((slot, index) => {
         if (emptySeats.has(index)) return
-        const style = passengerStyle(index + 80, level)
-        const group = makeSeatedPassenger(style, (index + level) % 3 !== 0)
+        const activityRoll = (index * 7 + level * 3) % 20
+        const activity = activityRoll < 6 ? 'reading' : activityRoll < 15 ? 'phone' : 'rest'
+        const profession = PROFESSION_KINDS[(index * 5 + level * 3) % PROFESSION_KINDS.length]
+        const group = makeSeatedProfessionPassenger(profession, activity)
         const rig = group.userData.rig as CharacterRig
         const baseY = 0.75 - (rig.hipY ?? 1) * group.scale.y
         group.position.set(slot.x, baseY, slot.z)
@@ -324,44 +326,59 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       })
     }
 
-    const passengerTarget = QA_WALK ? 0 : Math.max(10, Math.round(config.passengers * 0.68))
-    const moverTarget = Math.min(3, Math.max(1, Math.round(passengerTarget * 0.12)))
+    const passengerTarget = QA_WALK ? 0 : Math.min(20, config.passengers)
+    const moverTarget = Math.min(4, Math.max(2, Math.round(passengerTarget * 0.16)))
     let made = 0
     let attempts = 0
     while (made < passengerTarget && attempts < 2400) {
       attempts++
-      const behavior: Body['behavior'] = made < moverTarget ? 'exiting' : 'stationary'
+      const behavior: Body['behavior'] = made < moverTarget ? 'wandering' : 'stationary'
       const monsterEvery = level < 3 ? 0 : level === 3 ? 7 : level === 4 ? 4 : level < 10 ? 3 : 2
       const monsterKind = monsterEvery > 0 && made % monsterEvery === 0 ? MONSTER_KINDS[(made / monsterEvery + level) % MONSTER_KINDS.length | 0] : null
-      const style = passengerStyle(made, level)
-      const broad = monsterKind === 'werewolf' || (!monsterKind && style.body === 'broad')
+      const profession = PROFESSION_KINDS[(made * 5 + level * 3) % PROFESSION_KINDS.length]
+      const activityRoll = ((made - moverTarget) * 11 + level * 5 + 100) % 100
+      const activity: PassengerActivity = behavior === 'wandering'
+        ? 'natural'
+        : activityRoll < 21 ? 'strap-left'
+          : activityRoll < 42 ? 'strap-right'
+            : activityRoll < 60 ? 'reading'
+              : activityRoll < 78 ? 'calling'
+                : activityRoll < 90 ? 'phone' : 'natural'
+      const broadProfession = profession === 'businessman' || profession === 'firefighter' || profession === 'construction' || profession === 'executive' || profession === 'security'
+      const smallProfession = profession === 'student' || profession === 'barista'
+      const broad = monsterKind === 'werewolf' || (!monsterKind && broadProfession)
+      const small = monsterKind === 'skeleton' || (!monsterKind && smallProfession)
       const ghost = monsterKind === 'ghost'
-      const r = broad ? 0.27 : style.body === 'small' ? 0.17 : 0.22
-      const poleStand = behavior === 'stationary' && rand() >= 0.66
+      const r = broad ? 0.27 : small ? 0.18 : 0.22
+      const strapStand = activity === 'strap-left' || activity === 'strap-right'
+      const poleStand = behavior === 'stationary' && !strapStand && rand() >= 0.66
       const poleX = poleStand ? train.poleXs[Math.floor(rand() * train.poleXs.length)] : 0
-      const x = behavior === 'exiting' ? -5.8 + rand() * 8.6 : poleStand ? poleX + (rand() - 0.5) * 0.84 : -6.45 + rand() * 11.95
-      const z = behavior === 'exiting'
+      const strapX = strapStand ? train.handles[(made + level) % train.handles.length].position.x : 0
+      const x = behavior === 'wandering' ? -5.8 + rand() * 8.6 : strapStand ? strapX + (rand() - 0.5) * 0.18 : poleStand ? poleX + (rand() - 0.5) * 0.84 : -6.45 + rand() * 11.95
+      const z = behavior === 'wandering'
         ? (rand() * 2 - 1) * 0.48
+        : strapStand ? (activity === 'strap-left' ? -1 : 1) * (0.30 + rand() * 0.18)
         : (rand() < 0.5 ? -1 : 1) * (poleStand ? 0.38 + rand() * 0.30 : 0.86 + rand() * 0.44)
       if (Math.hypot(x - START_X, z - START_Z) < 1.35) continue
       if (Math.abs(x - EXIT_X) < train.exitHalf + 0.32 && z > 1.05) continue
       if (train.obstacles.some((o) => Math.hypot(x - o.x, z - o.z) < r + o.r + 0.10)) continue
       if (S.bodies.some((other) => Math.hypot(x - other.x, z - other.z) < r + other.r + 0.16)) continue
 
-      const group = monsterKind ? makeMonsterPassenger(monsterKind) : makeCharacter(style)
+      const group = monsterKind ? makeMonsterPassenger(monsterKind) : makeProfessionPassenger(profession)
+      applyPassengerActivity(group, monsterKind ? 'natural' : activity)
       group.position.set(x, 0.24, z)
-      group.rotation.y = behavior === 'exiting' ? Math.PI / 2 : (z < 0 ? 0 : Math.PI) + (rand() - 0.5) * 0.16
+      group.rotation.y = behavior === 'wandering' ? Math.PI / 2 : (z < 0 ? 0 : Math.PI) + (rand() - 0.5) * 0.16
       train.root.add(group)
-      const targetX = behavior === 'exiting' ? Math.min(EXIT_X - 0.75, x + 1.8 + rand() * 2.2) : x
-      const targetZ = behavior === 'exiting' ? 0.35 + rand() * 0.48 : z
+      const targetX = behavior === 'wandering' ? THREE.MathUtils.clamp(x + 1.2 + rand() * 1.6, CAR_MIN_X + 0.6, EXIT_X - 0.75) : x
+      const targetZ = behavior === 'wandering' ? THREE.MathUtils.clamp(z + (rand() - 0.5) * 0.8, -0.72, 0.72) : z
       S.bodies.push({
         group, x, z, vx: 0, vz: 0, r,
-        mass: broad ? 1.72 : ghost ? 0.58 : style.body === 'small' ? 0.72 : 1.05,
+        mass: broad ? 1.72 : ghost ? 0.58 : small ? 0.72 : 1.05,
         stability: ghost ? 1.55 : broad ? 2.9 : 1.8 + rand() * 1.2,
         fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side', protectedUntil: 0,
         phase: rand() * Math.PI * 2, homeX: x, homeZ: z, targetX, targetZ,
-        nextWander: Number.POSITIVE_INFINITY, pauseUntil: behavior === 'exiting' ? 0.8 + rand() * 1.5 : Number.POSITIVE_INFINITY,
-        wanderSpeed: behavior === 'exiting' ? 0.26 + rand() * 0.14 : 0,
+        nextWander: Number.POSITIVE_INFINITY, pauseUntil: behavior === 'wandering' ? 0.8 + rand() * 1.5 : Number.POSITIVE_INFINITY,
+        wanderSpeed: behavior === 'wandering' ? 0.28 + rand() * 0.16 : 0,
         gaitPhase: rand() * Math.PI * 2, lastX: x, lastZ: z, player: false, behavior,
       })
       made++
@@ -428,7 +445,13 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
         if (loss > b.stability) {
           const nearDoor = THREE.MathUtils.clamp((b.x - (EXIT_X - 3.2)) / 3.2, 0, 1)
           const forwardFall = eventChance(b, 3.7) < config.swayFallChance + nearDoor * 0.16
-          knockDown(b, forwardFall ? 'forward' : 'side', forwardFall ? (b.player ? 1.74 : 1.42) : (b.player ? 1.30 : 1.08 + ((b.phase * 97) % 0.16)))
+          knockDown(
+            b,
+            forwardFall ? 'forward' : 'side',
+            forwardFall
+              ? (b.player ? 1.18 + nearDoor * 0.16 : 1.00 + nearDoor * 0.12)
+              : (b.player ? 1.10 : 0.94 + ((b.phase * 97) % 0.12)),
+          )
         }
       }
       S.nextSway += config.swayPeriod * (0.92 + ((level * 31 + Math.floor(S.time)) % 17) / 100)
@@ -480,24 +503,16 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
           b.vx += (targetVx - b.vx) * Math.min(1, 18 * dt)
           b.vz += (targetVz - b.vz) * Math.min(1, 18 * dt)
         }
-      } else if (!fallen && b.behavior === 'exiting') {
+      } else if (!fallen && b.behavior === 'wandering') {
         const toTarget = Math.hypot(b.targetX - b.x, b.targetZ - b.z)
         if (toTarget < 0.12) {
-          if (!Number.isFinite(b.nextWander)) b.nextWander = S.time + 1.8 + eventChance(b, 13.7) * 2.0
+          if (!Number.isFinite(b.nextWander)) b.nextWander = S.time + 1.6 + eventChance(b, 13.7) * 2.4
           if (S.time >= b.nextWander) {
-            if (b.x >= EXIT_X - 1.05) {
-              b.behavior = 'stationary'
-              b.homeX = b.x
-              b.homeZ = b.z
-              b.vx = 0
-              b.vz = 0
-            } else {
-              b.targetX = Math.min(EXIT_X - 0.75, b.x + 1.6 + eventChance(b, 15.1) * 1.7)
-              const doorBlend = THREE.MathUtils.clamp((b.targetX - 2.2) / 3.3, 0, 1)
-              b.targetZ = THREE.MathUtils.lerp(0.25, 0.55 + eventChance(b, 16.9) * 0.50, doorBlend)
-              b.wanderSpeed = 0.26 + config.wander * 0.12 + eventChance(b, 18.3) * 0.06
-              b.nextWander = Number.POSITIVE_INFINITY
-            }
+            const forwardBias = eventChance(b, 14.2) < 0.68 ? 1 : -1
+            b.targetX = THREE.MathUtils.clamp(b.x + forwardBias * (1.2 + eventChance(b, 15.1) * 1.6), CAR_MIN_X + 0.55, EXIT_X - 0.72)
+            b.targetZ = THREE.MathUtils.clamp(b.z + (eventChance(b, 16.9) - 0.5) * 1.6, -0.78, 0.78)
+            b.wanderSpeed = 0.28 + config.wander * 0.10 + eventChance(b, 18.3) * 0.06
+            b.nextWander = Number.POSITIVE_INFINITY
           }
         } else if (S.time >= b.pauseUntil) {
           const dx = b.targetX - b.x
@@ -710,7 +725,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
         }
       }
       if (!fallen) {
-        if (speed > 0.08 && (b.player || b.behavior === 'exiting')) {
+        if (speed > 0.08 && (b.player || b.behavior === 'wandering')) {
           const desiredYaw = Math.atan2(b.vx, b.vz)
           const yawDelta = Math.atan2(Math.sin(desiredYaw - b.group.rotation.y), Math.cos(desiredYaw - b.group.rotation.y))
           b.group.rotation.y += yawDelta * Math.min(1, dt * (b.player ? 11 : 4.8))
@@ -722,26 +737,39 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
         const readyLift = (0.09 + idleAir * 0.07) * motionScale
         const readyStep = Math.sin(S.time * 3.2 + b.phase) * 0.035 * motionScale
         const poseBlend = Math.min(1, dt * 10)
+        const activity = (!b.player && !locomoting ? b.group.userData.activity : 'natural') as PassengerActivity
+        const gesture = Math.sin(S.time * 1.8 + b.phase) * 0.035 * motionScale
         const legLTarget = locomoting ? swing : readyStep
         const legRTarget = locomoting ? -swing : -readyStep
-        const armLTarget = locomoting ? -swing * 0.72 : -readyLift
-        const armRTarget = locomoting ? swing * 0.72 : -readyLift
+        const armLTarget = locomoting ? -swing * 0.72 : activity === 'reading' ? -0.92 + gesture : activity === 'phone' ? -0.30 : -readyLift
+        const armRTarget = locomoting ? swing * 0.72 : activity === 'reading' ? -0.92 - gesture : activity === 'calling' ? -0.18 : activity === 'phone' ? -0.92 + gesture : -readyLift
+        const armLZ = activity === 'strap-left' ? 2.88 + gesture : activity === 'reading' ? 0.20 : 0
+        const armRZ = activity === 'strap-right' ? -2.88 - gesture : activity === 'calling' ? -2.28 - gesture : activity === 'reading' ? -0.20 : activity === 'phone' ? -0.22 : 0
+        const forearmLTarget = locomoting ? Math.max(0, -gaitSin) * -0.18 : activity === 'reading' ? -1.08 : activity === 'strap-left' ? -0.12 : -readyLift * 0.35
+        const forearmRTarget = locomoting ? Math.max(0, gaitSin) * -0.18 : activity === 'reading' ? -1.08 : activity === 'calling' ? -1.34 : activity === 'phone' ? -1.12 : activity === 'strap-right' ? -0.12 : -readyLift * 0.35
         if (rig?.legL) rig.legL.rotation.x = THREE.MathUtils.lerp(rig.legL.rotation.x, legLTarget, poseBlend)
         if (rig?.legR) rig.legR.rotation.x = THREE.MathUtils.lerp(rig.legR.rotation.x, legRTarget, poseBlend)
         if (rig?.armL) rig.armL.rotation.x = THREE.MathUtils.lerp(rig.armL.rotation.x, armLTarget, poseBlend)
         if (rig?.armR) rig.armR.rotation.x = THREE.MathUtils.lerp(rig.armR.rotation.x, armRTarget, poseBlend)
         if (rig?.shinL) rig.shinL.rotation.x = THREE.MathUtils.lerp(rig.shinL.rotation.x, locomoting ? Math.max(0, gaitSin) * 0.42 : 0, poseBlend)
         if (rig?.shinR) rig.shinR.rotation.x = THREE.MathUtils.lerp(rig.shinR.rotation.x, locomoting ? Math.max(0, -gaitSin) * 0.42 : 0, poseBlend)
-        if (rig?.forearmL) rig.forearmL.rotation.x = THREE.MathUtils.lerp(rig.forearmL.rotation.x, locomoting ? Math.max(0, -gaitSin) * -0.18 : -readyLift * 0.35, poseBlend)
-        if (rig?.forearmR) rig.forearmR.rotation.x = THREE.MathUtils.lerp(rig.forearmR.rotation.x, locomoting ? Math.max(0, gaitSin) * -0.18 : -readyLift * 0.35, poseBlend)
+        if (rig?.forearmL) rig.forearmL.rotation.x = THREE.MathUtils.lerp(rig.forearmL.rotation.x, forearmLTarget, poseBlend)
+        if (rig?.forearmR) rig.forearmR.rotation.x = THREE.MathUtils.lerp(rig.forearmR.rotation.x, forearmRTarget, poseBlend)
         if (rig?.legL) rig.legL.position.y = THREE.MathUtils.lerp(rig.legL.position.y, (rig.hipY ?? 0) + (locomoting ? Math.max(0, gaitSin) * footLift : 0), poseBlend)
         if (rig?.legR) rig.legR.position.y = THREE.MathUtils.lerp(rig.legR.position.y, (rig.hipY ?? 0) + (locomoting ? Math.max(0, -gaitSin) * footLift : 0), poseBlend)
         if (pose) pose.rotation.y = THREE.MathUtils.lerp(pose.rotation.y, locomoting ? gaitSin * 0.055 * motionScale : 0, poseBlend)
-        if (rig?.upperBody) rig.upperBody.rotation.y = THREE.MathUtils.lerp(rig.upperBody.rotation.y, locomoting ? -gaitSin * 0.085 * motionScale : 0, poseBlend)
+        if (rig?.upperBody) {
+          rig.upperBody.rotation.x = THREE.MathUtils.lerp(rig.upperBody.rotation.x, activity === 'reading' || activity === 'phone' ? 0.10 : 0, poseBlend)
+          rig.upperBody.rotation.y = THREE.MathUtils.lerp(rig.upperBody.rotation.y, locomoting ? -gaitSin * 0.085 * motionScale : 0, poseBlend)
+        }
+        if (rig?.head) {
+          rig.head.rotation.x = THREE.MathUtils.lerp(rig.head.rotation.x, activity === 'reading' || activity === 'phone' ? 0.16 : 0, poseBlend)
+          rig.head.rotation.z = THREE.MathUtils.lerp(rig.head.rotation.z, activity === 'calling' ? -0.08 : 0, poseBlend)
+        }
         if (rig?.legL) rig.legL.rotation.z = 0
         if (rig?.legR) rig.legR.rotation.z = 0
-        if (rig?.armL) rig.armL.rotation.z = 0
-        if (rig?.armR) rig.armR.rotation.z = 0
+        if (rig?.armL) rig.armL.rotation.z = THREE.MathUtils.lerp(rig.armL.rotation.z, armLZ, poseBlend)
+        if (rig?.armR) rig.armR.rotation.z = THREE.MathUtils.lerp(rig.armR.rotation.z, armRZ, poseBlend)
         if (rig?.forearmL) rig.forearmL.rotation.z = 0
         if (rig?.forearmR) rig.forearmR.rotation.z = 0
       }
