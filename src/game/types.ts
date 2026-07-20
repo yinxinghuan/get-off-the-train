@@ -11,7 +11,7 @@ export interface HudState {
   swayDirection: -1 | 1
 }
 
-export type StationEvent = 'normal' | 'police' | 'pig' | 'zombie' | 'inflow' | 'all-exit' | 'rescue' | 'construction-shift' | 'office-evac' | 'haunted' | 'animal-rescue' | 'robot-expo' | 'afterparty' | 'blackout' | 'red-alert'
+export type StationEvent = 'normal' | 'police' | 'pig' | 'zombie' | 'inflow' | 'all-exit' | 'rescue' | 'construction-shift' | 'office-evac' | 'haunted' | 'animal-rescue' | 'robot-expo' | 'afterparty' | 'blackout' | 'red-alert' | 'nurse-train' | 'firefighter-train' | 'cleaner-train' | 'executive-train' | 'student-train' | 'chef-train' | 'security-train' | 'undead-duo' | 'night-creatures' | 'farm-duo' | 'cowboy-viking' | 'courier-rush' | 'rough-section' | 'leak-night' | 'fog-night'
 
 export interface LevelConfig {
   name: string
@@ -42,29 +42,54 @@ export const LEVELS: LevelConfig[] = [
 const ENDLESS_NAMES = ['怪物早班', '幽灵换乘', '失控区间', '终点不存在']
 const ENDLESS_SUBTITLES = ['怪物乘客开始抢吊环', '人群更轻，也更容易滑倒', '预警继续缩短', '只要没迟到，就继续挤']
 const endlessCache = new Map<number, LevelConfig>()
-const SPECIAL_EVENTS: StationEvent[] = ['police', 'pig', 'zombie', 'inflow', 'all-exit', 'rescue', 'construction-shift', 'office-evac', 'haunted', 'animal-rescue', 'robot-expo', 'afterparty', 'blackout', 'red-alert']
+type SpecialStationEvent = Exclude<StationEvent, 'normal'>
+const SPECIAL_EVENTS: SpecialStationEvent[] = [
+  'police', 'pig', 'zombie', 'inflow', 'all-exit', 'rescue', 'construction-shift', 'office-evac', 'haunted',
+  'animal-rescue', 'robot-expo', 'afterparty', 'blackout', 'red-alert', 'nurse-train', 'firefighter-train',
+  'cleaner-train', 'executive-train', 'student-train', 'chef-train', 'security-train', 'undead-duo',
+  'night-creatures', 'farm-duo', 'cowboy-viking', 'courier-rush', 'rough-section', 'leak-night', 'fog-night',
+]
+const SPECIAL_COPY: Record<SpecialStationEvent, { name: string; subtitle: string }> = {
+  police: { name: '警察专列', subtitle: '前一站似乎刚封锁过什么' },
+  pig: { name: '猪猪专列', subtitle: '农场观光团好像坐错了车' },
+  zombie: { name: '丧尸末班车', subtitle: '上一站的灯好像灭过一次' },
+  inflow: { name: '持续上客', subtitle: '绿门不断涌入逆向人流' },
+  'all-exit': { name: '全员下车', subtitle: '所有人都在抢着下车' },
+  rescue: { name: '救援队专列', subtitle: '前方事故刚解除，救援队正在返程' },
+  'construction-shift': { name: '施工队专列', subtitle: '隧道夜班刚收工，工具还没放稳' },
+  'office-evac': { name: '高管专列', subtitle: '附近大楼刚响过警报' },
+  haunted: { name: '幽灵骷髅专列', subtitle: '午夜活动刚刚散场' },
+  'animal-rescue': { name: '猫狗专列', subtitle: '救助站今晚临时搬家' },
+  'robot-expo': { name: '机器人专列', subtitle: '会展中心刚刚清场' },
+  afterparty: { name: '朋克说唱专列', subtitle: '地下演出刚散场，大家还没醒' },
+  blackout: { name: '停电区间', subtitle: '隧道供电中断，只剩一盏灯还亮着' },
+  'red-alert': { name: '红色警报', subtitle: '广播没有解释原因，整节车厢突然变红' },
+  'nurse-train': { name: '护士专列', subtitle: '医院夜班刚刚交接' },
+  'firefighter-train': { name: '消防员专列', subtitle: '他们刚从一次出勤回来' },
+  'cleaner-train': { name: '清洁工专列', subtitle: '这趟车似乎提前开始保洁' },
+  'executive-train': { name: '高管包车', subtitle: '董事会散场得比地铁还晚' },
+  'student-train': { name: '学生专列', subtitle: '补习班刚刚统一下课' },
+  'chef-train': { name: '厨师专列', subtitle: '附近餐厅同时结束了晚班' },
+  'security-train': { name: '保安专列', subtitle: '会展中心正在集体换岗' },
+  'undead-duo': { name: '骷髅木乃伊专列', subtitle: '博物馆的夜班似乎不太寻常' },
+  'night-creatures': { name: '吸血鬼狼人专列', subtitle: '今晚的月亮好像格外圆' },
+  'farm-duo': { name: '牛羊专列', subtitle: '郊外牧场临时借用了车厢' },
+  'cowboy-viking': { name: '牛仔维京专列', subtitle: '历史主题演出刚刚结束' },
+  'courier-rush': { name: '快递专列', subtitle: '最后一批包裹终于送完了' },
+  'rough-section': { name: '台风之夜', subtitle: '风雨让前方轨道持续晃动' },
+  'leak-night': { name: '漏雨之夜', subtitle: '车顶开始滴水，小心脚下积水' },
+  'fog-night': { name: '雾夜末班车', subtitle: '远处车门正在雾里忽隐忽现' },
+}
 
 export function getLevelConfig(index: number): LevelConfig {
   if (LEVELS[index]) return LEVELS[index]
   const cached = endlessCache.get(index)
   if (cached) return cached
   const extra = index - LEVELS.length
-  const specialSlot = extra % 3 === 0 ? Math.floor(extra / 3) : -1
-  const stationEvent = specialSlot >= 0 ? SPECIAL_EVENTS[specialSlot % SPECIAL_EVENTS.length] : 'normal'
-  const specialName = stationEvent === 'police' ? '警察专列'
-    : stationEvent === 'pig' ? '猪猪专列'
-      : stationEvent === 'zombie' ? '丧尸末班车'
-        : stationEvent === 'inflow' ? '持续上客'
-          : stationEvent === 'all-exit' ? '全员下车'
-            : stationEvent === 'rescue' ? '救援队返程'
-              : stationEvent === 'construction-shift' ? '夜班施工队'
-                : stationEvent === 'office-evac' ? '写字楼紧急疏散'
-                  : stationEvent === 'haunted' ? '午夜化装舞会'
-                    : stationEvent === 'animal-rescue' ? '动物救助转运'
-                      : stationEvent === 'robot-expo' ? '机器人展会散场'
-                        : stationEvent === 'afterparty' ? '地下派对散场'
-                          : stationEvent === 'blackout' ? '停电区间'
-                            : stationEvent === 'red-alert' ? '红色警报' : ''
+  const specialOrdinal = extra % 2 === 0 ? Math.floor(extra / 2) : -1
+  const specialIndex = specialOrdinal < 0 ? -1 : (specialOrdinal * 7 + Math.floor(specialOrdinal / SPECIAL_EVENTS.length) * 11) % SPECIAL_EVENTS.length
+  const stationEvent: StationEvent = specialIndex >= 0 ? SPECIAL_EVENTS[specialIndex] : 'normal'
+  const specialCopy = stationEvent === 'normal' ? null : SPECIAL_COPY[stationEvent]
   const basePassengers = Math.min(20, 19 + Math.floor(extra / 3))
   const flowTier = Math.floor(extra / 5)
   const normalBoarding = Math.min(7, 2 + flowTier + (index * 7 % 3))
@@ -72,24 +97,11 @@ export function getLevelConfig(index: number): LevelConfig {
   const storyBoarding = Math.min(7, 3 + flowTier + (index % 2))
   const storyAlighting = Math.min(7, 3 + flowTier + ((index + 1) % 2))
   const config: LevelConfig = {
-    name: specialName ? `第 ${index + 1} 节 · ${specialName}` : `第 ${index + 1} 节 · ${ENDLESS_NAMES[extra % ENDLESS_NAMES.length]}`,
-    subtitle: stationEvent === 'police' ? '前一站似乎刚封锁过什么'
-      : stationEvent === 'pig' ? '农场观光团好像坐错了车'
-        : stationEvent === 'zombie' ? '上一站的灯好像灭过一次'
-            : stationEvent === 'inflow' ? '绿门不断涌入逆向人流'
-            : stationEvent === 'all-exit' ? '所有人都在抢着下车'
-              : stationEvent === 'rescue' ? '前方事故刚解除，救援队正在返程'
-                : stationEvent === 'construction-shift' ? '隧道夜班刚收工，工具还没放稳'
-                  : stationEvent === 'office-evac' ? '附近大楼刚响过警报'
-                    : stationEvent === 'haunted' ? '午夜活动刚刚散场'
-                      : stationEvent === 'animal-rescue' ? '救助站今晚临时搬家'
-                        : stationEvent === 'robot-expo' ? '会展中心刚刚清场'
-                          : stationEvent === 'afterparty' ? '地下演出刚散场，大家还没醒'
-                            : stationEvent === 'blackout' ? '隧道供电中断，只剩一盏灯还亮着'
-                              : stationEvent === 'red-alert' ? '广播没有解释原因，整节车厢突然变红' : ENDLESS_SUBTITLES[extra % ENDLESS_SUBTITLES.length],
+    name: specialCopy ? `第 ${index + 1} 节 · ${specialCopy.name}` : `第 ${index + 1} 节 · ${ENDLESS_NAMES[extra % ENDLESS_NAMES.length]}`,
+    subtitle: specialCopy?.subtitle ?? ENDLESS_SUBTITLES[extra % ENDLESS_SUBTITLES.length],
     time: stationEvent === 'all-exit' ? 28 : stationEvent !== 'normal' ? 27 : Math.max(20, 24 - Math.floor(extra / 5) * 0.5),
     passengers: stationEvent === 'inflow' ? 10 : stationEvent === 'pig' ? Math.min(16, basePassengers) : basePassengers,
-    swayPeriod: Math.max(2.65, 4.25 - extra * 0.13),
+    swayPeriod: Math.max(2.65, 4.25 - extra * 0.13) * (stationEvent === 'rough-section' ? 0.65 : 1),
     warning: Math.max(0.36, 0.60 - extra * 0.020),
     impulse: Math.min(4.8, 3.55 + extra * 0.10),
     roll: Math.min(6.5, 4.6 + extra * 0.13),

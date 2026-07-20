@@ -107,13 +107,25 @@ function themedPassengerId(config: LevelConfig): HeroId | null {
 function passengerRoster(config: LevelConfig, level: number): readonly HeroId[] {
   const themed = themedPassengerId(config)
   if (themed) return [themed]
-  if (config.stationEvent === 'rescue') return ['firefighter', 'paramedic', 'nurse', 'swat', 'securityGuard']
-  if (config.stationEvent === 'construction-shift') return ['construction', 'worker', 'janitor', 'courier', 'bigGuy']
-  if (config.stationEvent === 'office-evac') return ['executive', 'businessman', 'officeWoman', 'darkWoman', 'barista', 'securityGuard']
-  if (config.stationEvent === 'haunted') return ['ghost', 'skeleton', 'vampire', 'werewolf', 'mummy', 'goth']
-  if (config.stationEvent === 'animal-rescue') return ANIMAL_LIBRARY_IDS
-  if (config.stationEvent === 'robot-expo') return ['combatMech', 'courier', 'executive', 'securityGuard', 'student']
-  if (config.stationEvent === 'afterparty') return ['punk', 'rapper', 'biker', 'goth', 'cowboy', 'viking']
+  if (config.stationEvent === 'rescue') return ['firefighter', 'paramedic']
+  if (config.stationEvent === 'construction-shift') return ['construction', 'worker']
+  if (config.stationEvent === 'office-evac') return ['executive', 'officeWoman']
+  if (config.stationEvent === 'haunted') return ['ghost', 'skeleton']
+  if (config.stationEvent === 'animal-rescue') return ['cat', 'dog']
+  if (config.stationEvent === 'robot-expo') return ['combatMech']
+  if (config.stationEvent === 'afterparty') return ['punk', 'rapper']
+  if (config.stationEvent === 'nurse-train') return ['nurse']
+  if (config.stationEvent === 'firefighter-train') return ['firefighter']
+  if (config.stationEvent === 'cleaner-train') return ['janitor']
+  if (config.stationEvent === 'executive-train') return ['executive']
+  if (config.stationEvent === 'student-train') return ['student']
+  if (config.stationEvent === 'chef-train') return ['chef']
+  if (config.stationEvent === 'security-train') return ['securityGuard']
+  if (config.stationEvent === 'undead-duo') return ['skeleton', 'mummy']
+  if (config.stationEvent === 'night-creatures') return ['vampire', 'werewolf']
+  if (config.stationEvent === 'farm-duo') return ['cow', 'sheep']
+  if (config.stationEvent === 'cowboy-viking') return ['cowboy', 'viking']
+  if (config.stationEvent === 'courier-rush') return ['courier', 'delivery']
   const ordinary = HUMAN_LIBRARY_IDS.slice(0, 30)
   if (level === 0) return ordinary.slice(0, 15)
   if (level === 1) return ordinary
@@ -124,6 +136,8 @@ function passengerRoster(config: LevelConfig, level: number): readonly HeroId[] 
 interface StationLighting {
   background: number
   fog: number
+  fogNear: number
+  fogFar: number
   sky: number
   ground: number
   hemi: number
@@ -140,13 +154,15 @@ interface StationLighting {
 }
 
 function stationLighting(event: LevelConfig['stationEvent']): StationLighting {
-  const base: StationLighting = { background: 0x111a22, fog: 0x111a22, sky: 0xffffff, ground: 0x51636b, hemi: 0.55, main: 3.05, mainColor: 0xffffff, fill: 0.18, fillColor: 0xdfe8ff, rim: 0.28, rimColor: 0xfff0d8, lampColor: 0xffdfaa, lampTube: 0xffedbd, lampStrength: 1.24 }
+  const base: StationLighting = { background: 0x111a22, fog: 0x111a22, fogNear: 23, fogFar: 46, sky: 0xffffff, ground: 0x51636b, hemi: 0.55, main: 3.05, mainColor: 0xffffff, fill: 0.18, fillColor: 0xdfe8ff, rim: 0.28, rimColor: 0xfff0d8, lampColor: 0xffdfaa, lampTube: 0xffedbd, lampStrength: 1.24 }
   if (event === 'blackout') return { ...base, background: 0x070a0e, fog: 0x070a0e, sky: 0x26313a, ground: 0x090b0e, hemi: 0.16, main: 0.62, mainColor: 0xa9bac2, fill: 0.04, rim: 0.08, lampColor: 0xffd783, lampTube: 0xffe5a3, lampStrength: 0.92, litLamp: 2 }
   if (event === 'red-alert') return { ...base, background: 0x1b0709, fog: 0x1b0709, sky: 0x7d181c, ground: 0x21080a, hemi: 0.30, main: 1.72, mainColor: 0xd5292e, fill: 0.36, fillColor: 0x7f0f17, rim: 0.34, rimColor: 0xff3a32, lampColor: 0xff2428, lampTube: 0xff4b45, lampStrength: 1.34 }
   if (event === 'police' || event === 'robot-expo') return { ...base, sky: 0xdcecff, mainColor: 0xe5f2ff, fill: 0.28, fillColor: 0x73a8d9, lampColor: 0xc7e5ff, lampTube: 0xe5f4ff }
   if (event === 'rescue' || event === 'construction-shift') return { ...base, mainColor: 0xffe0b2, rim: 0.38, rimColor: 0xff9a4d, lampColor: 0xffbc6a, lampTube: 0xffd391 }
   if (event === 'zombie' || event === 'haunted') return { ...base, background: 0x0d1717, fog: 0x0d1717, sky: 0x8fb99a, ground: 0x23332c, hemi: 0.42, main: 2.35, mainColor: 0xc8e3bc, fillColor: 0x57916d, lampColor: 0x9fcf9b, lampTube: 0xc4e1b4 }
   if (event === 'afterparty') return { ...base, sky: 0xdab9ff, mainColor: 0xf0d6ff, fill: 0.34, fillColor: 0x7651bd, rim: 0.42, rimColor: 0xff68c8, lampColor: 0xc896ff, lampTube: 0xe3c7ff }
+  if (event === 'fog-night') return { ...base, background: 0x56656a, fog: 0x718086, fogNear: 5.5, fogFar: 20, sky: 0xc8d4d6, ground: 0x465256, hemi: 0.48, main: 2.55, mainColor: 0xe5efed, fill: 0.30, fillColor: 0x8faeb4, rim: 0.38, rimColor: 0xffe0b4, lampColor: 0xffdeb0, lampTube: 0xffedc9 }
+  if (event === 'leak-night') return { ...base, background: 0x0d1820, fog: 0x0d1820, sky: 0xc6dce4, ground: 0x344b54, hemi: 0.48, main: 2.75, mainColor: 0xd6e8eb, fill: 0.28, fillColor: 0x6492a2, rim: 0.32, rimColor: 0xffddb0, lampColor: 0xd5e7e5, lampTube: 0xe8f0e8 }
   return base
 }
 
@@ -171,6 +187,8 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
   const carriageLights: THREE.PointLight[] = []
   const obstacles: Obstacle[] = []
   const seatSlots: SeatSlot[] = []
+  const weatherDrops: THREE.Mesh[] = []
+  const puddles: Array<{ x: number; z: number; r: number }> = []
   const lighting = stationLighting(config.stationEvent)
   const bench = config.variant === 'ad-wrap' ? 0x3d6680 : config.variant === 'maintenance' ? 0x555d61 : 0x315f76
   const wall = config.variant === 'long-seat' ? 0xd9dddc : 0xcbd0d1
@@ -331,6 +349,40 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
     root.add(lamp)
   }
 
+  if (config.stationEvent === 'leak-night') {
+    const dropGeometry = new THREE.CylinderGeometry(0.012, 0.018, 0.20, 5)
+    const dropMaterial = new THREE.MeshStandardMaterial({ color: 0x9fd4df, transparent: true, opacity: 0.72, roughness: 0.18, metalness: 0.04 })
+    for (let i = 0; i < 28; i++) {
+      const drop = new THREE.Mesh(dropGeometry, dropMaterial)
+      drop.position.set(-6.6 + ((i * 37) % 132) / 10, 0.35 + ((i * 47) % 270) / 100, -1.48 + ((i * 29) % 296) / 100)
+      drop.userData.speed = 1.55 + (i % 7) * 0.17
+      drop.userData.ownsMaterial = i === 0
+      weatherDrops.push(drop)
+      root.add(drop)
+    }
+    const puddleLayout = [[-4.7, -0.42, 0.48], [-2.2, 0.54, 0.58], [0.35, -0.48, 0.52], [2.65, 0.45, 0.60], [4.75, -0.20, 0.46]] as const
+    for (const [x, z, r] of puddleLayout) {
+      const puddleGeometry = new THREE.CircleGeometry(r, 18)
+      const puddlePositions = puddleGeometry.attributes.position as THREE.BufferAttribute
+      for (let vertex = 1; vertex < puddlePositions.count; vertex++) {
+        const wobble = 0.84 + 0.12 * Math.sin(vertex * 2.37 + Math.abs(x) * 1.9) + 0.06 * Math.sin(vertex * 4.11)
+        puddlePositions.setXY(vertex, puddlePositions.getX(vertex) * wobble, puddlePositions.getY(vertex) * wobble)
+      }
+      puddlePositions.needsUpdate = true
+      puddleGeometry.computeVertexNormals()
+      const puddle = new THREE.Mesh(
+        puddleGeometry,
+        new THREE.MeshStandardMaterial({ color: 0x5e8e9b, transparent: true, opacity: 0.38, roughness: 0.16, metalness: 0.08, depthWrite: false }),
+      )
+      puddle.rotation.x = -Math.PI / 2
+      puddle.scale.set(1.0, 0.58 + ((Math.abs(x) * 17) % 24) / 100, 1)
+      puddle.position.set(x, 0.228, z)
+      puddle.userData.ownsMaterial = true
+      root.add(puddle)
+      puddles.push({ x, z, r })
+    }
+  }
+
   // Variant-specific clutter changes the collision map.
   if (config.variant === 'maintenance') {
     for (const [x, z, s] of [[-1.1, -0.78, 0.72], [2.2, 0.85, 0.62], [4.0, 0.35, 0.55]] as const) {
@@ -374,7 +426,7 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
     m.userData.ownsMaterial = true
   })
 
-  return { root, handles, carriageLights, obstacles, seatSlots, poleXs, exitHalf, exitSide, exitZ, exitArrow, exitArrowBaseY }
+  return { root, handles, carriageLights, obstacles, seatSlots, poleXs, exitHalf, exitSide, exitZ, exitArrow, exitArrowBaseY, weatherDrops, puddles }
 }
 
 function dispose(root: THREE.Object3D) {
@@ -396,7 +448,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
     bodies: [] as Body[], seated: [] as SeatedVisual[], player: null as Body | null, time: 0, timeLeft: config.time,
     nextSway: config.swayPeriod, warningSent: false, swayDirection: (level % 2 ? -1 : 1) as -1 | 1,
     swayKick: 0, falls: 0, braceTime: 0, braced: false, hudT: 0, ended: false, lastFrame: 0,
-    qaFallDone: false, lastSeatBump: Number.NEGATIVE_INFINITY,
+    qaFallDone: false, lastSeatBump: Number.NEGATIVE_INFINITY, nextWetSlip: 1.8,
     boardingsSpawned: 0,
     nextBoardingAt: config.stationEvent === 'inflow' ? 3.2 : 3.7 + ((level * 17) % 10) / 10,
   })
@@ -595,6 +647,17 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
       S.qaFallDone = knockDown(S.player, QA_FALL_KIND, QA_FALL_KIND === 'side' ? 1.10 : 1.26)
     }
 
+    if (config.stationEvent === 'leak-night' && S.time >= S.nextWetSlip) {
+      S.nextWetSlip += 2.4
+      const wetPlayer = S.player
+      const playerSpeed = Math.hypot(wetPlayer.vx, wetPlayer.vz)
+      const onPuddle = train.puddles.some((puddle) => Math.hypot(wetPlayer.x - puddle.x, wetPlayer.z - puddle.z) < puddle.r + wetPlayer.r)
+      if (onPuddle && playerSpeed > 1.6) {
+        if (eventChance(wetPlayer, 57.4) < 0.55) knockDown(wetPlayer, 'side', 1.10)
+        else wetPlayer.vz += S.swayDirection * 0.45
+      }
+    }
+
     const mag = Math.hypot(input.current.x, input.current.z)
     S.braceTime = mag < 0.12 ? S.braceTime + dt : 0
     S.braced = S.braceTime > 0.18 && S.player.fallenUntil <= S.time
@@ -645,6 +708,10 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
       const impactDip = S.swayKick > 0.55 && (i + Math.floor(S.time * 18)) % 3 === 0 ? 0.38 : 1
       const baseIntensity = Number(lamp.userData.baseIntensity) || 0
       lamp.intensity = (reducedMotion ? 1.0 : slowBreath * looseLamp * impactDip) * baseIntensity
+    }
+    for (const drop of train.weatherDrops) {
+      drop.position.y -= dt * Number(drop.userData.speed)
+      if (drop.position.y < 0.27) drop.position.y = 3.05 + ((drop.position.x * 19 + drop.position.z * 23) % 0.42)
     }
     const arrowMotion = reducedMotion ? 0.35 : 1
     const arrowPulse = 1 + Math.sin(S.time * Math.PI * 2 * 1.35) * 0.045 * arrowMotion
@@ -1197,7 +1264,7 @@ export default function TrainScene(props: Props) {
       onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.0; gl.shadowMap.type = THREE.PCFSoftShadowMap }}
     >
       <color attach="background" args={[lighting.background]} />
-      <fog attach="fog" args={[lighting.fog, 23, 46]} />
+      <fog attach="fog" args={[lighting.fog, lighting.fogNear, lighting.fogFar]} />
       <PerspectiveCamera
         makeDefault
         position={[START_X - FORWARD_X * 5.2, 6.05, START_Z - FORWARD_Z * 5.2]}
