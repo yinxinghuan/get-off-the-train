@@ -3,13 +3,14 @@ import { PerspectiveCamera } from '@react-three/drei'
 import { MutableRefObject, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { applyPassengerActivity, box, C, cyl, makeMonsterPassenger, makePlayer, makeProfessionPassenger, makeSeatedProfessionPassenger, MONSTER_KINDS, PROFESSION_KINDS, toon } from './models'
-import type { CharacterRig, PassengerActivity } from './models'
+import type { CharacterRig, HeroId, PassengerActivity } from './models'
 import type { HudState, InputVector, LevelConfig } from './types'
 import { sound } from '../audio/sound'
 
 interface OutcomeData { timeLeft: number; falls: number }
 interface Props {
   level: number
+  heroId: HeroId
   config: LevelConfig
   active: boolean
   input: MutableRefObject<InputVector>
@@ -168,7 +169,7 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
     }
   }
 
-  const arrowMat = new THREE.MeshStandardMaterial({ color: 0xffdf3f, emissive: 0xd9a91b, emissiveIntensity: 1.15, roughness: 0.42, metalness: 0.18 })
+  const arrowMat = new THREE.MeshStandardMaterial({ color: 0x7aff9d, emissive: 0x159d55, emissiveIntensity: 1.35, roughness: 0.42, metalness: 0.18 })
   const arrowStem = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.18, 0.25), arrowMat)
   const arrowHead = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.58, 4), arrowMat)
   arrowHead.rotation.z = -Math.PI / 2
@@ -321,7 +322,7 @@ function dispose(root: THREE.Object3D) {
   })
 }
 
-function World({ level, config, active, input, reducedMotion, onHud, onOutcome }: Props) {
+function World({ level, heroId, config, active, input, reducedMotion, onHud, onOutcome }: Props) {
   const { scene, camera } = useThree()
   const exitSide = level % 2 === 0 ? 1 : -1
   const train = useMemo(() => buildTrain(config, exitSide), [config, exitSide])
@@ -338,7 +339,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
   useEffect(() => {
     const S = state.current
     scene.add(train.root, fx)
-    const playerGroup = makePlayer()
+    const playerGroup = makePlayer(heroId)
     playerGroup.position.set(START_X, 0.24, START_Z)
     playerGroup.rotation.y = Math.atan2(FORWARD_X, FORWARD_Z)
     train.root.add(playerGroup)
@@ -467,6 +468,23 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       dispose(fx)
     }
   }, [scene, camera, train, fx, config.passengers, level])
+
+  useEffect(() => {
+    const player = state.current.player
+    if (!player || player.group.userData.heroId === heroId) return
+    const oldGroup = player.group
+    const replacement = makePlayer(heroId)
+    replacement.position.copy(oldGroup.position)
+    replacement.rotation.copy(oldGroup.rotation)
+    replacement.visible = oldGroup.visible
+    train.root.add(replacement)
+    train.root.remove(oldGroup)
+    oldGroup.traverse((object) => {
+      const mesh = object as THREE.Mesh
+      if (mesh.geometry) mesh.geometry.dispose()
+    })
+    player.group = replacement
+  }, [heroId, train.root])
 
   useFrame(() => {
     const S = state.current
@@ -978,7 +996,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     }
 
     // A stable third-person chase camera keeps the player in the lower-middle
-    // foreground while the yellow exit remains ahead at the top of the screen.
+    // foreground while the green exit arrow remains ahead at the top of the screen.
     const cameraTrackZ = player.z * 0.35
     cameraGoal.current.set(QA_SEAT_VIEW ? -2.20 : player.x - 5.2, QA_SEAT_VIEW ? 3.50 : 6.05, QA_SEAT_VIEW ? 0.40 : cameraTrackZ)
     camera.position.lerp(cameraGoal.current, 1 - Math.exp(-dt * 7.5))

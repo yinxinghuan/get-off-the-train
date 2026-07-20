@@ -1,20 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import TrainScene from './game/TrainScene'
 import { getLevelConfig, type HudState, type InputVector, type Phase } from './game/types'
+import { HERO_COSTS, HERO_IDS, type HeroId } from './game/models'
 import { sound } from './audio/sound'
 import { locale, t } from './i18n'
-import { ArrowIcon, PauseIcon, TrainIcon } from './ui/Icons'
+import { ArrowIcon, CoinIcon, CollectionIcon, PauseIcon, TrainIcon } from './ui/Icons'
 import { Joystick } from './ui/Joystick'
+import { CollectionShop } from './ui/CollectionShop'
 import { Leaderboard } from './shared/leaderboard/Leaderboard'
 import { useGameScore, type LeaderboardEntry } from './shared/leaderboard/useGameScore'
 import { telegramId, useGameEvent } from './shared/runtime'
+import { useGameSave } from './shared/save'
 
 const BEST_KEY = 'get-off-the-train.best.v1'
 const POSTER_URL = 'https://yinxinghuan.github.io/games/posters/get-off-the-train.png'
 const QA_LEVEL = import.meta.env.DEV ? Math.max(0, Number(new URLSearchParams(location.search).get('qaLevel') || 1) - 1) : 0
 const QA_AUTORUN = import.meta.env.DEV && new URLSearchParams(location.search).has('qaRun')
 const QA_ACTIVE = import.meta.env.DEV && (new URLSearchParams(location.search).has('qaLevel') || QA_AUTORUN)
+const qaHeroParam = import.meta.env.DEV ? new URLSearchParams(location.search).get('qaHero') : null
+const QA_HERO = qaHeroParam && HERO_IDS.includes(qaHeroParam as HeroId) ? qaHeroParam as HeroId : null
 const initialHud: HudState = { timeLeft: getLevelConfig(QA_LEVEL).time, distance: 12, falls: 0, braced: false, swayWarning: false, swayDirection: 1 }
+interface CollectionSave { coins: number; unlocked: HeroId[]; selected: HeroId; _lastActive?: number }
+const DEFAULT_COLLECTION: CollectionSave = { coins: 0, unlocked: ['commuter'], selected: 'commuter' }
 const EN_LEVELS = [
   ['COMMUTER LOCAL', 'Learn to turn sideways through the gaps'],
   ['LONG-SEAT EXPRESS', 'A longer aisle and a moving crowd'],
@@ -36,7 +43,9 @@ function ActionButton({ children, onPress, secondary = false }: { children: Reac
 export default function App() {
   const [phase, setPhase] = useState<Phase>('playing')
   const [level, setLevel] = useState(QA_LEVEL)
-  const config = getLevelConfig(level)
+  // Endless configs are generated objects. Memoizing by level prevents each
+  // 80 ms HUD sample from rebuilding the entire Three.js world from scratch.
+  const config = useMemo(() => getLevelConfig(level), [level])
   const copy = levelCopy(level, config)
   const [hud, setHud] = useState(initialHud)
   const [score, setScore] = useState(0)
@@ -47,12 +56,34 @@ export default function App() {
   const [runStarted, setRunStarted] = useState(QA_ACTIVE)
   const [showGuide, setShowGuide] = useState(!QA_ACTIVE)
   const [showBoard, setShowBoard] = useState(false)
+  const [showCollection, setShowCollection] = useState(false)
+  const [previewHero, setPreviewHero] = useState<HeroId>('commuter')
+  const [levelCoins, setLevelCoins] = useState(0)
   const input = useRef<InputVector>({ x: 0, z: 0 })
   const phaseBeforePause = useRef<Phase>('playing')
   const latestRows = useRef<LeaderboardEntry[]>([])
   const preRunBest = useRef(0)
   const { submitScore, fetchLeaderboard } = useGameScore()
   const events = useGameEvent()
+  const { savedData, persist } = useGameSave<CollectionSave>('get-off-the-train.collection.v1')
+  const [collectionMirror, setCollectionMirror] = useState<CollectionSave | undefined>(undefined)
+
+  useEffect(() => {
+    if (collectionMirror !== undefined || savedData === undefined) return
+    const unlocked = Array.isArray(savedData?.unlocked)
+      ? savedData.unlocked.filter((hero): hero is HeroId => HERO_IDS.includes(hero as HeroId))
+      : []
+    if (!unlocked.includes('commuter')) unlocked.unshift('commuter')
+    const selected = savedData?.selected && unlocked.includes(savedData.selected) ? savedData.selected : 'commuter'
+    setCollectionMirror({
+      coins: Math.max(0, Math.floor(Number(savedData?.coins) || 0)),
+      unlocked,
+      selected,
+    })
+    setPreviewHero(selected)
+  }, [collectionMirror, savedData])
+
+  const selectedHero = QA_HERO ?? collectionMirror?.selected ?? 'commuter'
 
   useEffect(() => {
     let alive = true
@@ -96,6 +127,7 @@ export default function App() {
     snapshotPreRunBest()
     input.current = { x: 0, z: 0 }
     setLevel(0); setScore(0); setLevelScore(0); setTotalFalls(0)
+    setLevelCoins(0); setShowCollection(false)
     setHud({ ...initialHud, timeLeft: getLevelConfig(0).time })
     setRunStarted(true)
     setShowGuide(false)
@@ -116,6 +148,7 @@ export default function App() {
     const nextFalls = totalFalls + data.falls
     setTotalFalls(nextFalls)
     if (kind === 'fail') {
+      setLevelCoins(0)
       const finalScore = score
       setBest((old) => { const value = Math.max(old, finalScore); localStorage.setItem(BEST_KEY, String(value)); return value })
       submitScore(finalScore).then(() => sendBeatNotify(finalScore)).catch(() => {})
@@ -123,16 +156,49 @@ export default function App() {
       return
     }
     const earned = Math.ceil(data.timeLeft * 100) + 1000 + Math.max(0, 3 - data.falls) * 250 + level * 120
+    const earnedCoins = 30 + Math.min(level + 1, 10) * 5 + (data.falls === 0 ? 10 : 0)
     setLevelScore(earned)
+    setLevelCoins(earnedCoins)
     setScore((current) => current + earned)
+    if (collectionMirror) {
+      const nextCollection = { ...collectionMirror, coins: collectionMirror.coins + earnedCoins }
+      setCollectionMirror(nextCollection)
+      persist(nextCollection)
+      sound.coins()
+    }
     setPhase('level-clear')
-  }, [level, score, sendBeatNotify, submitScore, totalFalls])
+  }, [collectionMirror, level, persist, score, sendBeatNotify, submitScore, totalFalls])
 
   const nextLevel = () => {
     const next = level + 1
     setLevel(next)
     setHud({ ...initialHud, timeLeft: getLevelConfig(next).time })
+    setShowCollection(false)
     setPhase('playing')
+  }
+
+  const openCollection = () => {
+    sound.tap()
+    setPreviewHero(selectedHero)
+    // Mount after the opening pointer gesture finishes so its trailing click
+    // cannot land on a newly-created character card underneath the finger.
+    window.setTimeout(() => setShowCollection(true), 0)
+  }
+
+  const chooseHero = (hero: HeroId) => {
+    if (!collectionMirror) return
+    const owned = collectionMirror.unlocked.includes(hero)
+    const price = HERO_COSTS[hero]
+    if (!owned && collectionMirror.coins < price) return
+    const nextCollection: CollectionSave = {
+      ...collectionMirror,
+      coins: owned ? collectionMirror.coins : collectionMirror.coins - price,
+      unlocked: owned ? collectionMirror.unlocked : [...collectionMirror.unlocked, hero],
+      selected: hero,
+    }
+    setCollectionMirror(nextCollection)
+    persist(nextCollection)
+    owned ? sound.equip() : sound.unlockHero()
   }
 
   const pause = useCallback(() => {
@@ -168,7 +234,7 @@ export default function App() {
 
   return (
     <main className={`got${hud.swayWarning ? ' got--warning' : ''}${phase === 'game-over' ? ' got--failed' : ''}`}>
-      <TrainScene key={level} level={level} config={config} active={phase === 'playing' && runStarted} input={input} reducedMotion={reducedMotion} onHud={setHud} onOutcome={handleOutcome} />
+      <TrainScene key={level} level={level} heroId={selectedHero} config={config} active={phase === 'playing' && runStarted} input={input} reducedMotion={reducedMotion} onHud={setHud} onOutcome={handleOutcome} />
       <div className="got__halftone" aria-hidden="true" />
       <div className="got__frame" aria-hidden="true" />
 
@@ -196,6 +262,7 @@ export default function App() {
               <div className="got-stats">
                 {phase === 'level-clear' && <div><span>{t('remaining')}</span><strong>{hud.timeLeft.toFixed(1)}s</strong></div>}
                 {phase === 'level-clear' && <div><span>{t('levelScore')}</span><strong>{levelScore}</strong></div>}
+                {phase === 'level-clear' && <div><span>{t('coinReward')}</span><strong className="got-stats__coins"><CoinIcon size={18} />+{levelCoins}</strong></div>}
                 <div><span>{t('falls')}</span><strong>{totalFalls}</strong></div>
                 <div><span>{t('totalScore')}</span><strong>{score}</strong></div>
                 {phase === 'game-over' && <div><span>{t('best')}</span><strong>{Math.max(best, score)}</strong></div>}
@@ -205,6 +272,7 @@ export default function App() {
             {phase === 'level-clear' && <ActionButton onPress={nextLevel}>{t('next')} <ArrowIcon /></ActionButton>}
             {phase === 'game-over' && <ActionButton onPress={restartRun}>{t('retry')} <ArrowIcon /></ActionButton>}
             {phase === 'game-over' && <ActionButton secondary onPress={() => setShowBoard(true)}>{t('board')}</ActionButton>}
+            <button className="got-btn got-btn--secondary" onClick={openCollection}><CollectionIcon />{t('collection')}<span className="got-btn__balance"><CoinIcon size={16} />{collectionMirror?.coins ?? 0}</span></button>
             {phase === 'paused' && <ActionButton secondary onPress={restartRun}>{t('restart')}</ActionButton>}
             {phase === 'paused' && <ActionButton secondary onPress={() => setReducedMotion((value) => !value)}>{t('reduced')}</ActionButton>}
           </section>
@@ -212,6 +280,18 @@ export default function App() {
       )}
 
       {showBoard && <Leaderboard fetchEntries={fetchLeaderboard} onClose={() => setShowBoard(false)} />}
+      {showCollection && (
+        <CollectionShop
+          coins={collectionMirror?.coins ?? 0}
+          unlocked={collectionMirror?.unlocked ?? ['commuter']}
+          selected={collectionMirror?.selected ?? 'commuter'}
+          preview={previewHero}
+          loading={!collectionMirror}
+          onPreview={setPreviewHero}
+          onChoose={chooseHero}
+          onClose={() => setShowCollection(false)}
+        />
+      )}
       <span className="got__brand" aria-hidden="true">AIGRAM // {locale.toUpperCase()}</span>
     </main>
   )

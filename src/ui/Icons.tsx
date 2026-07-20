@@ -25,3 +25,12 @@ export function CrownIcon({ size = 24 }: IconProps) {
 export function CloseIcon({ size = 24 }: IconProps) {
   return <svg {...base(size)}><path d="m6 6 12 12M18 6 6 18" /></svg>
 }
+export function CoinIcon({ size = 24 }: IconProps) {
+  return <svg {...base(size)}><circle cx="12" cy="12" r="8" /><path d="M14.8 8.8c-.7-.7-1.6-1.1-2.8-1.1-1.5 0-2.6.8-2.6 1.9 0 2.8 5.2 1.2 5.2 4 0 1.2-1.1 2-2.8 2-1.2 0-2.3-.4-3-1.2M12 6.2v11.6" /></svg>
+}
+export function LockIcon({ size = 24 }: IconProps) {
+  return <svg {...base(size)}><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7.5a4 4 0 0 1 8 0V10M12 14v2" /></svg>
+}
+export function CollectionIcon({ size = 24 }: IconProps) {
+  return <svg {...base(size)}><path d="M5 7h14v12H5zM8 7V5h8v2" /><circle cx="9" cy="12" r="1.5" /><path d="M7.5 17c.4-2 2.6-3.1 4.5-3.1S16.1 15 16.5 17" /></svg>
+}

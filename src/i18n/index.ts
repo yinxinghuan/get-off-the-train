@@ -23,6 +23,9 @@ const zh = {
   you: '你', yourRun: '你的纪录', openProfile: '打开主页', close: '关闭', loading: '正在读取车厢记录',
   openAlterU: '在 AlterU 中打开即可查看真实排行榜', getAlterU: '下载 AlterU', emptyRank: '还没人挤到这里，等你上榜',
   dragUp: '任意位置拖动移动', exitAhead: '出口',
+  collection: '角色收藏', coins: '金币', coinReward: '本关金币', equipped: '使用中', equip: '装备', unlock: '解锁角色',
+  locked: '未解锁', owned: '已拥有', needCoins: '还差金币', closeCollection: '关闭角色收藏', collectionHint: '换个身份继续挤地铁',
+  human: '人物', monster: '怪物', animal: '动物', saving: '正在读取收藏',
 }
 
 const en: typeof zh = {
@@ -38,7 +41,18 @@ const en: typeof zh = {
   you: 'YOU', yourRun: 'YOUR RECORD', openProfile: 'OPEN PROFILE', close: 'CLOSE', loading: 'READING CAR RECORDS',
   openAlterU: 'Open in AlterU to view the live leaderboard.', getAlterU: 'GET ALTERU', emptyRank: 'No one made it this far. Be first.',
   dragUp: 'DRAG ANYWHERE TO MOVE', exitAhead: 'EXIT',
+  collection: 'CHARACTER COLLECTION', coins: 'COINS', coinReward: 'CAR COINS', equipped: 'EQUIPPED', equip: 'EQUIP', unlock: 'UNLOCK',
+  locked: 'LOCKED', owned: 'OWNED', needCoins: 'COINS NEEDED', closeCollection: 'CLOSE COLLECTION', collectionHint: 'Pick a new commuter for the next car.',
+  human: 'HUMAN', monster: 'MONSTER', animal: 'ANIMAL', saving: 'LOADING COLLECTION',
 }
 
 const dict = locale === 'zh' ? zh : en
 export function t(key: keyof typeof zh) { return dict[key] }
+
+const heroNames = {
+  zh: { commuter: '赶班族', cop: '警察', nurse: '护士', firefighter: '消防员', chef: '厨师', courier: '快递员', zombie: '僵尸', vampire: '吸血鬼', cat: '地铁猫', dog: '通勤犬' },
+  en: { commuter: 'COMMUTER', cop: 'COP', nurse: 'NURSE', firefighter: 'FIREFIGHTER', chef: 'CHEF', courier: 'COURIER', zombie: 'ZOMBIE', vampire: 'VAMPIRE', cat: 'METRO CAT', dog: 'COMMUTER DOG' },
+} as const
+
+export type HeroNameId = keyof typeof heroNames.zh
+export function heroName(id: HeroNameId) { return heroNames[locale][id] }

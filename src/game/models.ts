@@ -304,40 +304,113 @@ export function makeSeatedProfessionPassenger(kind: ProfessionKind, activity: 'r
   return poseAsSeated(makeProfessionPassenger(kind), activity)
 }
 
-export function makePlayer() {
-  const player = makeCharacter({
-    skin: C.skin2, top: C.yellow, bottom: C.aubergine, hair: C.paper,
-    accent: C.red, body: 'normal', feature: 'bag',
-  })
-  const ringInk = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.17, 6, 20), new THREE.MeshBasicMaterial({ color: C.ink }))
-  ringInk.rotation.x = Math.PI / 2
-  ringInk.position.y = 0.035
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.105, 6, 20), new THREE.MeshBasicMaterial({ color: C.yellow }))
-  ring.rotation.x = Math.PI / 2
-  ring.position.y = 0.052
-  const aura = new THREE.Mesh(
-    new THREE.TorusGeometry(0.73, 0.20, 8, 28),
-    new THREE.MeshBasicMaterial({
-      color: 0xfff1a8,
-      transparent: true,
-      opacity: 0.24,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    }),
-  )
-  aura.rotation.x = Math.PI / 2
-  aura.position.y = 0.045
+export type HeroId = 'commuter' | 'cop' | 'nurse' | 'firefighter' | 'chef' | 'courier' | 'zombie' | 'vampire' | 'cat' | 'dog'
+
+export const HERO_IDS: HeroId[] = ['commuter', 'cop', 'nurse', 'firefighter', 'chef', 'courier', 'zombie', 'vampire', 'cat', 'dog']
+
+export const HERO_COSTS: Record<HeroId, number> = {
+  commuter: 0,
+  cop: 60,
+  nurse: 90,
+  firefighter: 130,
+  chef: 170,
+  courier: 220,
+  zombie: 270,
+  vampire: 330,
+  cat: 400,
+  dog: 480,
+}
+
+export const HERO_COLORS: Record<HeroId, string> = {
+  commuter: '#f3f02d',
+  cop: '#274f72',
+  nurse: '#e9e4d8',
+  firefighter: '#d28a25',
+  chef: '#efe8d8',
+  courier: '#3f7b70',
+  zombie: '#88a36c',
+  vampire: '#53405c',
+  cat: '#c89a55',
+  dog: '#8b5b38',
+}
+
+function makeAnimalHero(kind: 'cat' | 'dog') {
+  const g = new THREE.Group()
+  const pose = new THREE.Group()
+  const rearL = new THREE.Group()
+  const rearR = new THREE.Group()
+  const frontL = new THREE.Group()
+  const frontR = new THREE.Group()
+  const head = new THREE.Group()
+  const fur = kind === 'cat' ? 0xc89a55 : 0x8b5b38
+  const dark = kind === 'cat' ? 0x6f4b2c : 0x4b3024
+  const muzzle = kind === 'cat' ? 0xf0cf9e : 0xd4a16f
+
+  pose.add(box(kind === 'cat' ? 0.82 : 0.94, 0.55, kind === 'cat' ? 1.22 : 1.10, fur, 0, 1.02, -0.08))
+  head.position.set(0, 1.20, 0.67)
+  head.add(box(kind === 'cat' ? 0.62 : 0.70, 0.62, 0.58, fur, 0, 0, 0))
+  head.add(box(0.34, 0.22, 0.22, muzzle, 0, -0.12, 0.38))
+  head.add(box(0.10, 0.08, 0.05, C.ink, 0, -0.08, 0.51))
+  head.add(box(0.09, 0.11, 0.04, C.ink, -0.16, 0.08, 0.31), box(0.09, 0.11, 0.04, C.ink, 0.16, 0.08, 0.31))
+  if (kind === 'cat') {
+    const earGeo = new THREE.ConeGeometry(0.17, 0.34, 4)
+    head.add(mesh(earGeo, dark, -0.21, 0.42, 0), mesh(earGeo.clone(), dark, 0.21, 0.42, 0))
+  } else {
+    const earL = box(0.20, 0.42, 0.16, dark, -0.31, 0.08, 0)
+    const earR = box(0.20, 0.42, 0.16, dark, 0.31, 0.08, 0)
+    earL.rotation.z = -0.24
+    earR.rotation.z = 0.24
+    head.add(earL, earR)
+  }
+  pose.add(head)
+  const paw = (leg: THREE.Group, x: number, z: number) => {
+    leg.position.set(x, 0.86, z)
+    leg.add(box(0.24, 0.72, 0.25, dark, 0, -0.34, 0), box(0.29, 0.13, 0.36, muzzle, 0, -0.73, 0.06))
+    pose.add(leg)
+  }
+  paw(frontL, -0.31, 0.38)
+  paw(frontR, 0.31, 0.38)
+  paw(rearL, -0.31, -0.48)
+  paw(rearR, 0.31, -0.48)
+  const tail = box(0.16, 0.16, kind === 'cat' ? 0.82 : 0.60, fur, 0, 1.10, -0.92)
+  tail.rotation.x = kind === 'cat' ? -0.35 : 0.28
+  pose.add(tail)
+  pose.add(box(0.72, 0.15, 0.65, C.red, 0, 1.28, 0.28))
+  g.add(pose)
+  g.userData.rig = { pose, head, legL: rearL, legR: rearR, armL: frontL, armR: frontR } satisfies CharacterRig
+  g.scale.setScalar(0.58)
+  return g
+}
+
+function addHeroMarker(player: THREE.Group, heroId: HeroId) {
+  if (heroId !== 'commuter' && heroId !== 'cat' && heroId !== 'dog') {
+    player.add(box(0.56, 0.34, 0.18, C.red, 0, 1.30, -0.36))
+  }
   const playerLight = new THREE.PointLight(0xffe7a0, 2.35, 4.2, 1.65)
   playerLight.position.set(0, 1.15, 0)
   playerLight.userData.playerLight = true
-  const markerScale = 0.68 / 0.58
-  aura.scale.setScalar(markerScale)
-  ringInk.scale.setScalar(markerScale)
-  ring.scale.setScalar(markerScale)
-  player.add(aura, ringInk, ring, playerLight)
-  player.add(box(0.54, 0.09, 0.055, C.paper, 0, 1.38, -0.51))
-  player.scale.setScalar(0.58)
+  player.add(playerLight)
+  player.userData.heroId = heroId
   return player
+}
+
+export function makePlayer(heroId: HeroId = 'commuter') {
+  let player: THREE.Group
+  if (heroId === 'commuter') {
+    player = makeCharacter({
+      skin: C.skin2, top: C.yellow, bottom: C.aubergine, hair: C.paper,
+      accent: C.red, body: 'normal', feature: 'bag',
+    })
+    player.add(box(0.54, 0.09, 0.055, C.paper, 0, 1.38, -0.51))
+  } else if (heroId === 'cat' || heroId === 'dog') {
+    player = makeAnimalHero(heroId)
+  } else if (heroId === 'zombie' || heroId === 'vampire') {
+    player = makeMonsterPassenger(heroId)
+  } else {
+    player = makeProfessionPassenger(heroId)
+  }
+  player.scale.setScalar(0.58)
+  return addHeroMarker(player, heroId)
 }
 
 export type MonsterKind = 'vampire' | 'zombie' | 'mummy' | 'skeleton' | 'ghost' | 'werewolf'

@@ -47,5 +47,8 @@ export const sound = {
   fall: () => tone(110, 0.22, 'sawtooth', 0.065, 62),
   trip: () => { tone(170, 0.12, 'triangle', 0.05, 120); tone(82, 0.18, 'sawtooth', 0.06, 54, 0.17) },
   win: () => { [520, 660, 820].forEach((f, i) => tone(f, 0.14, 'sine', 0.055, undefined, i * 0.09)) },
+  coins: () => { tone(720, 0.08, 'sine', 0.045, 820, 0.18); tone(920, 0.08, 'sine', 0.045, undefined, 0.245) },
+  unlockHero: () => { [440, 660, 880].forEach((f, i) => tone(f, 0.11, 'triangle', 0.06, undefined, i * 0.085)) },
+  equip: () => tone(520, 0.055, 'triangle', 0.035),
   lose: () => tone(180, 0.42, 'square', 0.065, 95),
 }

@@ -36,11 +36,14 @@ export const LEVELS: LevelConfig[] = [
 
 const ENDLESS_NAMES = ['怪物早班', '幽灵换乘', '失控区间', '终点不存在']
 const ENDLESS_SUBTITLES = ['怪物乘客开始抢吊环', '人群更轻，也更容易滑倒', '预警继续缩短', '只要没迟到，就继续挤']
+const endlessCache = new Map<number, LevelConfig>()
 
 export function getLevelConfig(index: number): LevelConfig {
   if (LEVELS[index]) return LEVELS[index]
+  const cached = endlessCache.get(index)
+  if (cached) return cached
   const extra = index - LEVELS.length
-  return {
+  const config: LevelConfig = {
     name: `第 ${index + 1} 节 · ${ENDLESS_NAMES[extra % ENDLESS_NAMES.length]}`,
     subtitle: ENDLESS_SUBTITLES[extra % ENDLESS_SUBTITLES.length],
     time: Math.max(20, 24 - Math.floor(extra / 5) * 0.5),
@@ -54,4 +57,6 @@ export function getLevelConfig(index: number): LevelConfig {
     swayFallChance: Math.min(0.46, 0.32 + extra * 0.014),
     variant: (['maintenance', 'ad-wrap', 'narrow-door', 'long-seat'] as const)[extra % 4],
   }
+  endlessCache.set(index, config)
+  return config
 }

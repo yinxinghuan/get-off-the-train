@@ -56,7 +56,9 @@ button { font: inherit; }
   font-family: "Arial Rounded MT Bold", "Avenir Next", "PingFang SC", sans-serif; font-size: 19px; font-weight: 800; letter-spacing: .01em; cursor: pointer; transition: transform 80ms ease, box-shadow 80ms ease;
   &:active { transform: translate(4px, 4px); box-shadow: 2px 2px 0 @ink; }
   &:focus-visible { outline: 3px solid @paper; outline-offset: 4px; }
+  &:disabled { color: fade(@ink, 48%); background: #cfc5ad; box-shadow: 2px 2px 0 fade(@ink, 65%); cursor: not-allowed; transform: none; }
   &--secondary { min-height: 48px; color: @ink; background: @paper2; border-color: @ink; font-size: 15px; box-shadow: 4px 4px 0 @ink; }
+  &__balance { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; padding: 4px 7px; border: 2px solid @ink; border-radius: 999px; background: @yellow; font-size: 12px; line-height: 1; }
 }
 
 .got-timer {
@@ -140,6 +142,40 @@ button { font: inherit; }
 .got-stats div { min-width: 0; padding: 10px 6px; border: 2.5px solid @ink; border-radius: 9px; background: @paper2; }
 .got-stats span { display: block; overflow: hidden; color: @muted; font-size: 9px; font-weight: 800; line-height: 1; letter-spacing: .05em; text-overflow: ellipsis; white-space: nowrap; }
 .got-stats strong { display: block; margin-top: 6px; font-size: 25px; font-weight: 850; line-height: 1; font-variant-numeric: tabular-nums; }
+.got-stats strong.got-stats__coins { display: flex; align-items: center; justify-content: center; gap: 4px; color: #3a6d43; }
+
+.got-collection {
+  position: absolute; inset: 0; z-index: 120; display: grid; place-items: center; padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  background: fade(@ink, 91%); touch-action: manipulation;
+  &__panel { width: min(100%, 420px); height: min(760px, calc(100dvh - 24px)); min-height: 460px; display: flex; flex-direction: column; overflow: hidden; color: @ink; background: @paper; border: 4px solid @ink; border-radius: 14px; box-shadow: 6px 6px 0 @teal; }
+  &__header { flex: 0 0 auto; min-height: 74px; display: grid; grid-template-columns: minmax(0, 1fr) auto 46px; align-items: center; gap: 8px; padding: 9px 9px 9px 14px; border-bottom: 3px solid @ink; background: @paper2; }
+  &__header > div { min-width: 0; }
+  &__header h2 { margin: 0; overflow: hidden; font: 850 25px/.98 "Arial Rounded MT Bold", "Avenir Next", "PingFang SC", sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+  &__header p { margin: 5px 0 0; overflow: hidden; color: @muted; font-size: 10px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+  &__coins { min-height: 36px; display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; color: @ink; background: @yellow; border: 2px solid @ink; border-radius: 999px; font-size: 16px; font-variant-numeric: tabular-nums; }
+  &__close { width: 46px; height: 46px; display: grid; place-items: center; color: @ink; background: @paper; border: 3px solid @ink; border-radius: 50%; box-shadow: 2px 2px 0 @ink; }
+  &__preview { --hero-color: @yellow; position: relative; flex: 0 0 170px; overflow: hidden; background: @paper2; border-bottom: 3px solid @ink; box-shadow: inset 10px 0 0 var(--hero-color); }
+  &__preview canvas { display: block; pointer-events: none; }
+  &__identity { position: absolute; left: 12px; bottom: 10px; display: flex; flex-direction: column; align-items: flex-start; pointer-events: none; }
+  &__identity span { padding: 3px 6px; color: @paper; background: @ink; border-radius: 4px 4px 0 0; font-size: 9px; font-weight: 850; letter-spacing: .08em; }
+  &__identity strong { padding: 5px 8px; color: @ink; background: @paper; border: 2px solid @ink; border-radius: 0 7px 7px 7px; font-size: 16px; line-height: 1; }
+  &__grid { min-height: 126px; flex: 1 1 auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 7px; overflow-y: auto; overscroll-behavior: contain; padding: 9px; background: #f5ead4; touch-action: pan-y; }
+  &__action { flex: 0 0 auto; width: calc(100% - 18px); min-height: 52px; margin: 0 9px 10px; }
+}
+
+.got-hero-card {
+  min-width: 0; min-height: 58px; display: grid; grid-template-columns: 12px minmax(0, 1fr); grid-template-rows: 1fr auto; gap: 2px 7px; padding: 7px 8px; color: @ink; background: @paper; border: 2.5px solid @ink; border-radius: 9px; box-shadow: 2px 2px 0 @ink; text-align: left; touch-action: manipulation;
+  &:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 @ink; }
+  &:focus-visible { outline: 3px solid @teal; outline-offset: 2px; }
+  &.is-active { background: @paper2; box-shadow: 3px 3px 0 @teal; }
+  &.is-equipped { border-color: #296f48; }
+  &__swatch { grid-row: 1 / 3; width: 12px; height: 100%; min-height: 38px; border: 2px solid @ink; border-radius: 999px; }
+  &__copy { min-width: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 4px; }
+  &__copy b { min-width: 0; overflow: hidden; font-size: 13px; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+  &__copy small { flex: 0 0 auto; color: @muted; font-size: 8px; font-weight: 800; }
+  &__state { min-width: 0; display: flex; align-items: center; gap: 3px; color: @muted; font-size: 9px; font-weight: 850; line-height: 1; }
+  &.is-equipped &__state { color: #296f48; }
+}
 
 .got-lb {
   position: absolute; inset: 0; z-index: 100; display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom));
@@ -201,6 +237,11 @@ button { font: inherit; }
   .got-panel { padding: 18px; }
   .got-panel h2 { margin-top: 8px; }
   .got-stats { margin-block: 11px 13px; }
+  .got-collection__panel { height: calc(100dvh - 16px); }
+  .got-collection__header { min-height: 65px; }
+  .got-collection__preview { flex-basis: 128px; }
+  .got-collection__grid { padding: 7px; gap: 6px; }
+  .got-hero-card { min-height: 54px; }
 }
 
 @media (min-width: 700px) {
