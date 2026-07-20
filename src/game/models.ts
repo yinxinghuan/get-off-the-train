@@ -79,6 +79,8 @@ export interface CharacterRig {
   legR?: THREE.Group
   shinL?: THREE.Group
   shinR?: THREE.Group
+  footL?: THREE.Group
+  footR?: THREE.Group
   armL?: THREE.Group
   armR?: THREE.Group
   forearmL?: THREE.Group
@@ -114,14 +116,16 @@ export function makeCharacter(style: CharacterStyle, player = false) {
   const legR = new THREE.Group()
   const shinL = new THREE.Group()
   const shinR = new THREE.Group()
+  const footL = box(0.29 * s, 0.14, 0.45, C.ink, 0, -shinH + 0.03, 0.07, false)
+  const footR = box(0.29 * s, 0.14, 0.45, C.ink, 0, -shinH + 0.03, 0.07, false)
   legL.position.set(-0.19 * s, hipY, 0)
   legR.position.set(0.19 * s, hipY, 0)
   shinL.position.y = -thighH
   shinR.position.y = -thighH
   legL.add(box(0.28 * s, thighH, 0.35, style.bottom, 0, -thighH / 2, 0, ol), shinL)
   legR.add(box(0.28 * s, thighH, 0.35, style.bottom, 0, -thighH / 2, 0, ol), shinR)
-  shinL.add(box(0.25 * s, shinH, 0.31, style.bottom, 0, -shinH / 2, 0, ol), box(0.29 * s, 0.14, 0.45, C.ink, 0, -shinH + 0.03, 0.07, false))
-  shinR.add(box(0.25 * s, shinH, 0.31, style.bottom, 0, -shinH / 2, 0, ol), box(0.29 * s, 0.14, 0.45, C.ink, 0, -shinH + 0.03, 0.07, false))
+  shinL.add(box(0.25 * s, shinH, 0.31, style.bottom, 0, -shinH / 2, 0, ol), footL)
+  shinR.add(box(0.25 * s, shinH, 0.31, style.bottom, 0, -shinH / 2, 0, ol), footR)
   const armL = new THREE.Group()
   const armR = new THREE.Group()
   const forearmL = new THREE.Group()
@@ -160,7 +164,7 @@ export function makeCharacter(style: CharacterStyle, player = false) {
   if (style.feature === 'bun') {
     head.add(cyl(0.22, 0.22, style.hair, 0, 0.49, -0.04, ol, 7))
   }
-  g.userData.rig = { pose, upperBody, head, hipY, legL, legR, shinL, shinR, armL, armR, forearmL, forearmR } satisfies CharacterRig
+  g.userData.rig = { pose, upperBody, head, hipY, legL, legR, shinL, shinR, footL, footR, armL, armR, forearmL, forearmR } satisfies CharacterRig
   g.scale.setScalar(0.58)
   return g
 }
@@ -187,10 +191,16 @@ export function applyPassengerActivity(g: THREE.Group, activity: PassengerActivi
 function poseAsSeated(g: THREE.Group, activity: 'reading' | 'phone' | 'rest') {
   const rig = g.userData.rig as CharacterRig
   g.scale.setScalar(0.58)
-  if (rig.legL) rig.legL.rotation.x = -1.28
-  if (rig.legR) rig.legR.rotation.x = -1.28
-  if (rig.shinL) rig.shinL.rotation.x = 1.32
-  if (rig.shinR) rig.shinR.rotation.x = 1.32
+  // A real seated silhouette: thighs leave the hips horizontally toward the
+  // aisle, knees bend to vertical shins, and shoes project beyond the toes.
+  // The seated shin stretch compensates for the gameplay character scale so
+  // feet reach the carriage floor instead of hovering inside the bench.
+  if (rig.legL) rig.legL.rotation.x = -Math.PI / 2
+  if (rig.legR) rig.legR.rotation.x = -Math.PI / 2
+  if (rig.shinL) { rig.shinL.rotation.x = Math.PI / 2; rig.shinL.scale.y = 1.92 }
+  if (rig.shinR) { rig.shinR.rotation.x = Math.PI / 2; rig.shinR.scale.y = 1.92 }
+  if (rig.footL) { rig.footL.position.z = 0.16; rig.footL.scale.z = 1.35 }
+  if (rig.footR) { rig.footR.position.z = 0.16; rig.footR.scale.z = 1.35 }
   if (rig.armL) { rig.armL.rotation.x = -0.56; rig.armL.rotation.z = -0.10 }
   if (rig.armR) { rig.armR.rotation.x = -0.56; rig.armR.rotation.z = 0.10 }
   if (rig.forearmL) rig.forearmL.rotation.x = -0.72

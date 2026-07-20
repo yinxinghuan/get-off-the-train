@@ -49,7 +49,7 @@ interface Body {
 
 interface Obstacle { x: number; z: number; r: number }
 interface SeatSlot { x: number; z: number; yaw: number }
-interface SeatedVisual { group: THREE.Group; phase: number; baseY: number; baseUpperX: number }
+interface SeatedVisual { group: THREE.Group; phase: number; baseY: number; baseUpperX: number; x: number; z: number; r: number }
 
 const CAR_MIN_X = -7.65
 const CAR_MAX_X = 7.65
@@ -67,6 +67,8 @@ const QA_AUTORUN = import.meta.env.DEV && new URLSearchParams(location.search).h
 const QA_FALL = import.meta.env.DEV && new URLSearchParams(location.search).has('qaFall')
 const QA_FALL_KIND = import.meta.env.DEV && new URLSearchParams(location.search).get('qaFall') === 'side' ? 'side' : 'forward'
 const QA_WALK = import.meta.env.DEV && new URLSearchParams(location.search).has('qaWalk')
+const QA_SEAT_VIEW = import.meta.env.DEV && new URLSearchParams(location.search).has('qaSeatView')
+const QA_SEAT_COLLISION = import.meta.env.DEV && new URLSearchParams(location.search).has('qaSeatCollision')
 
 function mulberry32(seed: number) {
   return () => {
@@ -285,7 +287,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     bodies: [] as Body[], seated: [] as SeatedVisual[], player: null as Body | null, time: 0, timeLeft: config.time,
     nextSway: config.swayPeriod, warningSent: false, swayDirection: (level % 2 ? -1 : 1) as -1 | 1,
     swayKick: 0, falls: 0, braceTime: 0, braced: false, hudT: 0, ended: false, lastFrame: 0,
-    qaFallDone: false,
+    qaFallDone: false, lastSeatBump: Number.NEGATIVE_INFINITY,
   })
 
   useEffect(() => {
@@ -322,7 +324,16 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
         group.position.set(slot.x, baseY, slot.z)
         group.rotation.y = slot.yaw
         train.root.add(group)
-        S.seated.push({ group, phase: rand() * Math.PI * 2, baseY, baseUpperX: rig.upperBody?.rotation.x ?? 0 })
+        const footReach = 0.52
+        S.seated.push({
+          group,
+          phase: rand() * Math.PI * 2,
+          baseY,
+          baseUpperX: rig.upperBody?.rotation.x ?? 0,
+          x: slot.x + Math.sin(slot.yaw) * footReach,
+          z: slot.z + Math.cos(slot.yaw) * footReach,
+          r: 0.18,
+        })
       })
     }
 
@@ -486,7 +497,9 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     }
 
     const player = S.player
-    if (QA_AUTORUN) input.current = player.x < EXIT_X - 0.2 ? { x: QA_WALK ? 0.24 : 0, z: QA_WALK ? -0.97 : -1 } : { x: 1, z: 0 }
+    if (QA_AUTORUN) input.current = QA_SEAT_COLLISION
+      ? { x: -1, z: 0 }
+      : player.x < EXIT_X - 0.2 ? { x: QA_WALK ? 0.24 : 0, z: QA_WALK ? -0.97 : -1 } : { x: 1, z: 0 }
     for (const b of S.bodies) {
       const fallen = b.fallenUntil > S.time
       let npcWalking = false
@@ -550,6 +563,29 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
           b.z += dz / d * push
           const vn = b.vx * dx / d + b.vz * dz / d
           if (vn < 0) { b.vx -= vn * dx / d * 1.35; b.vz -= vn * dz / d * 1.35 }
+        }
+      }
+      if (b.player) {
+        for (let seatIndex = 0; seatIndex < S.seated.length; seatIndex++) {
+          const o = S.seated[seatIndex]
+          const dx = b.x - o.x, dz = b.z - o.z
+          const d = Math.hypot(dx, dz) || 0.001
+          const min = b.r + o.r
+          if (d >= min) continue
+          const nx = dx / d, nz = dz / d
+          b.x += nx * (min - d)
+          b.z += nz * (min - d)
+          const vn = b.vx * nx + b.vz * nz
+          if (vn < 0) {
+            const impact = -vn
+            b.vx -= vn * nx * 1.28
+            b.vz -= vn * nz * 1.28
+            if (impact > 0.75 && S.time - S.lastSeatBump > 0.22) {
+              S.lastSeatBump = S.time
+              sound.bump()
+              if (eventChance(b, 23.4 + seatIndex * 1.7) < 0.12) knockDown(b, 'forward', 1.18)
+            }
+          }
         }
       }
     }
@@ -778,10 +814,10 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     // A stable third-person chase camera keeps the player in the lower-middle
     // foreground while the yellow exit remains ahead at the top of the screen.
     const cameraTrackZ = player.z * 0.35
-    cameraGoal.current.set(player.x - 5.2, 6.05, cameraTrackZ)
+    cameraGoal.current.set(QA_SEAT_VIEW ? -2.20 : player.x - 5.2, QA_SEAT_VIEW ? 3.50 : 6.05, QA_SEAT_VIEW ? 0.40 : cameraTrackZ)
     camera.position.lerp(cameraGoal.current, 1 - Math.exp(-dt * 7.5))
     cameraLook.current.lerp(
-      cameraGoal.current.set(player.x + 4.8, 0.70, cameraTrackZ),
+      cameraGoal.current.set(QA_SEAT_VIEW ? -4.20 : player.x + 4.8, QA_SEAT_VIEW ? 0.66 : 0.70, QA_SEAT_VIEW ? -1.78 : cameraTrackZ),
       1 - Math.exp(-dt * 9),
     )
     camera.lookAt(cameraLook.current)
