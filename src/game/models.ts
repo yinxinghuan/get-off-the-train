@@ -108,7 +108,11 @@ function makeCatalogCharacter(id: HeroId) {
   if (ANIMAL_LIBRARY_IDS.includes(id as AnimalKind)) {
     asset.rotation.y = -Math.PI / 2
     const height = Math.max(0.01, bounds.max.y - bounds.min.y)
-    asset.scale.setScalar(1.58 / height)
+    const horizontal = Math.max(0.01, bounds.max.x - bounds.min.x, bounds.max.z - bounds.min.z)
+    const bulky = id === 'cow' || id === 'bear' || id === 'pig'
+    // Preserve the species silhouette without letting long or squat animals
+    // dominate the aisle. Height stays slightly generous while ground size is capped.
+    asset.scale.setScalar(Math.min(1.48 / height, (bulky ? 2.18 : 2.02) / horizontal))
   }
   pose.add(asset)
   g.add(pose)

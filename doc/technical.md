@@ -17,7 +17,7 @@
 - `src/assets/characters/`：从 `_lowpoly_lab` 统一导出并复制进发布包的 52 个真实角色 GLB；文件名保持 `<category>__<id>.glb`。
 - `src/game/models.ts`：商店/乘客共用的 52 名角色 id、GLB 克隆与便携 rig 适配、阅读/电话道具、坐姿包装、主角跟随光和场景基础几何材质。
 - `src/game/types.ts`：状态类型、前 5 关数值表、无限难度公式与按关卡编号缓存。
-- `src/ui/Joystick.tsx`：全场景 Pointer Capture 动态摇杆、按帧合并视图更新、首次输入启动和循环虚拟拇指引导。
+- `src/ui/Joystick.tsx`：全场景 Pointer Capture 动态摇杆、按帧合并视图更新、首次输入启动，以及沿虚线轨迹循环滑动的标准幽灵手指引导。
 - `src/ui/Icons.tsx`：统一 24×24 墨线 SVG 图标家族。
 - `src/ui/CollectionShop.tsx`：单 Canvas 的三角色 3D 轮播舞台、金币余额、循环切换、购买/装备/不足状态。
 - `src/audio/sound.ts`：限流的合成音效与静音状态。
@@ -34,9 +34,9 @@
 
 ### 状态管理与主循环
 
-`App.tsx` 维护 `playing / paused / level-clear / game-over`，并用 `runStarted` 区分“真实场景已显示但等待首次输入”和计时中的游戏。首次触摸或方向键输入才解锁声音、记录赛前最高分并启动倒计时；虚拟拇指只是 DOM 演示，不写入物理、分数或平台事件。前 5 关读取手工配置，之后由 `getLevelConfig()` 按封顶公式生成并缓存在 `endlessCache`；`App` 还用 `useMemo([level])` 固定当前配置，避免 80 ms HUD 更新改变引用并重建世界。每关用 `level` 作为 `TrainScene` key，确保只有关卡变化才独立重建物理实体和计时器。高频位置、速度、倒地计时和晃动阶段留在 `useRef`，由 `useFrame` 更新；HUD 以 80 ms 间隔采样。暂停、过关、失败、排行榜与角色收藏共用奶油圆角卡、圆润系统字体、2.5–4 px 柔墨边和 3–6 px 小硬影。
+`App.tsx` 维护 `playing / paused / level-clear / game-over`，并用 `runStarted` 区分“真实场景已显示但等待首次输入”和计时中的游戏。首次触摸或方向键输入才解锁声音、记录赛前最高分并启动倒计时；幽灵手指只是 DOM 演示，不写入物理、分数或平台事件。前 5 关读取手工配置，之后由 `getLevelConfig()` 按封顶公式生成并缓存在 `endlessCache`；`App` 还用 `useMemo([level])` 固定当前配置，避免 80 ms HUD 更新改变引用并重建世界。每关用 `level` 作为 `TrainScene` key，确保只有关卡变化才独立重建物理实体和计时器。高频位置、速度、倒地计时和晃动阶段留在 `useRef`，由 `useFrame` 更新；HUD 以 80 ms 间隔采样。暂停、过关、失败、排行榜与角色收藏共用奶油圆角卡、圆润系统字体、2.5–4 px 柔墨边和 3–6 px 小硬影。
 
-每次过关由 `App` 计算 `30 + min(level+1,10)×5 + 零摔倒10` 金币。`useGameSave<CollectionSave>()` 只负责首次加载与写入；`collectionMirror` 从 `savedData` 一次性播种，之后所有余额、解锁与装备的读改写都经过同一 mirror，再调用 `persist()` 作为副作用。存档包含 `coins / unlocked / selected` 全字段；载入时用 `HERO_IDS` 过滤失效值，因此旧版角色存档无需迁移即可继续使用。页面在挂载游戏前由 `preloadCharacterLibrary()` 加载 52 个 GLB，单文件失败最多重试 3 次，只有数量完整才进入场景。商店轮播生成上一名、当前与下一名三个真实库模型；每个模型先计算 `Box3`，把脚底归零、水平居中，再按自身高度适配 2.18/1.35 world-unit 的中央/侧边展示高度。左右 SVG 箭头与键盘方向键循环 52 名角色，进度轨压缩为 3 px 点和 14 px 当前点。
+每次过关由 `App` 计算 `30 + min(level+1,10)×5 + 零摔倒10` 金币。`useGameSave<CollectionSave>()` 只负责首次加载与写入；`collectionMirror` 从 `savedData` 一次性播种，之后所有余额、解锁与装备的读改写都经过同一 mirror，再调用 `persist()` 作为副作用。存档包含 `coins / unlocked / selected` 全字段；载入时用 `HERO_IDS` 过滤失效值，因此旧版角色存档无需迁移即可继续使用。页面在挂载游戏前由 `preloadCharacterLibrary()` 加载 52 个 GLB，单文件失败最多重试 3 次，只有数量完整才进入场景。商店轮播生成上一名、当前与下一名三个真实库模型；每个模型先计算 `Box3`，把脚底归零、水平居中，人形按 2.18/1.35 world-unit 的中央/侧边高度适配；动物高度上限为 1.78/1.12，并以普通动物 1.72/1.12、熊牛猪 1.90/1.24 的中央/侧边横向上限防止矮宽模型被二次放大。左右 SVG 箭头与键盘方向键循环 52 名角色，进度轨压缩为 3 px 点和 14 px 当前点。
 
 ### 屏幕适配与输入
 
@@ -48,7 +48,7 @@
 
 `buildTrain()` 根据每段长椅长度以 0.72–0.96 world-unit 间距生成 `seatSlots`，并沿长椅前沿以 0.32 world-unit 间隔注册半径 0.17 的连续碰撞带。每关随机留出 1–2 个空槽，其余从 `HUMAN_LIBRARY_IDS` 选择人物并用 `makeSeatedLibraryPassenger()` 填满；大腿水平伸向通道，小腿垂下，鞋尖伸出坐垫。每个坐席以 `seated / preparing / rising / departed` 状态机更新；被选中的 1–3 名下车者经过 0.72 秒准备和 0.58 秒起身后加入动态 `Body`，沿 `+X` 走向绿灯侧门并继续参与碰撞、步态、晃动和摔倒。
 
-站立乘客与商店读取同一个 `HERO_IDS` 目录：第 1 关使用前 15 名普通人物，第 2 关扩展普通人群，第 3 关加入怪物，第 4 关起按 `level×passengerTarget+made` 的连续窗口遍历全部 52 名角色，任意连续三个 20 人后期关卡可覆盖完整目录。动物和怪物保持自然姿态，人形乘客才分配吊环、阅读、通话与手机活动。
+站立乘客与商店读取同一个 `HERO_IDS` 目录：第 1 关使用前 15 名普通人物，第 2 关扩展普通人群，第 3 关加入怪物，第 4 关起按 `level×passengerTarget+made` 的连续窗口遍历全部 52 名角色，任意连续三个 20 人后期关卡可覆盖完整目录。动物 GLB 在 `makeCatalogCharacter()` 中同时按高度和最长水平轴适配，使用 `min(1.48/height, horizontalCap/horizontal)`，普通动物 cap 为 2.02，猪/牛/熊为 2.18；怪物保留库内原始比例。动物和怪物保持自然姿态，人形乘客才分配吊环、阅读、通话与手机活动。
 
 通道站立人数前 5 关为 9 / 12 / 14 / 16 / 18，第 6 关起封顶 20；其中 `clamp(round(n×16%),2,4)` 名为 `wandering`，其余保持 `stationary`。人形静止者按确定性比例得到吊环、阅读、通话、手机或自然站姿，动物/怪物只保留自然姿态。碰撞法向速度超过 0.55 时，根据关卡、门区压力、晃动和撞击速度决定是否前扑。倒地动作使用 `pose / upperBody / head / arm / forearm / leg / shin` 分层 rig 与 Catmull–Rom 姿态曲线；11 种动物把前后肢映射到同一套步态、侧摔和起身时序。所有角色外层视觉缩放为 0.58，体型差异来自内部比例；玩家与普通乘客碰撞半径 0.22。主角只保留红色通勤识别件与随身柔边 SpotLight，不创建 Torus 脚底环。
 
@@ -60,7 +60,7 @@ Canvas 使用与《急刹车》一致的 ACES Filmic 和 1.0 曝光；白/冷灰
 
 ### 音频、多语言、排行榜与通知
 
-音效使用短振荡器包络，不加载远程音频；碰撞按 80 ms 限流。所有关键 UI 文案从 `src/i18n/index.ts` 读取。最高总分使用专属 localStorage key `get-off-the-train.best.v1`，并在失败时通过永久 UUID `7cc693d3-6ca5-414e-8dbe-7fb66de752f2` 提交平台 best-score 排行榜。平台内其他玩家的头像姓名调用 `openAigramProfile()`；破纪录时只对一位本次刚超过的真实玩家发送 `score_beat` 事件。平台外不展示虚构排名，改为进入 AlterU 的明确 CTA。
+音效使用短振荡器包络，不加载远程音频；碰撞按 80 ms 限流。所有关键 UI 文案从 `src/i18n/index.ts` 读取。最高总分使用专属 localStorage key `get-off-the-train.best.v1`，并在失败时通过永久 UUID `7cc693d3-6ca5-414e-8dbe-7fb66de752f2` 提交平台 best-score 排行榜。冠军入口由最新榜单第 1 行驱动；每局首次输入时快照本人旧纪录，提交破纪录成绩后刷新榜单，以 `oldBest < opponentScore < newScore` 筛选并只向最高的一位对手发送 `score_beat`。平台内其他玩家的头像姓名调用 `openAigramProfile()`；平台外不发榜单请求、不展示虚构排名，改为进入 AlterU 的明确 CTA。
 
 ## 4. 扩展点
 

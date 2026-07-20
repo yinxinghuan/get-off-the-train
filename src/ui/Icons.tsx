@@ -37,3 +37,10 @@ export function CollectionIcon({ size = 24 }: IconProps) {
 export function ChevronIcon({ size = 24 }: IconProps) {
   return <svg {...base(size)}><path d="m15 5-7 7 7 7" /></svg>
 }
+export function GhostFingerIcon({ size = 64 }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <path d="M9 11.24V7.5a2.5 2.5 0 0 1 5 0v3.74c1.21-.81 2-2.18 2-3.74a4 4 0 1 0-8 0c0 1.56.79 2.93 2 3.74zM18.84 15.87l-4.54-2.26c-.17-.07-.35-.11-.54-.11H13v-6a1.5 1.5 0 0 0-3 0v10.74l-3.43-.72a1 1 0 0 0-1.05.49 1 1 0 0 0 .12 1.16l3.84 4.15c.37.4.89.63 1.43.63h6.55c.85 0 1.56-.6 1.74-1.42l.95-4.47a1.5 1.5 0 0 0-.8-1.92z" fill="currentColor" />
+    </svg>
+  )
+}

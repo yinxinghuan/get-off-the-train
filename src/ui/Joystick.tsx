@@ -1,6 +1,7 @@
 import { MutableRefObject, PointerEvent, useEffect, useRef, useState } from 'react'
 import type { InputVector } from '../game/types'
 import { t } from '../i18n'
+import { GhostFingerIcon } from './Icons'
 
 const RADIUS = 60
 
@@ -84,8 +85,9 @@ export function Joystick({ input, enabled, showGuide, onFirstInput }: Props) {
       )}
       {showGuide && (
         <div className="got-gesture" aria-hidden="true">
-          <div className="got-gesture__ring">
-            <span className="got-gesture__thumb" />
+          <div className="got-gesture__demo">
+            <span className="got-gesture__trail" />
+            <span className="got-gesture__finger"><GhostFingerIcon size={68} /></span>
           </div>
           <b>{t('dragUp')}</b>
         </div>

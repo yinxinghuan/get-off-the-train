@@ -4,7 +4,7 @@ import { getLevelConfig, type HudState, type InputVector, type Phase } from './g
 import { HERO_COSTS, HERO_IDS, type HeroId } from './game/models'
 import { sound } from './audio/sound'
 import { locale, t } from './i18n'
-import { ArrowIcon, CoinIcon, CollectionIcon, PauseIcon, TrainIcon } from './ui/Icons'
+import { ArrowIcon, CoinIcon, CollectionIcon, CrownIcon, PauseIcon, TrainIcon } from './ui/Icons'
 import { Joystick } from './ui/Joystick'
 import { CollectionShop } from './ui/CollectionShop'
 import { Leaderboard } from './shared/leaderboard/Leaderboard'
@@ -19,6 +19,8 @@ const QA_AUTORUN = import.meta.env.DEV && new URLSearchParams(location.search).h
 const QA_ACTIVE = import.meta.env.DEV && (new URLSearchParams(location.search).has('qaLevel') || QA_AUTORUN)
 const qaHeroParam = import.meta.env.DEV ? new URLSearchParams(location.search).get('qaHero') : null
 const QA_HERO = qaHeroParam && HERO_IDS.includes(qaHeroParam as HeroId) ? qaHeroParam as HeroId : null
+const QA_SCORE = import.meta.env.DEV ? Math.max(0, Number(new URLSearchParams(location.search).get('qaScore') || 0)) : 0
+const QA_FAIL_AFTER = import.meta.env.DEV ? Math.max(0, Number(new URLSearchParams(location.search).get('qaFailAfter') || 0)) : 0
 const initialHud: HudState = { timeLeft: getLevelConfig(QA_LEVEL).time, distance: 12, falls: 0, braced: false, swayWarning: false, swayDirection: 1 }
 interface CollectionSave { coins: number; unlocked: HeroId[]; selected: HeroId; _lastActive?: number }
 const DEFAULT_COLLECTION: CollectionSave = { coins: 0, unlocked: ['commuter'], selected: 'commuter' }
@@ -40,6 +42,24 @@ function ActionButton({ children, onPress, secondary = false }: { children: Reac
   return <button className={`got-btn${secondary ? ' got-btn--secondary' : ''}`} onPointerDown={(ev) => { ev.preventDefault(); sound.tap(); onPress() }}>{children}</button>
 }
 
+function ChampionPill({ champion, onOpen }: { champion: LeaderboardEntry | null; onOpen: () => void }) {
+  return (
+    <button type="button" className="got-champ" onPointerDown={(ev) => { ev.preventDefault(); sound.tap(); onOpen() }} aria-label={t('leaderboard')}>
+      <CrownIcon size={21} />
+      {champion ? (
+        <>
+          <span className="got-champ__avatar" aria-hidden="true">
+            {champion.avatar_url ? <img src={champion.avatar_url} alt="" draggable={false} /> : <span>{(champion.name || '?').slice(0, 1).toUpperCase()}</span>}
+          </span>
+          <span className="got-champ__name">{champion.name || t('leaderboard')}</span>
+          <strong>{Math.round(champion.score).toLocaleString()}</strong>
+        </>
+      ) : <span className="got-champ__fallback">{t('board')}</span>}
+      <ArrowIcon size={17} />
+    </button>
+  )
+}
+
 export default function App() {
   const [phase, setPhase] = useState<Phase>('playing')
   const [level, setLevel] = useState(QA_LEVEL)
@@ -48,7 +68,7 @@ export default function App() {
   const config = useMemo(() => getLevelConfig(level), [level])
   const copy = levelCopy(level, config)
   const [hud, setHud] = useState(initialHud)
-  const [score, setScore] = useState(0)
+  const [score, setScore] = useState(QA_SCORE)
   const [levelScore, setLevelScore] = useState(0)
   const [totalFalls, setTotalFalls] = useState(0)
   const [best, setBest] = useState(() => Number(localStorage.getItem(BEST_KEY) || 0))
@@ -61,9 +81,11 @@ export default function App() {
   const [levelCoins, setLevelCoins] = useState(0)
   const input = useRef<InputVector>({ x: 0, z: 0 })
   const phaseBeforePause = useRef<Phase>('playing')
-  const latestRows = useRef<LeaderboardEntry[]>([])
+  const [leaderboardRows, setLeaderboardRows] = useState<LeaderboardEntry[]>([])
+  const [leaderboardLoaded, setLeaderboardLoaded] = useState(false)
+  const [champion, setChampion] = useState<LeaderboardEntry | null>(null)
   const preRunBest = useRef(0)
-  const { submitScore, fetchLeaderboard } = useGameScore()
+  const { canRank, submitScore, fetchLeaderboard } = useGameScore()
   const events = useGameEvent()
   const { savedData, persist } = useGameSave<CollectionSave>('get-off-the-train.collection.v1')
   const [collectionMirror, setCollectionMirror] = useState<CollectionSave | undefined>(undefined)
@@ -85,25 +107,27 @@ export default function App() {
 
   const selectedHero = QA_HERO ?? collectionMirror?.selected ?? 'commuter'
 
-  useEffect(() => {
-    let alive = true
-    fetchLeaderboard().then((rows) => {
-      if (!alive) return
-      latestRows.current = rows
-    }).catch(() => {})
-    return () => { alive = false }
-  }, [fetchLeaderboard])
+  const refreshLeaderboard = useCallback(async () => {
+    if (!canRank) return []
+    const rows = await fetchLeaderboard()
+    setLeaderboardRows(rows)
+    setLeaderboardLoaded(true)
+    setChampion(rows[0] ?? null)
+    return rows
+  }, [canRank, fetchLeaderboard])
+
+  useEffect(() => { refreshLeaderboard().catch(() => {}) }, [refreshLeaderboard])
 
   const snapshotPreRunBest = useCallback(() => {
     if (!telegramId) { preRunBest.current = 0; return }
-    const me = latestRows.current.find((row) => String(row.user_id) === String(telegramId))
-    preRunBest.current = me ? Number(me.score) || 0 : 0
-  }, [])
+    const me = leaderboardRows.find((row) => String(row.user_id) === String(telegramId))
+    preRunBest.current = canRank && !leaderboardLoaded ? Number.POSITIVE_INFINITY : me ? Number(me.score) || 0 : 0
+  }, [canRank, leaderboardLoaded, leaderboardRows])
 
   const sendBeatNotify = useCallback(async (myScore: number) => {
-    if (!telegramId || !events.canEmit || myScore <= preRunBest.current) return
+    if (!canRank || !telegramId || !events.canEmit || myScore <= preRunBest.current) return
     try {
-      const fresh = await fetchLeaderboard()
+      const fresh = await refreshLeaderboard()
       const meId = String(telegramId)
       const beaten = fresh
         .filter((row) => String(row.user_id) !== meId)
@@ -116,11 +140,11 @@ export default function App() {
           type: 'notify',
           target_user_id: beaten.id,
           image: { ref_url: POSTER_URL, prompt: 'American comic-book rush-hour subway crowd pushing toward a closing yellow door.' },
-          message: { template: `{sender_name} squeezed past your record — ${Math.round(myScore)} pts on Get Off the Train!`, variables: ['sender_name'] },
+          message: { template: locale === 'zh' ? `{sender_name} 刚刚以 ${Math.round(myScore)} 分超过了你在《挤下地铁》中的纪录。` : `{sender_name} squeezed past your record with ${Math.round(myScore)} points on Get Off the Train!`, variables: ['sender_name'] },
         }],
       })
     } catch { /* leaderboard notifications never block results */ }
-  }, [events, fetchLeaderboard])
+  }, [canRank, events, refreshLeaderboard])
 
   const restartRun = useCallback(() => {
     sound.unlock()
@@ -168,6 +192,12 @@ export default function App() {
     }
     setPhase('level-clear')
   }, [collectionMirror, level, persist, score, sendBeatNotify, submitScore, totalFalls])
+
+  useEffect(() => {
+    if (!QA_FAIL_AFTER || !runStarted || phase !== 'playing') return
+    const timer = window.setTimeout(() => handleOutcome('fail', { timeLeft: config.time, falls: 0 }), QA_FAIL_AFTER * 1000)
+    return () => window.clearTimeout(timer)
+  }, [config.time, handleOutcome, phase, runStarted])
 
   const nextLevel = () => {
     const next = level + 1
@@ -242,7 +272,8 @@ export default function App() {
         <div className="got-timer__time"><strong>{Math.ceil(hud.timeLeft)}</strong><small>s</small></div>
         <span className="got-timer__distance">{t('distance')} {hud.distance.toFixed(1)}{t('meters')}</span>
       </div>
-      <div key={`level-intro-${level}`} className="got-level-intro" aria-hidden="true"><TrainIcon size={17} /><b>{String(level + 1).padStart(2, '0')} · {copy.name}</b></div>
+      {showGuide && <div className="got-mission" role="status"><TrainIcon size={16} /><span>{t('mission')}</span></div>}
+      {!showGuide && <div key={`level-intro-${level}`} className="got-level-intro" aria-hidden="true"><TrainIcon size={17} /><b>{String(level + 1).padStart(2, '0')} · {copy.name}</b></div>}
       <button className="got-pause" aria-label={t('pause')} onPointerDown={pause}><PauseIcon /></button>
 
       {phase === 'playing' && (
@@ -271,7 +302,7 @@ export default function App() {
             {phase === 'paused' && <ActionButton onPress={() => setPhase('playing')}>{t('resume')} <ArrowIcon /></ActionButton>}
             {phase === 'level-clear' && <ActionButton onPress={nextLevel}>{t('next')} <ArrowIcon /></ActionButton>}
             {phase === 'game-over' && <ActionButton onPress={restartRun}>{t('retry')} <ArrowIcon /></ActionButton>}
-            {phase === 'game-over' && <ActionButton secondary onPress={() => setShowBoard(true)}>{t('board')}</ActionButton>}
+            <ChampionPill champion={champion} onOpen={() => setShowBoard(true)} />
             <button className="got-btn got-btn--secondary" onClick={openCollection}><CollectionIcon />{t('collection')}<span className="got-btn__balance"><CoinIcon size={16} />{collectionMirror?.coins ?? 0}</span></button>
             {phase === 'paused' && <ActionButton secondary onPress={restartRun}>{t('restart')}</ActionButton>}
             {phase === 'paused' && <ActionButton secondary onPress={() => setReducedMotion((value) => !value)}>{t('reduced')}</ActionButton>}

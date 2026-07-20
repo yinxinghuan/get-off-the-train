@@ -61,7 +61,7 @@ export function Leaderboard({ fetchEntries, onClose }: Props) {
         </header>
         <div className="got-lb__list">
           {loading && <div className="got-lb__state"><span className="got-lb__spinner" />{t('loading')}</div>}
-          {!loading && !isInAigram && <div className="got-lb__state"><CrownIcon size={38} /><b>{t('openAlterU')}</b><a href="https://alteru.app/" target="_blank" rel="noreferrer">{t('getAlterU')}</a></div>}
+          {!loading && !isInAigram && <div className="got-lb__state"><CrownIcon size={38} /><b>{t('openAlterU')}</b><a href="https://alteru.app" target="_blank" rel="noopener noreferrer">{t('getAlterU')}</a></div>}
           {!loading && isInAigram && entries.length === 0 && <div className="got-lb__state"><CrownIcon size={38} /><b>{t('emptyRank')}</b></div>}
           {!loading && isInAigram && entries.map((entry, index) => <RankRow key={entry.user_id} entry={entry} index={index} />)}
         </div>

@@ -36,9 +36,18 @@ function PreviewHero({ heroId, side }: { heroId: HeroId; side: -1 | 0 | 1 }) {
     const bounds = new THREE.Box3().setFromObject(model)
     const size = bounds.getSize(new THREE.Vector3())
     const center = bounds.getCenter(new THREE.Vector3())
+    const animal = (ANIMAL_LIBRARY_IDS as readonly string[]).includes(heroId)
+    const targetHeight = side === 0
+      ? (animal ? 1.78 : 2.18)
+      : (animal ? 1.12 : 1.35)
+    const horizontal = Math.max(0.01, size.x, size.z)
+    const bulkyAnimal = heroId === 'cow' || heroId === 'bear' || heroId === 'pig'
+    const maxWidth = side === 0 ? (bulkyAnimal ? 1.9 : 1.72) : (bulkyAnimal ? 1.24 : 1.12)
     const fitted = new THREE.Group()
     model.position.set(-center.x, -bounds.min.y, -center.z)
-    fitted.scale.setScalar((side === 0 ? 2.18 : 1.35) / Math.max(0.01, size.y))
+    fitted.scale.setScalar(animal
+      ? Math.min(targetHeight / Math.max(0.01, size.y), maxWidth / horizontal)
+      : targetHeight / Math.max(0.01, size.y))
     fitted.add(model)
     return fitted
   }, [heroId, side])
