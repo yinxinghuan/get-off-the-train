@@ -63,10 +63,12 @@ button { font: inherit; }
 
 .got-timer {
   position: absolute; z-index: 12; top: calc(13px + env(safe-area-inset-top)); left: 50%; min-width: 122px;
-  display: flex; align-items: flex-end; justify-content: center; transform: translateX(-50%) rotate(-1deg); pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; transform: translateX(-50%) rotate(-1deg); pointer-events: none;
   color: @paper; filter: drop-shadow(0 5px 8px fade(@ink, 45%));
+  &__time { display: flex; align-items: flex-end; justify-content: center; }
   strong { font: 950 clamp(54px, 17vw, 74px)/.78 Impact, "Arial Black", sans-serif; letter-spacing: -.035em; text-shadow: 4px 4px 0 @ink, -2px -2px 0 @ink, 2px -2px 0 @ink, -2px 2px 0 @ink; }
   small { margin: 0 0 2px 5px; color: @yellow; font: 950 17px/1 Impact, "Arial Black", sans-serif; text-shadow: 2px 2px 0 @ink, -1px -1px 0 @ink; }
+  &__distance { margin-top: 7px; color: @paper; font: 900 11px/1 ui-monospace, monospace; letter-spacing: .08em; text-shadow: 2px 2px 0 @ink, -1px -1px 0 @ink; white-space: nowrap; }
   &.is-danger { color: @red; animation: got-danger .48s steps(2, end) infinite; }
   &.is-danger small { color: @paper; }
 }

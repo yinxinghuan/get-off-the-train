@@ -11,7 +11,7 @@ function detectLocale(): Locale {
 export const locale = detectLocale()
 
 const zh = {
-  level: '车厢', time: '关门', distance: '离门', falls: '摔倒',
+  level: '车厢', time: '关门', distance: '距门', falls: '摔倒',
   meters: '米', brace: '站稳了', warning: '要晃了！', left: '向左倒', right: '向右倒',
   pause: '暂停', resume: '继续挤', restart: '重新开始整局',
   clear: '挤出来了！', clearCopy: '门在身后关上，差一点点。', next: '下一节车厢',

@@ -172,8 +172,9 @@ export default function App() {
       <div className="got__halftone" aria-hidden="true" />
       <div className="got__frame" aria-hidden="true" />
 
-      <div className={`got-timer${hud.timeLeft < 5 ? ' is-danger' : ''}`} role="timer" aria-label={`${t('time')} ${Math.ceil(hud.timeLeft)}`}>
-        <strong>{Math.ceil(hud.timeLeft)}</strong><small>s</small>
+      <div className={`got-timer${hud.timeLeft < 5 ? ' is-danger' : ''}`} role="timer" aria-label={`${t('time')} ${Math.ceil(hud.timeLeft)}, ${t('distance')} ${hud.distance.toFixed(1)} ${t('meters')}`}>
+        <div className="got-timer__time"><strong>{Math.ceil(hud.timeLeft)}</strong><small>s</small></div>
+        <span className="got-timer__distance">{t('distance')} {hud.distance.toFixed(1)}{t('meters')}</span>
       </div>
       <div key={`level-intro-${level}`} className="got-level-intro" aria-hidden="true"><TrainIcon size={17} /><b>{String(level + 1).padStart(2, '0')} · {copy.name}</b></div>
       <div className="got-exit-cue got-exit-cue--side" aria-hidden="true"><ExitSideIcon size={18} /><b>{t('exitAhead')}</b></div>
