@@ -172,12 +172,10 @@ export default function App() {
       <div className="got__halftone" aria-hidden="true" />
       <div className="got__frame" aria-hidden="true" />
 
-      <header className="got-hud">
-        <div className="got-hud__cell"><span>{t('level')}</span><strong>{level + 1}<small>∞</small></strong></div>
-        <div className={`got-hud__cell got-hud__cell--time${hud.timeLeft < 5 ? ' is-danger' : ''}`}><span>{t('time')}</span><strong>{hud.timeLeft.toFixed(1)}<small>s</small></strong></div>
-        <div className="got-hud__cell"><span>{t('distance')}</span><strong>{hud.distance.toFixed(1)}<small>{t('meters')}</small></strong></div>
-      </header>
-      <div className="got-level-tag"><TrainIcon size={18} /><b>{copy.name}</b><span>{runStarted ? copy.subtitle : t('dragUp')}</span></div>
+      <div className={`got-timer${hud.timeLeft < 5 ? ' is-danger' : ''}`} role="timer" aria-label={`${t('time')} ${Math.ceil(hud.timeLeft)}`}>
+        <strong>{Math.ceil(hud.timeLeft)}</strong><small>s</small>
+      </div>
+      <div key={`level-intro-${level}`} className="got-level-intro" aria-hidden="true"><TrainIcon size={17} /><b>{String(level + 1).padStart(2, '0')} · {copy.name}</b></div>
       <div className="got-exit-cue got-exit-cue--side" aria-hidden="true"><ExitSideIcon size={18} /><b>{t('exitAhead')}</b></div>
       <button className="got-pause" aria-label={t('pause')} onPointerDown={pause}><PauseIcon /></button>
 
