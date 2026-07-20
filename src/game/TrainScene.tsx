@@ -155,6 +155,11 @@ function buildTrain(config: LevelConfig) {
       root.add(box(len, 0.85, 0.16, bench, x, 1.05, z + side * 0.31, true))
       root.add(box(0.16, 0.75, 0.72, C.ink, x - len / 2, 0.67, z))
       root.add(box(0.16, 0.75, 0.72, C.ink, x + len / 2, 0.67, z))
+      // Dense circles along the bench front approximate a continuous collider.
+      // They keep the player out of both occupied and empty seat geometry.
+      for (let colliderX = x - len / 2 + 0.12; colliderX <= x + len / 2 - 0.12; colliderX += 0.32) {
+        obstacles.push({ x: colliderX, z: side * 2.00, r: 0.17 })
+      }
       const seatCount = Math.max(1, Math.floor((len - 0.2) / 0.72))
       const seatSpacing = len / seatCount
       for (let seat = 0; seat < seatCount; seat++) {
