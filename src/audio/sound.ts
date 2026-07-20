@@ -51,5 +51,9 @@ export const sound = {
   coins: () => { tone(720, 0.08, 'sine', 0.045, 820, 0.18); tone(920, 0.08, 'sine', 0.045, undefined, 0.245) },
   unlockHero: () => { [440, 660, 880].forEach((f, i) => tone(f, 0.11, 'triangle', 0.06, undefined, i * 0.085)) },
   equip: () => tone(520, 0.055, 'triangle', 0.035),
-  lose: () => tone(180, 0.42, 'square', 0.065, 95),
+  lose: () => {
+    tone(210, 0.14, 'square', 0.055, 130)
+    tone(118, 0.28, 'sawtooth', 0.07, 72, 0.12)
+    tone(74, 0.72, 'triangle', 0.035, 48, 0.56)
+  },
 }

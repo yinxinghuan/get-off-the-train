@@ -116,6 +116,19 @@ button { font: inherit; }
   strong { margin-top: 4px; font: 850 clamp(30px, 10vw, 44px)/.92 "Arial Rounded MT Bold", "Avenir Next", "PingFang SC", sans-serif; }
 }
 
+.got-fail-shot {
+  position: absolute; inset: 0; z-index: 18; overflow: hidden; pointer-events: none;
+  &::before, &::after { content: ''; position: absolute; left: 0; right: 0; height: 10.5%; background: @ink; animation: got-fail-letterbox 420ms cubic-bezier(.2,.8,.2,1) both; }
+  &::before { top: 0; transform-origin: top; }
+  &::after { bottom: 0; transform-origin: bottom; }
+  span {
+    position: absolute; left: 50%; bottom: calc(12.5% + env(safe-area-inset-bottom)); min-width: 128px; padding: 8px 15px; transform: translate(-50%, 12px);
+    color: @paper; background: fade(@red, 94%); border: 3px solid @ink; border-radius: 999px; box-shadow: 4px 4px 0 @ink;
+    font-size: 13px; font-weight: 900; line-height: 1; letter-spacing: .12em; text-align: center; white-space: nowrap;
+    opacity: 0; animation: got-fail-caption 300ms 280ms ease both;
+  }
+}
+
 .got-input-surface {
   position: absolute; inset: 0; z-index: 8; overflow: hidden; touch-action: none;
 }
@@ -243,6 +256,8 @@ button { font: inherit; }
   100% { opacity: 0; transform: translateX(-8px); visibility: hidden; }
 }
 @keyframes got-warning { from { transform: translateX(-50%) scale(.985); } to { transform: translateX(-50%) scale(1.02); } }
+@keyframes got-fail-letterbox { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes got-fail-caption { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @keyframes got-spin { to { transform: rotate(360deg); } }
 @keyframes got-gesture-finger { 0%, 12% { transform: translate(0, 8px) scale(.94); opacity: 0; } 22% { opacity: 1; } 72% { transform: translate(98px, -14px) scale(1); opacity: 1; } 88%, 100% { transform: translate(98px, -14px) scale(1); opacity: 0; } }
 @keyframes got-gesture-trail { 0%, 15%, 100% { opacity: 0; transform: scaleX(.2); } 30%, 72% { opacity: .8; transform: scaleX(1); } 88% { opacity: 0; } }
@@ -278,4 +293,5 @@ button { font: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .got-gesture__finger { animation: none !important; transform: translate(48px, -8px); }
+  .got-fail-shot span { animation-delay: 0ms; opacity: 1; transform: translate(-50%, 0); }
 }

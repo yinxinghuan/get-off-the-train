@@ -1,4 +1,4 @@
-export type Phase = 'playing' | 'paused' | 'level-clear' | 'game-over'
+export type Phase = 'playing' | 'paused' | 'level-clear' | 'fail-cinematic' | 'game-over'
 
 export interface InputVector { x: number; z: number }
 

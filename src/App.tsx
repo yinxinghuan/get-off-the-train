@@ -20,7 +20,6 @@ const QA_ACTIVE = import.meta.env.DEV && (new URLSearchParams(location.search).h
 const qaHeroParam = import.meta.env.DEV ? new URLSearchParams(location.search).get('qaHero') : null
 const QA_HERO = qaHeroParam && HERO_IDS.includes(qaHeroParam as HeroId) ? qaHeroParam as HeroId : null
 const QA_SCORE = import.meta.env.DEV ? Math.max(0, Number(new URLSearchParams(location.search).get('qaScore') || 0)) : 0
-const QA_FAIL_AFTER = import.meta.env.DEV ? Math.max(0, Number(new URLSearchParams(location.search).get('qaFailAfter') || 0)) : 0
 const initialHud: HudState = { timeLeft: getLevelConfig(QA_LEVEL).time, distance: 12, falls: 0, braced: false, swayWarning: false, swayDirection: 1 }
 interface CollectionSave { coins: number; unlocked: HeroId[]; selected: HeroId; _lastActive?: number }
 const DEFAULT_COLLECTION: CollectionSave = { coins: 0, unlocked: ['commuter'], selected: 'commuter' }
@@ -226,11 +225,10 @@ export default function App() {
     setPhase('level-clear')
   }, [collectionMirror, level, persist, score, sendBeatNotify, submitScore, totalFalls])
 
-  useEffect(() => {
-    if (!QA_FAIL_AFTER || !runStarted || phase !== 'playing') return
-    const timer = window.setTimeout(() => handleOutcome('fail', { timeLeft: config.time, falls: 0 }), QA_FAIL_AFTER * 1000)
-    return () => window.clearTimeout(timer)
-  }, [config.time, handleOutcome, phase, runStarted])
+  const handleFailureStart = useCallback(() => {
+    input.current = { x: 0, z: 0 }
+    setPhase('fail-cinematic')
+  }, [])
 
   const nextLevel = () => {
     const next = level + 1
@@ -296,15 +294,15 @@ export default function App() {
   }, [phase, pause])
 
   return (
-    <main className={`got${hud.swayWarning ? ' got--warning' : ''}${phase === 'game-over' ? ' got--failed' : ''}`}>
-      <TrainScene key={level} level={level} heroId={selectedHero} config={config} active={phase === 'playing' && runStarted} input={input} reducedMotion={reducedMotion} onHud={setHud} onOutcome={handleOutcome} />
+    <main className={`got${hud.swayWarning ? ' got--warning' : ''}${phase === 'fail-cinematic' ? ' got--failure-shot' : ''}${phase === 'game-over' ? ' got--failed' : ''}`}>
+      <TrainScene key={level} level={level} heroId={selectedHero} config={config} active={(phase === 'playing' || phase === 'fail-cinematic') && runStarted} input={input} reducedMotion={reducedMotion} onHud={setHud} onFailureStart={handleFailureStart} onOutcome={handleOutcome} />
       <div className="got__halftone" aria-hidden="true" />
       <div className="got__frame" aria-hidden="true" />
 
-      <div className={`got-timer${hud.timeLeft < 5 ? ' is-danger' : ''}`} role="timer" aria-label={`${t('time')} ${Math.ceil(hud.timeLeft)}, ${t('distance')} ${hud.distance.toFixed(1)} ${t('meters')}`}>
+      {phase !== 'fail-cinematic' && <div className={`got-timer${hud.timeLeft < 5 ? ' is-danger' : ''}`} role="timer" aria-label={`${t('time')} ${Math.ceil(hud.timeLeft)}, ${t('distance')} ${hud.distance.toFixed(1)} ${t('meters')}`}>
         <div className="got-timer__time"><strong>{Math.ceil(hud.timeLeft)}</strong><small>s</small></div>
         <span className="got-timer__distance">{t('distance')} {hud.distance.toFixed(1)}{t('meters')}</span>
-      </div>
+      </div>}
       {showGuide && <div className="got-mission" role="status"><TrainIcon size={16} /><span>{t('mission')}</span></div>}
       {!showGuide && (
         <div key={`level-intro-${level}`} className={`got-level-intro${config.stationEvent === 'normal' ? '' : ` got-level-intro--special got-level-intro--${config.stationEvent}`}`} aria-hidden="true">
@@ -318,7 +316,9 @@ export default function App() {
           )}
         </div>
       )}
-      <button className="got-pause" aria-label={t('pause')} onPointerDown={pause}><PauseIcon /></button>
+      {phase !== 'fail-cinematic' && <button className="got-pause" aria-label={t('pause')} onPointerDown={pause}><PauseIcon /></button>}
+
+      {phase === 'fail-cinematic' && <div className="got-fail-shot" role="status" aria-live="assertive"><span>{t('doorsClosed')}</span></div>}
 
       {phase === 'playing' && (
         <>

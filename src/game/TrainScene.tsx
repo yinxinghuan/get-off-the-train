@@ -16,6 +16,7 @@ interface Props {
   input: MutableRefObject<InputVector>
   reducedMotion: boolean
   onHud: (hud: HudState) => void
+  onFailureStart: () => void
   onOutcome: (kind: 'clear' | 'fail', data: OutcomeData) => void
 }
 
@@ -87,6 +88,7 @@ const QA_SEAT_COLLISION = import.meta.env.DEV && new URLSearchParams(location.se
 const QA_SEAT_STAND = import.meta.env.DEV && new URLSearchParams(location.search).has('qaSeatStand')
 const QA_WRONG_DOOR = import.meta.env.DEV && new URLSearchParams(location.search).has('qaWrongDoor')
 const QA_SPEED = import.meta.env.DEV ? THREE.MathUtils.clamp(Number(new URLSearchParams(location.search).get('qaSpeed') || 1), 1, 5) : 1
+const QA_FAIL_AFTER = import.meta.env.DEV ? Math.max(0, Number(new URLSearchParams(location.search).get('qaFailAfter') || 0)) : 0
 
 function mulberry32(seed: number) {
   return () => {
@@ -189,6 +191,9 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
   const seatSlots: SeatSlot[] = []
   const weatherDrops: THREE.Mesh[] = []
   const puddles: Array<{ x: number; z: number; r: number }> = []
+  const exitDoorLeaves: Array<{ panel: THREE.Group; window: THREE.Group; openX: number; closedX: number; panelScale: number; windowScale: number }> = []
+  const exitSignals: THREE.Mesh[] = []
+  let exitStatusLight: THREE.PointLight | null = null
   const lighting = stationLighting(config.stationEvent)
   const bench = config.variant === 'ad-wrap' ? 0x3d6680 : config.variant === 'maintenance' ? 0x555d61 : 0x315f76
   const wall = config.variant === 'long-seat' ? 0xd9dddc : 0xcbd0d1
@@ -223,8 +228,17 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
     const leafOffset = isOpen ? exitHalf + 0.29 : exitHalf * 0.52
     for (const direction of [-1, 1] as const) {
       const leafX = EXIT_X + direction * leafOffset
-      root.add(box(isOpen ? 0.38 : exitHalf * 0.94, 2.25, 0.16, 0xaeb4b6, leafX, 1.45, insideZ))
-      root.add(box(isOpen ? 0.22 : exitHalf * 0.54, 0.72, 0.04, 0x26343c, leafX, 1.72, insideZ - side * 0.095))
+      const panel = box(isOpen ? 0.38 : exitHalf * 0.94, 2.25, 0.16, 0xaeb4b6, leafX, 1.45, insideZ)
+      const window = box(isOpen ? 0.22 : exitHalf * 0.54, 0.72, 0.04, 0x26343c, leafX, 1.72, insideZ - side * 0.095)
+      root.add(panel, window)
+      if (isOpen) exitDoorLeaves.push({
+        panel,
+        window,
+        openX: leafX,
+        closedX: EXIT_X + direction * exitHalf * 0.52,
+        panelScale: exitHalf * 0.94 / 0.38,
+        windowScale: exitHalf * 0.54 / 0.22,
+      })
     }
 
     const signalColor = isOpen ? 0x8ff0aa : 0xff7a6d
@@ -235,10 +249,12 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
       signal.position.set(x, 2.69, wallZ - side * 0.23)
       signal.userData.ownsMaterial = true
       root.add(signal)
+      if (isOpen) exitSignals.push(signal)
     }
     const statusLight = new THREE.PointLight(isOpen ? 0x66e293 : 0xff554f, isOpen ? 1.55 : 0.72, isOpen ? 3.7 : 2.7, 1.7)
     statusLight.position.set(EXIT_X, 2.48, wallZ - side * 0.20)
     root.add(statusLight)
+    if (isOpen) exitStatusLight = statusLight
     if (isOpen) {
       const exitWarm = new THREE.PointLight(0xffd56a, 2.9, 5.3, 1.55)
       exitWarm.position.set(EXIT_X, 2.12, wallZ - side * 0.23)
@@ -426,7 +442,7 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
     m.userData.ownsMaterial = true
   })
 
-  return { root, handles, carriageLights, obstacles, seatSlots, poleXs, exitHalf, exitSide, exitZ, exitArrow, exitArrowBaseY, weatherDrops, puddles }
+  return { root, handles, carriageLights, obstacles, seatSlots, poleXs, exitHalf, exitSide, exitZ, exitArrow, exitArrowBaseY, weatherDrops, puddles, exitDoorLeaves, exitSignals, exitStatusLight }
 }
 
 function dispose(root: THREE.Object3D) {
@@ -437,7 +453,7 @@ function dispose(root: THREE.Object3D) {
   })
 }
 
-function World({ level, heroId, config, active, input, reducedMotion, onHud, onOutcome }: Props) {
+function World({ level, heroId, config, active, input, reducedMotion, onHud, onFailureStart, onOutcome }: Props) {
   const { scene, camera } = useThree()
   const exitSide = level % 2 === 0 ? 1 : -1
   const train = useMemo(() => buildTrain(config, exitSide), [config, exitSide])
@@ -449,6 +465,8 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
     nextSway: config.swayPeriod, warningSent: false, swayDirection: (level % 2 ? -1 : 1) as -1 | 1,
     swayKick: 0, falls: 0, braceTime: 0, braced: false, hudT: 0, ended: false, lastFrame: 0,
     qaFallDone: false, lastSeatBump: Number.NEGATIVE_INFINITY, nextWetSlip: 1.8,
+    failureStarted: -1, failureDelivered: false,
+    failureCameraFrom: new THREE.Vector3(), failureLookFrom: new THREE.Vector3(),
     boardingsSpawned: 0,
     nextBoardingAt: config.stationEvent === 'inflow' ? 3.2 : 3.7 + ((level * 17) % 10) / 10,
   })
@@ -625,7 +643,51 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
     S.lastFrame = now
     if (dt <= 0) return
     S.time += dt
+
+    if (S.failureStarted >= 0) {
+      const elapsed = S.time - S.failureStarted
+      const duration = reducedMotion ? 0.82 : 2.25
+      const rushRaw = THREE.MathUtils.clamp(elapsed / (reducedMotion ? 0.42 : 0.92), 0, 1)
+      const rush = rushRaw * rushRaw * (3 - 2 * rushRaw)
+      const doorRaw = THREE.MathUtils.clamp((elapsed - 0.08) / (reducedMotion ? 0.28 : 0.62), 0, 1)
+      const doorClose = doorRaw * doorRaw * (3 - 2 * doorRaw)
+      for (const leaf of train.exitDoorLeaves) {
+        leaf.panel.position.x = THREE.MathUtils.lerp(leaf.openX, leaf.closedX, doorClose)
+        leaf.window.position.x = leaf.panel.position.x
+        leaf.panel.scale.x = THREE.MathUtils.lerp(1, leaf.panelScale, doorClose)
+        leaf.window.scale.x = THREE.MathUtils.lerp(1, leaf.windowScale, doorClose)
+      }
+      for (const signal of train.exitSignals) {
+        const material = signal.material as THREE.MeshStandardMaterial
+        material.color.lerpColors(new THREE.Color(0x8ff0aa), new THREE.Color(0xff7a6d), doorClose)
+        material.emissive.lerpColors(new THREE.Color(0x43c96d), new THREE.Color(0xe23535), doorClose)
+      }
+      if (train.exitStatusLight) {
+        train.exitStatusLight.color.lerpColors(new THREE.Color(0x66e293), new THREE.Color(0xff554f), doorClose)
+        train.exitStatusLight.intensity = THREE.MathUtils.lerp(1.55, 1.10, doorClose)
+      }
+      train.exitArrow.scale.setScalar(Math.max(0.001, 1 - doorClose))
+
+      const cameraEnd = cameraGoal.current.set(EXIT_X - 4.15, 3.45, -train.exitSide * 1.18)
+      camera.position.lerpVectors(S.failureCameraFrom, cameraEnd, rush)
+      const lookEnd = new THREE.Vector3(EXIT_X, 1.34, train.exitSide * 2.05)
+      cameraLook.current.lerpVectors(S.failureLookFrom, lookEnd, rush)
+      const slam = reducedMotion ? 0 : Math.max(0, 1 - Math.abs(elapsed - 0.68) / 0.22)
+      camera.position.z += Math.sin(elapsed * 92) * 0.055 * slam
+      camera.lookAt(cameraLook.current)
+
+      const depart = THREE.MathUtils.clamp((elapsed - 1.05) / 0.95, 0, 1)
+      train.root.rotation.z = Math.sin(elapsed * 14) * 0.008 * depart * (reducedMotion ? 0.2 : 1)
+      if (!S.failureDelivered && elapsed >= duration) {
+        S.failureDelivered = true
+        S.ended = true
+        onOutcome('fail', { timeLeft: 0, falls: S.falls })
+      }
+      return
+    }
+
     S.timeLeft = Math.max(0, S.timeLeft - dt)
+    if (QA_FAIL_AFTER > 0 && S.time >= QA_FAIL_AFTER) S.timeLeft = 0
     S.hudT -= dt
 
     const eventChance = (b: Body, salt: number) => {
@@ -1231,9 +1293,13 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
       return
     }
     if (S.timeLeft <= 0) {
-      S.ended = true
+      S.failureStarted = S.time
+      S.failureCameraFrom.copy(camera.position)
+      S.failureLookFrom.copy(cameraLook.current)
+      input.current = { x: 0, z: 0 }
+      onHud({ timeLeft: 0, distance: Math.hypot(EXIT_X - player.x, train.exitZ - player.z), falls: S.falls, braced: false, swayWarning: false, swayDirection: S.swayDirection })
       sound.lose()
-      onOutcome('fail', { timeLeft: 0, falls: S.falls })
+      onFailureStart()
       return
     }
 
