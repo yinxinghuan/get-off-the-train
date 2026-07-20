@@ -3,7 +3,7 @@ import TrainScene from './game/TrainScene'
 import { getLevelConfig, type HudState, type InputVector, type Phase } from './game/types'
 import { sound } from './audio/sound'
 import { locale, t } from './i18n'
-import { ArrowIcon, ExitSideIcon, PauseIcon, TrainIcon } from './ui/Icons'
+import { ArrowIcon, PauseIcon, TrainIcon } from './ui/Icons'
 import { Joystick } from './ui/Joystick'
 import { Leaderboard } from './shared/leaderboard/Leaderboard'
 import { useGameScore, type LeaderboardEntry } from './shared/leaderboard/useGameScore'
@@ -177,7 +177,6 @@ export default function App() {
         <span className="got-timer__distance">{t('distance')} {hud.distance.toFixed(1)}{t('meters')}</span>
       </div>
       <div key={`level-intro-${level}`} className="got-level-intro" aria-hidden="true"><TrainIcon size={17} /><b>{String(level + 1).padStart(2, '0')} · {copy.name}</b></div>
-      <div className="got-exit-cue got-exit-cue--side" aria-hidden="true"><ExitSideIcon size={18} /><b>{t('exitAhead')}</b></div>
       <button className="got-pause" aria-label={t('pause')} onPointerDown={pause}><PauseIcon /></button>
 
       {phase === 'playing' && (

@@ -44,12 +44,26 @@ interface Body {
   lastX: number
   lastZ: number
   player: boolean
-  behavior: 'player' | 'stationary' | 'wandering'
+  behavior: 'player' | 'stationary' | 'wandering' | 'exiting' | 'departed'
 }
 
 interface Obstacle { x: number; z: number; r: number }
 interface SeatSlot { x: number; z: number; yaw: number }
-interface SeatedVisual { group: THREE.Group; phase: number; baseY: number; baseUpperX: number; x: number; z: number; r: number }
+interface SeatedVisual {
+  group: THREE.Group
+  phase: number
+  baseY: number
+  baseUpperX: number
+  x: number
+  z: number
+  r: number
+  seatX: number
+  seatZ: number
+  aisleZ: number
+  state: 'seated' | 'preparing' | 'rising' | 'departed'
+  scheduledAt: number
+  transitionStarted: number
+}
 
 const CAR_MIN_X = -7.65
 const CAR_MAX_X = 7.65
@@ -58,7 +72,6 @@ const CAR_MAX_Z = 2.28
 const START_X = -6.45
 const START_Z = 0
 const EXIT_X = 6.20
-const EXIT_Z = CAR_MAX_Z + 0.62
 const FORWARD_X = 1
 const FORWARD_Z = 0
 const RIGHT_X = 0
@@ -69,6 +82,8 @@ const QA_FALL_KIND = import.meta.env.DEV && new URLSearchParams(location.search)
 const QA_WALK = import.meta.env.DEV && new URLSearchParams(location.search).has('qaWalk')
 const QA_SEAT_VIEW = import.meta.env.DEV && new URLSearchParams(location.search).has('qaSeatView')
 const QA_SEAT_COLLISION = import.meta.env.DEV && new URLSearchParams(location.search).has('qaSeatCollision')
+const QA_SEAT_STAND = import.meta.env.DEV && new URLSearchParams(location.search).has('qaSeatStand')
+const QA_WRONG_DOOR = import.meta.env.DEV && new URLSearchParams(location.search).has('qaWrongDoor')
 
 function mulberry32(seed: number) {
   return () => {
@@ -91,7 +106,7 @@ function addFloorArrow(root: THREE.Group, x: number, z: number, scale = 1, rotat
   root.add(arrow)
 }
 
-function buildTrain(config: LevelConfig) {
+function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
   const root = new THREE.Group()
   const handles: THREE.Group[] = []
   const carriageLights: THREE.PointLight[] = []
@@ -103,49 +118,70 @@ function buildTrain(config: LevelConfig) {
   root.add(box(16.4, 0.32, 5.55, C.ink, 0, -0.04, 0))
   root.add(box(16.05, 0.18, 5.18, 0x62686b, 0, 0.12, 0))
   for (let x = -7.2; x <= 7.2; x += 0.72) root.add(box(0.025, 0.012, 4.96, 0x878d8f, x, 0.218, 0))
-  // The left wall remains continuous; the passenger door opens in the right wall.
-  root.add(box(16.2, 1.6, 0.18, wall, 0, 1.0, CAR_MIN_Z - 0.31, true))
-
-  // A real subway door sits on the side of the carriage near its far end.
   const exitHalf = config.variant === 'narrow-door' ? 0.76 : 1.22
+  const exitZ = exitSide > 0 ? CAR_MAX_Z + 0.62 : CAR_MIN_Z - 0.62
   const sideStart = CAR_MIN_X - 0.45
   const sideEnd = CAR_MAX_X + 0.45
   const beforeLen = EXIT_X - exitHalf - sideStart
   const afterStart = EXIT_X + exitHalf
   const afterLen = sideEnd - afterStart
-  root.add(box(beforeLen, 2.5, 0.22, wall, sideStart + beforeLen / 2, 1.42, CAR_MAX_Z + 0.25, true))
-  root.add(box(afterLen, 2.5, 0.22, wall, afterStart + afterLen / 2, 1.42, CAR_MAX_Z + 0.25, true))
-  root.add(box(0.24, 2.7, 0.34, C.red, EXIT_X - exitHalf - 0.1, 1.48, CAR_MAX_Z + 0.2, true))
-  root.add(box(0.24, 2.7, 0.34, C.red, EXIT_X + exitHalf + 0.1, 1.48, CAR_MAX_Z + 0.2, true))
-  root.add(box(exitHalf * 2.65, 0.28, 0.34, C.ink, EXIT_X, 2.76, CAR_MAX_Z + 0.2, true))
-  root.add(box(exitHalf * 2.25, 0.16, 0.37, C.yellow, EXIT_X, 2.77, CAR_MAX_Z + 0.16, true))
-  root.add(box(exitHalf * 2.12, 0.08, 0.68, C.yellow, EXIT_X, 0.23, CAR_MAX_Z + 0.16, true))
-  root.add(box(exitHalf * 2.4, 0.12, 1.3, C.floor, EXIT_X, 0.10, CAR_MAX_Z + 0.94))
-  for (let i = -4; i <= 4; i++) root.add(box(0.12, 0.035, 0.58, i % 2 ? C.ink : C.red, EXIT_X + i * exitHalf * 0.22, 0.29, CAR_MAX_Z + 0.14))
+  const exitArrow = new THREE.Group()
+  const exitArrowBaseY = 1.34
+
+  for (const side of [-1, 1] as const) {
+    const isOpen = side === exitSide
+    const wallZ = side > 0 ? CAR_MAX_Z + 0.25 : CAR_MIN_Z - 0.25
+    const insideZ = wallZ - side * 0.10
+    root.add(box(beforeLen, 2.5, 0.22, wall, sideStart + beforeLen / 2, 1.42, wallZ, true))
+    root.add(box(afterLen, 2.5, 0.22, wall, afterStart + afterLen / 2, 1.42, wallZ, true))
+    root.add(box(0.24, 2.7, 0.34, C.red, EXIT_X - exitHalf - 0.1, 1.48, wallZ, true))
+    root.add(box(0.24, 2.7, 0.34, C.red, EXIT_X + exitHalf + 0.1, 1.48, wallZ, true))
+    root.add(box(exitHalf * 2.65, 0.28, 0.34, C.ink, EXIT_X, 2.76, wallZ, true))
+    root.add(box(exitHalf * 2.25, 0.16, 0.37, isOpen ? C.yellow : C.red, EXIT_X, 2.77, wallZ - side * 0.04, true))
+    root.add(box(exitHalf * 2.12, 0.08, 0.68, isOpen ? C.yellow : C.red, EXIT_X, 0.23, wallZ - side * 0.04, true))
+    root.add(box(exitHalf * 2.4, 0.12, 1.3, C.floor, EXIT_X, 0.10, wallZ + side * 0.75))
+    for (let i = -4; i <= 4; i++) root.add(box(0.12, 0.035, 0.58, i % 2 ? C.ink : C.red, EXIT_X + i * exitHalf * 0.22, 0.29, wallZ - side * 0.06))
+
+    const leafOffset = isOpen ? exitHalf + 0.29 : exitHalf * 0.52
+    for (const direction of [-1, 1] as const) {
+      const leafX = EXIT_X + direction * leafOffset
+      root.add(box(isOpen ? 0.38 : exitHalf * 0.94, 2.25, 0.16, 0xaeb4b6, leafX, 1.45, insideZ))
+      root.add(box(isOpen ? 0.22 : exitHalf * 0.54, 0.72, 0.04, 0x26343c, leafX, 1.72, insideZ - side * 0.095))
+    }
+
+    const signalColor = isOpen ? 0x8ff0aa : 0xff7a6d
+    const signalEmissive = isOpen ? 0x43c96d : 0xe23535
+    for (const x of [EXIT_X - 0.48, EXIT_X, EXIT_X + 0.48]) {
+      const signal = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.055, 12), new THREE.MeshStandardMaterial({ color: signalColor, emissive: signalEmissive, emissiveIntensity: 2.8 }))
+      signal.rotation.x = Math.PI / 2
+      signal.position.set(x, 2.69, wallZ - side * 0.23)
+      signal.userData.ownsMaterial = true
+      root.add(signal)
+    }
+    const statusLight = new THREE.PointLight(isOpen ? 0x66e293 : 0xff554f, isOpen ? 1.55 : 0.72, isOpen ? 3.7 : 2.7, 1.7)
+    statusLight.position.set(EXIT_X, 2.48, wallZ - side * 0.20)
+    root.add(statusLight)
+    if (isOpen) {
+      const exitWarm = new THREE.PointLight(0xffd56a, 2.9, 5.3, 1.55)
+      exitWarm.position.set(EXIT_X, 2.12, wallZ - side * 0.23)
+      root.add(exitWarm)
+    }
+  }
+
+  const arrowMat = new THREE.MeshStandardMaterial({ color: 0xffdf3f, emissive: 0xd9a91b, emissiveIntensity: 1.15, roughness: 0.42, metalness: 0.18 })
+  const arrowStem = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.18, 0.25), arrowMat)
+  const arrowHead = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.58, 4), arrowMat)
+  arrowHead.rotation.z = -Math.PI / 2
+  arrowHead.position.x = 0.61
+  exitArrow.add(arrowStem, arrowHead)
+  exitArrow.position.set(EXIT_X, exitArrowBaseY, exitSide * 1.38)
+  exitArrow.rotation.y = exitSide > 0 ? -Math.PI / 2 : Math.PI / 2
+  exitArrow.traverse((object) => { const mesh = object as THREE.Mesh; if (mesh.isMesh) { mesh.castShadow = true; mesh.userData.ownsMaterial = true } })
+  root.add(exitArrow)
 
   // The forward end is now visibly closed, removing the false suggestion that
   // players should run through the front of the train.
   root.add(box(0.22, 2.5, 5.18, wall, CAR_MAX_X + 0.25, 1.42, 0, true))
-  // Parked sliding-door leaves, dark glazing, and signal lamps make the side
-  // opening read as a real subway doorway instead of a gap in a toy wall.
-  root.add(box(0.38, 2.25, 0.16, 0xaeb4b6, EXIT_X - exitHalf - 0.29, 1.45, CAR_MAX_Z + 0.17))
-  root.add(box(0.38, 2.25, 0.16, 0xaeb4b6, EXIT_X + exitHalf + 0.29, 1.45, CAR_MAX_Z + 0.17))
-  root.add(box(0.22, 0.72, 0.04, 0x26343c, EXIT_X - exitHalf - 0.29, 1.72, CAR_MAX_Z + 0.075))
-  root.add(box(0.22, 0.72, 0.04, 0x26343c, EXIT_X + exitHalf + 0.29, 1.72, CAR_MAX_Z + 0.075))
-  for (const x of [EXIT_X - 0.48, EXIT_X, EXIT_X + 0.48]) {
-    const signal = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.055, 12), new THREE.MeshStandardMaterial({ color: 0x8ff0aa, emissive: 0x43c96d, emissiveIntensity: 2.8 }))
-    signal.rotation.x = Math.PI / 2
-    signal.position.set(x, 2.69, CAR_MAX_Z + 0.015)
-    signal.userData.ownsMaterial = true
-    root.add(signal)
-  }
-  const exitWarm = new THREE.PointLight(0xffd56a, 2.9, 5.3, 1.55)
-  exitWarm.position.set(EXIT_X, 2.12, CAR_MAX_Z + 0.02)
-  root.add(exitWarm)
-  const exitGreen = new THREE.PointLight(0x66e293, 1.45, 3.5, 1.7)
-  exitGreen.position.set(EXIT_X, 2.72, CAR_MAX_Z - 0.12)
-  root.add(exitGreen)
-
   // Benches read as authored subway furniture, with dark end caps.
   const benchSegments = config.variant === 'long-seat' ? [[-3.5, 6.7], [3.0, 2.8]] : [[-4.2, 4.8], [0.0, 2.0]]
   for (const side of [-1, 1]) {
@@ -172,23 +208,26 @@ function buildTrain(config: LevelConfig) {
     }
   }
 
-  // Windows and ad cards on the far wall.
-  for (const x of [-5.8, -3.2, -0.6, 2.0]) {
-    root.add(box(1.65, 0.72, 0.05, C.ink, x, 1.28, CAR_MIN_Z - 0.20))
-    root.add(box(1.44, 0.54, 0.045, C.cyan, x, 1.29, CAR_MIN_Z - 0.16))
-  }
+  // Both sides share the same window, advertising and panel rhythm. Only the
+  // station-side door state and signal color are allowed to differ.
   const adColors = config.variant === 'ad-wrap' ? [C.red, C.yellow, 0xa77abc, C.cyan] : [C.yellow, C.paper, C.red, C.paper]
-  for (let i = 0; i < 4; i++) {
-    const x = -5.8 + i * 2.6
-    root.add(box(1.35, 0.42, 0.055, adColors[i], x, 2.02, CAR_MIN_Z - 0.16, true))
-    root.add(box(0.82, 0.07, 0.02, C.ink, x, 2.07, CAR_MIN_Z - 0.11))
+  for (const side of [-1, 1] as const) {
+    const wallZ = side > 0 ? CAR_MAX_Z + 0.25 : CAR_MIN_Z - 0.25
+    const insideZ = wallZ - side * 0.09
+    for (const x of [-5.8, -3.2, -0.6, 2.0]) {
+      root.add(box(1.65, 0.72, 0.05, C.ink, x, 1.28, insideZ))
+      root.add(box(1.44, 0.54, 0.045, C.cyan, x, 1.29, insideZ - side * 0.04))
+    }
+    for (let i = 0; i < 4; i++) {
+      const x = -5.8 + i * 2.6
+      root.add(box(1.35, 0.42, 0.055, adColors[i], x, 2.02, insideZ - side * 0.04, true))
+      root.add(box(0.82, 0.07, 0.02, C.ink, x, 2.07, insideZ - side * 0.09))
+    }
+    for (let i = 0; i < 11; i++) root.add(box(0.025, 2.15, 0.025, 0x8f979a, -7.0 + i * 1.38, 1.42, insideZ))
+    root.add(box(10.8, 0.18, 0.08, C.ink, -0.45, 2.52, insideZ))
+    root.add(box(10.5, 0.11, 0.05, C.paper, -0.45, 2.53, insideZ - side * 0.06))
+    for (let i = 0; i < 9; i++) root.add(cyl(0.07, 0.04, i > 6 ? C.red : C.yellow, -5.1 + i * 1.17, 2.56, insideZ - side * 0.10, false, 8).rotateX(Math.PI / 2))
   }
-  for (let i = 0; i < 11; i++) root.add(box(0.025, 2.15, 0.025, 0x8f979a, -7.0 + i * 1.38, 1.42, CAR_MIN_Z - 0.13))
-
-  // Route strip + station lights.
-  root.add(box(10.8, 0.18, 0.08, C.ink, -0.45, 2.52, CAR_MIN_Z - 0.12))
-  root.add(box(10.5, 0.11, 0.05, C.paper, -0.45, 2.53, CAR_MIN_Z - 0.06))
-  for (let i = 0; i < 9; i++) root.add(cyl(0.07, 0.04, i > 6 ? C.red : C.yellow, -5.1 + i * 1.17, 2.56, CAR_MIN_Z - 0.02, false, 8))
 
   // Poles, rail and hanging straps remain visible because the roof is absent.
   root.add(cyl(0.055, 15.0, C.ink, 0, 3.0, 0, false, 8).rotateZ(Math.PI / 2))
@@ -246,8 +285,8 @@ function buildTrain(config: LevelConfig) {
   }
 
   for (const x of [-5.5, -2.7, 0.1, 2.9, 4.75]) addFloorArrow(root, x, 0, 0.72)
-  addFloorArrow(root, EXIT_X, 0.75, 0.72, -Math.PI / 2)
-  addFloorArrow(root, EXIT_X, 1.55, 0.72, -Math.PI / 2)
+  addFloorArrow(root, EXIT_X, exitSide * 0.75, 0.72, exitSide > 0 ? -Math.PI / 2 : Math.PI / 2)
+  addFloorArrow(root, EXIT_X, exitSide * 1.55, 0.72, exitSide > 0 ? -Math.PI / 2 : Math.PI / 2)
 
   // Environment-only material pass: characters keep their authored low-poly
   // materials, while the carriage gets physically lit rough metal/plastic.
@@ -271,7 +310,7 @@ function buildTrain(config: LevelConfig) {
     m.userData.ownsMaterial = true
   })
 
-  return { root, handles, carriageLights, obstacles, seatSlots, poleXs, exitHalf }
+  return { root, handles, carriageLights, obstacles, seatSlots, poleXs, exitHalf, exitSide, exitZ, exitArrow, exitArrowBaseY }
 }
 
 function dispose(root: THREE.Object3D) {
@@ -284,7 +323,8 @@ function dispose(root: THREE.Object3D) {
 
 function World({ level, config, active, input, reducedMotion, onHud, onOutcome }: Props) {
   const { scene, camera } = useThree()
-  const train = useMemo(() => buildTrain(config), [config])
+  const exitSide = level % 2 === 0 ? 1 : -1
+  const train = useMemo(() => buildTrain(config, exitSide), [config, exitSide])
   const fx = useMemo(() => new THREE.Group(), [])
   const cameraGoal = useRef(new THREE.Vector3())
   const cameraLook = useRef(new THREE.Vector3(START_X + FORWARD_X * 4.8, 0.70, START_Z + FORWARD_Z * 4.8))
@@ -338,8 +378,29 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
           x: slot.x + Math.sin(slot.yaw) * footReach,
           z: slot.z + Math.cos(slot.yaw) * footReach,
           r: 0.18,
+          seatX: slot.x,
+          seatZ: slot.z,
+          aisleZ: Math.sign(slot.z) * 1.40,
+          state: 'seated',
+          scheduledAt: Number.POSITIVE_INFINITY,
+          transitionStarted: 0,
         })
       })
+
+      const riserCount = Math.min(3, 1 + Math.floor((level + 1) / 2))
+      const eligibleRisers = S.seated
+        .filter((seat) => seat.seatX >= -3.8 && seat.seatX <= 4.6)
+        .sort((a, b) => a.seatX - b.seatX)
+      const chosen = new Set<SeatedVisual>()
+      for (let i = 0; i < riserCount && chosen.size < eligibleRisers.length; i++) {
+        let pick = Math.floor((i + 1) * eligibleRisers.length / (riserCount + 1))
+        while (chosen.has(eligibleRisers[pick]) && pick + 1 < eligibleRisers.length) pick++
+        const seat = eligibleRisers[pick]
+        if (!seat || chosen.has(seat)) continue
+        chosen.add(seat)
+        const interval = 4.6 - Math.min(level, 4) * 0.35
+        seat.scheduledAt = (QA_SEAT_STAND ? 0.85 : 4.8) + i * interval + rand() * (QA_SEAT_STAND ? 0.15 : 1.2)
+      }
     }
 
     const passengerTarget = QA_WALK ? 0 : Math.min(20, config.passengers)
@@ -376,7 +437,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
         : strapStand ? (activity === 'strap-left' ? -1 : 1) * (0.30 + rand() * 0.18)
         : (rand() < 0.5 ? -1 : 1) * (poleStand ? 0.38 + rand() * 0.30 : 0.86 + rand() * 0.44)
       if (Math.hypot(x - START_X, z - START_Z) < 1.35) continue
-      if (Math.abs(x - EXIT_X) < train.exitHalf + 0.32 && z > 1.05) continue
+      if (Math.abs(x - EXIT_X) < train.exitHalf + 0.32 && Math.abs(z) > 1.05) continue
       if (train.obstacles.some((o) => Math.hypot(x - o.x, z - o.z) < r + o.r + 0.10)) continue
       if (S.bodies.some((other) => Math.hypot(x - other.x, z - other.z) < r + other.r + 0.16)) continue
 
@@ -488,8 +549,76 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       const impactDip = S.swayKick > 0.55 && (i + Math.floor(S.time * 18)) % 3 === 0 ? 0.38 : 1
       lamp.intensity = (reducedMotion ? 1.0 : slowBreath * looseLamp * impactDip) * 1.24
     }
+    const arrowMotion = reducedMotion ? 0.35 : 1
+    const arrowPulse = 1 + Math.sin(S.time * Math.PI * 2 * 1.35) * 0.045 * arrowMotion
+    train.exitArrow.position.y = train.exitArrowBaseY + Math.sin(S.time * Math.PI * 2 * 1.35) * 0.08 * arrowMotion
+    train.exitArrow.scale.setScalar(arrowPulse)
     for (const seated of S.seated) {
       const rig = seated.group.userData.rig as CharacterRig
+      if (seated.state === 'departed') continue
+      if (seated.state === 'seated' && S.time >= seated.scheduledAt) {
+        seated.state = 'preparing'
+        seated.transitionStarted = S.time
+        sound.seatRise()
+      }
+      if (seated.state === 'preparing') {
+        const raw = THREE.MathUtils.clamp((S.time - seated.transitionStarted) / 0.72, 0, 1)
+        const p = raw * raw * (3 - 2 * raw)
+        seated.group.position.y = seated.baseY
+        if (rig.upperBody) rig.upperBody.rotation.x = seated.baseUpperX + p * 0.43
+        if (rig.head) rig.head.rotation.x = -p * 0.16
+        if (rig.legL) rig.legL.rotation.x = THREE.MathUtils.lerp(-Math.PI / 2, -1.34, p)
+        if (rig.legR) rig.legR.rotation.x = THREE.MathUtils.lerp(-Math.PI / 2, -1.24, p)
+        if (rig.shinL) rig.shinL.rotation.x = THREE.MathUtils.lerp(Math.PI / 2, 1.34, p)
+        if (rig.shinR) rig.shinR.rotation.x = THREE.MathUtils.lerp(Math.PI / 2, 1.22, p)
+        const prop = seated.group.userData.activityProp as THREE.Object3D | undefined
+        if (prop) {
+          const propScale = THREE.MathUtils.lerp(1, 0.24, p)
+          prop.scale.setScalar(propScale)
+          if (raw > 0.9) prop.visible = false
+        }
+        if (raw >= 1) {
+          seated.state = 'rising'
+          seated.transitionStarted = S.time
+        }
+        continue
+      }
+      if (seated.state === 'rising') {
+        const raw = THREE.MathUtils.clamp((S.time - seated.transitionStarted) / 0.58, 0, 1)
+        const p = raw * raw * (3 - 2 * raw)
+        seated.group.position.x = seated.seatX
+        seated.group.position.z = THREE.MathUtils.lerp(seated.seatZ, seated.aisleZ, p)
+        seated.group.position.y = THREE.MathUtils.lerp(seated.baseY, 0.24, p)
+        if (rig.pose) rig.pose.rotation.z = 0
+        if (rig.upperBody) rig.upperBody.rotation.x = THREE.MathUtils.lerp(seated.baseUpperX + 0.43, 0, p)
+        if (rig.head) rig.head.rotation.x = THREE.MathUtils.lerp(-0.16, 0, p)
+        if (rig.legL) rig.legL.rotation.x = THREE.MathUtils.lerp(-1.34, -0.08, p)
+        if (rig.legR) rig.legR.rotation.x = THREE.MathUtils.lerp(-1.24, 0.10, p)
+        if (rig.shinL) { rig.shinL.rotation.x = THREE.MathUtils.lerp(1.34, 0.08, p); rig.shinL.scale.y = THREE.MathUtils.lerp(1.92, 1, p) }
+        if (rig.shinR) { rig.shinR.rotation.x = THREE.MathUtils.lerp(1.22, 0, p); rig.shinR.scale.y = THREE.MathUtils.lerp(1.92, 1, p) }
+        if (rig.footL) { rig.footL.position.z = THREE.MathUtils.lerp(0.16, 0.07, p); rig.footL.scale.z = THREE.MathUtils.lerp(1.35, 1, p) }
+        if (rig.footR) { rig.footR.position.z = THREE.MathUtils.lerp(0.16, 0.07, p); rig.footR.scale.z = THREE.MathUtils.lerp(1.35, 1, p) }
+        if (rig.armL) rig.armL.rotation.set(THREE.MathUtils.lerp(-0.56, 0, p), 0, THREE.MathUtils.lerp(-0.10, 0, p))
+        if (rig.armR) rig.armR.rotation.set(THREE.MathUtils.lerp(-0.56, 0, p), 0, THREE.MathUtils.lerp(0.10, 0, p))
+        if (rig.forearmL) rig.forearmL.rotation.x = THREE.MathUtils.lerp(-0.72, 0, p)
+        if (rig.forearmR) rig.forearmR.rotation.x = THREE.MathUtils.lerp(-0.72, 0, p)
+        if (raw >= 1) {
+          seated.group.position.set(seated.seatX, 0.24, seated.aisleZ)
+          seated.group.rotation.y = Math.PI / 2
+          seated.group.userData.seated = false
+          seated.group.userData.activity = 'natural'
+          S.bodies.push({
+            group: seated.group, x: seated.seatX, z: seated.aisleZ, vx: 0, vz: 0, r: 0.22,
+            mass: 1.05, stability: 2.0, fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side',
+            protectedUntil: S.time + 0.35, phase: seated.phase, homeX: seated.seatX, homeZ: seated.aisleZ,
+            targetX: EXIT_X, targetZ: Math.sign(seated.aisleZ) * 0.62, nextWander: Number.POSITIVE_INFINITY,
+            pauseUntil: 0, wanderSpeed: Math.min(1.15, 0.78 + level * 0.06), gaitPhase: 0,
+            lastX: seated.seatX, lastZ: seated.aisleZ, player: false, behavior: 'exiting',
+          })
+          seated.state = 'departed'
+        }
+        continue
+      }
       const rate = 2.7 + (Math.sin(seated.phase) + 1) * 0.25
       const breath = Math.sin(S.time * rate + seated.phase)
       const seatedMotion = reducedMotion ? 0.35 : 1
@@ -504,8 +633,9 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     const player = S.player
     if (QA_AUTORUN) input.current = QA_SEAT_COLLISION
       ? { x: -1, z: 0 }
-      : player.x < EXIT_X - 0.2 ? { x: QA_WALK ? 0.24 : 0, z: QA_WALK ? -0.97 : -1 } : { x: 1, z: 0 }
+      : player.x < EXIT_X - 0.2 ? { x: QA_WALK ? 0.24 : 0, z: QA_WALK ? -0.97 : -1 } : { x: QA_WRONG_DOOR ? -train.exitSide : train.exitSide, z: 0 }
     for (const b of S.bodies) {
+      if (b.behavior === 'departed') continue
       const fallen = b.fallenUntil > S.time
       let npcWalking = false
       if (b.player) {
@@ -520,6 +650,31 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
           const targetVz = (FORWARD_Z * forward + RIGHT_Z * stickX) * 4.1
           b.vx += (targetVx - b.vx) * Math.min(1, 18 * dt)
           b.vz += (targetVz - b.vz) * Math.min(1, 18 * dt)
+        }
+      } else if (!fallen && b.behavior === 'exiting') {
+        const turningToDoor = b.x >= EXIT_X - 0.25
+        const targetX = turningToDoor ? EXIT_X : EXIT_X - 0.10
+        const targetZ = turningToDoor ? train.exitZ + train.exitSide * 0.72 : Math.sign(b.homeZ) * 0.62
+        const dx = targetX - b.x
+        const dz = targetZ - b.z
+        const distance = Math.hypot(dx, dz)
+        if (distance > 0.08) {
+          const desiredVx = dx / distance * b.wanderSpeed
+          const desiredVz = dz / distance * b.wanderSpeed
+          const steer = Math.min(1, dt * 4.4)
+          b.vx += (desiredVx - b.vx) * steer
+          b.vz += (desiredVz - b.vz) * steer
+          npcWalking = true
+        }
+        const beyondExit = train.exitSide > 0 ? b.z > train.exitZ + 0.48 : b.z < train.exitZ - 0.48
+        if (beyondExit && Math.abs(b.x - EXIT_X) < train.exitHalf + 0.45) {
+          b.behavior = 'departed'
+          b.group.visible = false
+          b.x = CAR_MAX_X + 12
+          b.z = CAR_MAX_Z + 12
+          b.vx = 0
+          b.vz = 0
+          continue
         }
       } else if (!fallen && b.behavior === 'wandering') {
         const toTarget = Math.hypot(b.targetX - b.x, b.targetZ - b.z)
@@ -554,9 +709,11 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       b.z += b.vz * dt
 
       const inExitLane = Math.abs(b.x - EXIT_X) < train.exitHalf + b.r * 0.65
-      const maxZ = b.player && inExitLane ? EXIT_Z + 0.78 : CAR_MAX_Z - b.r
+      const canUseExit = (b.player || b.behavior === 'exiting') && inExitLane
+      const minZ = canUseExit && train.exitSide < 0 ? train.exitZ - 0.78 : CAR_MIN_Z + b.r
+      const maxZ = canUseExit && train.exitSide > 0 ? train.exitZ + 0.78 : CAR_MAX_Z - b.r
       b.x = THREE.MathUtils.clamp(b.x, CAR_MIN_X + b.r, CAR_MAX_X - b.r)
-      b.z = THREE.MathUtils.clamp(b.z, CAR_MIN_Z + b.r, maxZ)
+      b.z = THREE.MathUtils.clamp(b.z, minZ, maxZ)
 
       for (const o of train.obstacles) {
         const dx = b.x - o.x, dz = b.z - o.z
@@ -573,6 +730,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       if (b.player) {
         for (let seatIndex = 0; seatIndex < S.seated.length; seatIndex++) {
           const o = S.seated[seatIndex]
+          if (o.state !== 'seated' && o.state !== 'preparing') continue
           const dx = b.x - o.x, dz = b.z - o.z
           const d = Math.hypot(dx, dz) || 0.001
           const min = b.r + o.r
@@ -598,8 +756,10 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     // Pairwise circular collision with momentum transfer and crowd pressure.
     for (let i = 0; i < S.bodies.length; i++) {
       const a = S.bodies[i]
+      if (a.behavior === 'departed') continue
       for (let j = i + 1; j < S.bodies.length; j++) {
         const b = S.bodies[j]
+        if (b.behavior === 'departed') continue
         const dx = b.x - a.x, dz = b.z - a.z
         const d2 = dx * dx + dz * dz
         const min = a.r + b.r
@@ -635,6 +795,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     }
 
     for (const b of S.bodies) {
+      if (b.behavior === 'departed') continue
       const fallen = b.fallenUntil > S.time
       const speed = Math.hypot(b.vx, b.vz)
       const travelled = Math.hypot(b.x - b.lastX, b.z - b.lastZ)
@@ -766,7 +927,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
         }
       }
       if (!fallen) {
-        if (speed > 0.08 && (b.player || b.behavior === 'wandering')) {
+        if (speed > 0.08 && (b.player || b.behavior === 'wandering' || b.behavior === 'exiting')) {
           const desiredYaw = Math.atan2(b.vx, b.vz)
           const yawDelta = Math.atan2(Math.sin(desiredYaw - b.group.rotation.y), Math.cos(desiredYaw - b.group.rotation.y))
           b.group.rotation.y += yawDelta * Math.min(1, dt * (b.player ? 11 : 4.8))
@@ -827,7 +988,8 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
     )
     camera.lookAt(cameraLook.current)
 
-    if (player.z > EXIT_Z + 0.36 && Math.abs(player.x - EXIT_X) < train.exitHalf + 0.4) {
+    const playerBeyondExit = train.exitSide > 0 ? player.z > train.exitZ + 0.36 : player.z < train.exitZ - 0.36
+    if (playerBeyondExit && Math.abs(player.x - EXIT_X) < train.exitHalf + 0.4) {
       S.ended = true
       sound.win()
       onOutcome('clear', { timeLeft: S.timeLeft, falls: S.falls })
@@ -844,7 +1006,7 @@ function World({ level, config, active, input, reducedMotion, onHud, onOutcome }
       S.hudT = 0.08
       onHud({
         timeLeft: S.timeLeft,
-        distance: Math.hypot(EXIT_X - player.x, EXIT_Z - player.z),
+        distance: Math.hypot(EXIT_X - player.x, train.exitZ - player.z),
         falls: S.falls,
         braced: S.braced,
         swayWarning: warningNow,

@@ -181,9 +181,12 @@ export function applyPassengerActivity(g: THREE.Group, activity: PassengerActivi
     book.position.set(0, 0.34, 0.48)
     book.rotation.x = -0.42
     rig.upperBody.add(book)
+    g.userData.activityProp = book
   }
   if ((activity === 'calling' || activity === 'phone') && rig.forearmR) {
-    rig.forearmR.add(box(0.16, 0.32, 0.065, C.ink, 0, -0.38, 0.22))
+    const phone = box(0.16, 0.32, 0.065, C.ink, 0, -0.38, 0.22)
+    rig.forearmR.add(phone)
+    g.userData.activityProp = phone
   }
   return g
 }

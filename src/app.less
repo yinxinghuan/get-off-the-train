@@ -79,14 +79,6 @@ button { font: inherit; }
   b { min-width: 0; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 }
 
-.got-exit-cue {
-  position: absolute; z-index: 11; top: calc(116px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
-  min-width: 72px; min-height: 36px; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 5px 9px;
-  color: @ink; background: @yellow; border: 3px solid @ink; border-radius: 999px; box-shadow: 3px 3px 0 @ink; pointer-events: none;
-  b { font-size: 12px; font-weight: 850; line-height: 1; letter-spacing: .04em; }
-  &--side { left: auto; right: 18%; transform: none; }
-}
-
 .got-pause {
   position: absolute; z-index: 12; right: 17px; top: calc(18px + env(safe-area-inset-top)); width: 48px; height: 48px;
   display: grid; place-items: center; color: @ink; background: fade(@paper, 96%); border: 3px solid @ink; border-radius: 50%; box-shadow: 3px 3px 0 @ink;
@@ -201,7 +193,6 @@ button { font: inherit; }
   .got-timer strong { font-size: 52px; }
   .got-pause { top: calc(13px + env(safe-area-inset-top)); }
   .got-level-intro { top: calc(72px + env(safe-area-inset-top)); }
-  .got-exit-cue { top: calc(96px + env(safe-area-inset-top)); }
   .got-cover__bottom { bottom: calc(19px + env(safe-area-inset-bottom)); gap: 8px; }
   .got-cover__local-title h1 { font-size: 26px; }
   .got-cover__bottom p { font-size: 14px; line-height: 1.35; }
