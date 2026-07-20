@@ -30,7 +30,7 @@ function PreviewHero({ heroId, side }: { heroId: HeroId; side: -1 | 0 | 1 }) {
     // The in-game hero carries a navigation light. Studio previews use only
     // the shared three-point rig so neighboring models cannot light each other.
     model.traverse((object) => {
-      if (object instanceof THREE.PointLight) object.visible = false
+      if (object instanceof THREE.Light) object.visible = false
     })
     return model
   }, [heroId])

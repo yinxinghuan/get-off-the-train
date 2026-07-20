@@ -389,10 +389,13 @@ function addHeroMarker(player: THREE.Group, heroId: HeroId) {
   if (heroId !== 'commuter' && heroId !== 'cat' && heroId !== 'dog') {
     player.add(box(0.56, 0.34, 0.18, C.red, 0, 1.30, -0.36))
   }
-  const playerLight = new THREE.PointLight(0xffe7a0, 0.68, 3.6, 1.8)
-  playerLight.position.set(0, 1.9, -0.38)
+  const playerLight = new THREE.SpotLight(0xffe7a0, 8.5, 5.2, 0.88, 0.8, 1.45)
+  const lightTarget = new THREE.Object3D()
+  playerLight.position.set(0, 3.8, -0.18)
+  lightTarget.position.set(0, 0.05, 0.22)
+  playerLight.target = lightTarget
   playerLight.userData.playerLight = true
-  player.add(playerLight)
+  player.add(playerLight, lightTarget)
   player.userData.heroId = heroId
   return player
 }
