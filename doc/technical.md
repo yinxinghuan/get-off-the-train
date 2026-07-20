@@ -11,7 +11,7 @@
 
 ## 2. 目录结构
 
-- `src/App.tsx`：四态无限流程、稳定关卡配置、金币奖励、角色收藏镜像状态、排行榜提交、破纪录通知、暂停恢复与全局输入。
+- `src/App.tsx`：五态无限流程、稳定关卡配置、金币奖励、角色收藏镜像状态、排行榜提交、破纪录通知、暂停恢复与全局输入。
 - `src/game/TrainScene.tsx`：车厢建模、动态灯组、人物生成、主循环、碰撞、晃动、摔倒、出口判定和 HUD 采样。
 - `src/game/assetLibrary.ts`：通过 `import.meta.glob` 收集 52 个正式 GLB，启动时并行预载、失败重试、数量校验，并为每个游戏实例深拷贝网格与材质。
 - `src/assets/characters/`：从 `_lowpoly_lab` 统一导出并复制进发布包的 52 个真实角色 GLB；文件名保持 `<category>__<id>.glb`。
