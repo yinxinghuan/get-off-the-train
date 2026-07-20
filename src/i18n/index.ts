@@ -26,6 +26,7 @@ const zh = {
   collection: '角色收藏', coins: '金币', coinReward: '本关金币', equipped: '使用中', equip: '装备', unlock: '解锁角色',
   locked: '未解锁', owned: '已拥有', needCoins: '还差金币', closeCollection: '关闭角色收藏', collectionHint: '换个身份继续挤地铁',
   human: '人物', monster: '怪物', animal: '动物', saving: '正在读取收藏',
+  previousHero: '上一个角色', nextHero: '下一个角色',
 }
 
 const en: typeof zh = {
@@ -41,9 +42,10 @@ const en: typeof zh = {
   you: 'YOU', yourRun: 'YOUR RECORD', openProfile: 'OPEN PROFILE', close: 'CLOSE', loading: 'READING CAR RECORDS',
   openAlterU: 'Open in AlterU to view the live leaderboard.', getAlterU: 'GET ALTERU', emptyRank: 'No one made it this far. Be first.',
   dragUp: 'DRAG ANYWHERE TO MOVE', exitAhead: 'EXIT',
-  collection: 'CHARACTER COLLECTION', coins: 'COINS', coinReward: 'CAR COINS', equipped: 'EQUIPPED', equip: 'EQUIP', unlock: 'UNLOCK',
+  collection: 'HEROES', coins: 'COINS', coinReward: 'CAR COINS', equipped: 'EQUIPPED', equip: 'EQUIP', unlock: 'UNLOCK',
   locked: 'LOCKED', owned: 'OWNED', needCoins: 'COINS NEEDED', closeCollection: 'CLOSE COLLECTION', collectionHint: 'Pick a new commuter for the next car.',
   human: 'HUMAN', monster: 'MONSTER', animal: 'ANIMAL', saving: 'LOADING COLLECTION',
+  previousHero: 'PREVIOUS CHARACTER', nextHero: 'NEXT CHARACTER',
 }
 
 const dict = locale === 'zh' ? zh : en

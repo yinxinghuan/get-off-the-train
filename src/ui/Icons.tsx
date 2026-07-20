@@ -34,3 +34,6 @@ export function LockIcon({ size = 24 }: IconProps) {
 export function CollectionIcon({ size = 24 }: IconProps) {
   return <svg {...base(size)}><path d="M5 7h14v12H5zM8 7V5h8v2" /><circle cx="9" cy="12" r="1.5" /><path d="M7.5 17c.4-2 2.6-3.1 4.5-3.1S16.1 15 16.5 17" /></svg>
 }
+export function ChevronIcon({ size = 24 }: IconProps) {
+  return <svg {...base(size)}><path d="m15 5-7 7 7 7" /></svg>
+}

@@ -4,7 +4,7 @@ import type { CSSProperties } from 'react'
 import * as THREE from 'three'
 import { HERO_COLORS, HERO_COSTS, HERO_IDS, makePlayer, type HeroId } from '../game/models'
 import { heroName, t } from '../i18n'
-import { CloseIcon, CoinIcon, LockIcon } from './Icons'
+import { ChevronIcon, CloseIcon, CoinIcon, LockIcon } from './Icons'
 
 interface Props {
   coins: number
@@ -23,7 +23,7 @@ function heroCategory(hero: HeroId) {
   return t('human')
 }
 
-function PreviewHero({ heroId }: { heroId: HeroId }) {
+function PreviewHero({ heroId, side }: { heroId: HeroId; side: -1 | 0 | 1 }) {
   const root = useRef<THREE.Group>(null)
   const hero = useMemo(() => makePlayer(heroId), [heroId])
   useEffect(() => () => {
@@ -34,10 +34,21 @@ function PreviewHero({ heroId }: { heroId: HeroId }) {
   }, [hero])
   useFrame(({ clock }, dt) => {
     if (!root.current) return
-    root.current.rotation.y += dt * 0.42
-    root.current.position.y = -0.38 + Math.abs(Math.sin(clock.elapsedTime * 2.7)) * 0.04
+    if (side === 0) root.current.rotation.y += dt * 0.36
+    root.current.position.y = -0.53 + Math.abs(Math.sin(clock.elapsedTime * 2.7 + side)) * (side === 0 ? 0.055 : 0.025)
   })
-  return <group ref={root} scale={1.55}><primitive object={hero} dispose={null} /></group>
+  return (
+    <group ref={root} position={[side * 1.55, -0.53, side === 0 ? 0.25 : -0.45]} scale={side === 0 ? 1.72 : 0.92}>
+      <primitive object={hero} dispose={null} />
+    </group>
+  )
+}
+
+function HeroStage({ preview }: { preview: HeroId }) {
+  const index = HERO_IDS.indexOf(preview)
+  const previous = HERO_IDS[(index - 1 + HERO_IDS.length) % HERO_IDS.length]
+  const next = HERO_IDS[(index + 1) % HERO_IDS.length]
+  return <><PreviewHero heroId={previous} side={-1} /><PreviewHero heroId={preview} side={0} /><PreviewHero heroId={next} side={1} /></>
 }
 
 export function CollectionShop({ coins, unlocked, selected, preview, loading, onPreview, onChoose, onClose }: Props) {
@@ -54,6 +65,21 @@ export function CollectionShop({ coins, unlocked, selected, preview, loading, on
         : shortfall > 0
           ? `${t('needCoins')} ${shortfall}`
           : `${t('unlock')} · ${price}`
+  const currentIndex = HERO_IDS.indexOf(preview)
+  const move = (direction: -1 | 1) => {
+    const nextIndex = (currentIndex + direction + HERO_IDS.length) % HERO_IDS.length
+    onPreview(HERO_IDS[nextIndex])
+  }
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+      event.preventDefault()
+      move(event.key === 'ArrowLeft' ? -1 : 1)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  })
 
   return (
     <div className="got-collection" role="dialog" aria-modal="true" aria-label={t('collection')}>
@@ -64,40 +90,32 @@ export function CollectionShop({ coins, unlocked, selected, preview, loading, on
           <button className="got-collection__close" aria-label={t('closeCollection')} onClick={onClose}><CloseIcon /></button>
         </header>
 
-        <div className="got-collection__preview" style={{ '--hero-color': HERO_COLORS[preview] } as CSSProperties}>
-          <Canvas camera={{ position: [3.1, 2.8, 4.2], fov: 34 }} dpr={[1, 1.4]} gl={{ alpha: true, antialias: true }}>
-            <ambientLight intensity={1.25} />
-            <directionalLight position={[3, 5, 4]} intensity={2.3} color={0xffedc7} />
-            <directionalLight position={[-3, 2, -2]} intensity={0.85} color={0x8bd5cd} />
-            <PreviewHero heroId={preview} />
+        <div className="got-collection__stage" style={{ '--hero-color': HERO_COLORS[preview] } as CSSProperties}>
+          <div className="got-collection__platform" aria-hidden="true" />
+          <Canvas camera={{ position: [0, 2.35, 6.2], fov: 35 }} dpr={[1, 1.45]} gl={{ alpha: true, antialias: true }}>
+            <ambientLight intensity={1.3} />
+            <directionalLight position={[3, 5, 4]} intensity={2.45} color={0xffedc7} />
+            <directionalLight position={[-3, 2, -2]} intensity={0.9} color={0x8bd5cd} />
+            <HeroStage preview={preview} />
           </Canvas>
-          <div className="got-collection__identity"><span>{heroCategory(preview)}</span><strong>{heroName(preview)}</strong></div>
+          <button type="button" className="got-collection__step got-collection__step--prev" onClick={() => move(-1)} aria-label={t('previousHero')}><ChevronIcon /></button>
+          <button type="button" className="got-collection__step got-collection__step--next" onClick={() => move(1)} aria-label={t('nextHero')}><ChevronIcon /></button>
+          <div className="got-collection__index" aria-label={`${currentIndex + 1} / ${HERO_IDS.length}`}><b>{currentIndex + 1}</b><span>/</span>{HERO_IDS.length}</div>
         </div>
 
-        <div className="got-collection__grid">
-          {HERO_IDS.map((hero) => {
-            const owned = unlocked.includes(hero)
-            const active = hero === preview
-            const equipped = hero === selected
-            return (
-              <button
-                key={hero}
-                type="button"
-                className={`got-hero-card${active ? ' is-active' : ''}${equipped ? ' is-equipped' : ''}`}
-                onClick={() => onPreview(hero)}
-                aria-pressed={active}
-              >
-                <span className="got-hero-card__swatch" style={{ background: HERO_COLORS[hero] }} aria-hidden="true" />
-                <span className="got-hero-card__copy"><b>{heroName(hero)}</b><small>{heroCategory(hero)}</small></span>
-                <span className="got-hero-card__state">
-                  {equipped ? t('equipped') : owned ? t('owned') : <><LockIcon size={13} />{HERO_COSTS[hero]}</>}
-                </span>
-              </button>
-            )
-          })}
+        <div className="got-collection__identity">
+          <span>{heroCategory(preview)}</span>
+          <strong>{heroName(preview)}</strong>
+          <small className={isUnlocked ? 'is-owned' : 'is-locked'}>
+            {selected === preview ? t('equipped') : isUnlocked ? t('owned') : <><LockIcon size={14} />{price} {t('coins')}</>}
+          </small>
         </div>
 
-        <button className="got-btn got-collection__action" disabled={disabled || selected === preview} onPointerDown={() => onChoose(preview)}>
+        <div className="got-collection__rail" aria-hidden="true">
+          {HERO_IDS.map((hero) => <i key={hero} className={hero === preview ? 'is-active' : unlocked.includes(hero) ? 'is-owned' : ''} />)}
+        </div>
+
+        <button className="got-btn got-collection__action" disabled={disabled || selected === preview} onClick={() => onChoose(preview)}>
           {!isUnlocked && shortfall === 0 && <CoinIcon size={20} />}{actionLabel}
         </button>
       </section>

@@ -17,7 +17,7 @@
 - `src/game/types.ts`：状态类型、前 5 关数值表、无限难度公式与按关卡编号缓存。
 - `src/ui/Joystick.tsx`：全场景 Pointer Capture 动态摇杆、按帧合并视图更新、首次输入启动和循环虚拟拇指引导。
 - `src/ui/Icons.tsx`：统一 24×24 墨线 SVG 图标家族。
-- `src/ui/CollectionShop.tsx`：单一 3D 主角预览、金币余额、两列可滚动角色卡、购买/装备/不足状态。
+- `src/ui/CollectionShop.tsx`：单 Canvas 的三角色 3D 轮播舞台、金币余额、循环切换、购买/装备/不足状态。
 - `src/audio/sound.ts`：限流的合成音效与静音状态。
 - `src/i18n/index.ts`：按 `game_locale` / 浏览器语言切换 zh/en 的轻量双语字典。
 - `src/game-id.ts`：由平台脚本注入的永久 UUID，全局写入 `window.__GAME_UUID__`。
@@ -34,7 +34,7 @@
 
 `App.tsx` 维护 `playing / paused / level-clear / game-over`，并用 `runStarted` 区分“真实场景已显示但等待首次输入”和计时中的游戏。首次触摸或方向键输入才解锁声音、记录赛前最高分并启动倒计时；虚拟拇指只是 DOM 演示，不写入物理、分数或平台事件。前 5 关读取手工配置，之后由 `getLevelConfig()` 按封顶公式生成并缓存在 `endlessCache`；`App` 还用 `useMemo([level])` 固定当前配置，避免 80 ms HUD 更新改变引用并重建世界。每关用 `level` 作为 `TrainScene` key，确保只有关卡变化才独立重建物理实体和计时器。高频位置、速度、倒地计时和晃动阶段留在 `useRef`，由 `useFrame` 更新；HUD 以 80 ms 间隔采样。暂停、过关、失败、排行榜与角色收藏共用奶油圆角卡、圆润系统字体、2.5–4 px 柔墨边和 3–6 px 小硬影。
 
-每次过关由 `App` 计算 `30 + min(level+1,10)×5 + 零摔倒10` 金币。`useGameSave<CollectionSave>()` 只负责首次加载与写入；`collectionMirror` 从 `savedData` 一次性播种，之后所有余额、解锁与装备的读改写都经过同一 mirror，再调用 `persist()` 作为副作用，避免第二次购买读取旧 `savedData` 覆盖第一次购买。存档包含 `coins / unlocked / selected` 全字段；本地同步写入，Aigram 云端按永久 UUID 防抖同步。商店卡在滚动容器内使用 `onClick`，入口也在完整 click 后延迟一个任务挂载，杜绝松手穿透。切换角色时 `TrainScene` 只替换现有玩家的 `group` 并复制位置、旋转和可见性，不重置当前关卡物理进度。
+每次过关由 `App` 计算 `30 + min(level+1,10)×5 + 零摔倒10` 金币。`useGameSave<CollectionSave>()` 只负责首次加载与写入；`collectionMirror` 从 `savedData` 一次性播种，之后所有余额、解锁与装备的读改写都经过同一 mirror，再调用 `persist()` 作为副作用，避免第二次购买读取旧 `savedData` 覆盖第一次购买。存档包含 `coins / unlocked / selected` 全字段；本地同步写入，Aigram 云端按永久 UUID 防抖同步。商店入口在完整 click 后延迟一个任务挂载，杜绝松手穿透；轮播只创建一个 Canvas，并按当前索引同时生成上一名、当前与下一名三个真实模型，中央模型以 1.72 倍舞台缩放持续呼吸/转身，两侧以 0.92 倍缩放提供视觉预告。左右 SVG 箭头与键盘方向键循环修改 `previewHero`，购买/装备按钮只作用于中央角色。切换角色时 `TrainScene` 只替换现有玩家的 `group` 并复制位置、旋转和可见性，不重置当前关卡物理进度。
 
 ### 屏幕适配与输入
 
