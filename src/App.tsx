@@ -57,7 +57,7 @@ export default function App() {
   const [showGuide, setShowGuide] = useState(!QA_ACTIVE)
   const [showBoard, setShowBoard] = useState(false)
   const [showCollection, setShowCollection] = useState(false)
-  const [previewHero, setPreviewHero] = useState<HeroId>('commuter')
+  const [previewHero, setPreviewHero] = useState<HeroId>(QA_HERO ?? 'commuter')
   const [levelCoins, setLevelCoins] = useState(0)
   const input = useRef<InputVector>({ x: 0, z: 0 })
   const phaseBeforePause = useRef<Phase>('playing')

@@ -2,7 +2,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { PerspectiveCamera } from '@react-three/drei'
 import { MutableRefObject, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { applyPassengerActivity, box, C, cyl, makeMonsterPassenger, makePlayer, makeProfessionPassenger, makeSeatedProfessionPassenger, MONSTER_KINDS, PROFESSION_KINDS, toon } from './models'
+import { ANIMAL_LIBRARY_IDS, applyPassengerActivity, box, C, cyl, HERO_IDS, HUMAN_LIBRARY_IDS, isBroadLibraryCharacter, isSmallLibraryCharacter, makeLibraryPassenger, makePlayer, makeSeatedLibraryPassenger, MONSTER_LIBRARY_IDS, toon } from './models'
 import type { CharacterRig, HeroId, PassengerActivity } from './models'
 import type { HudState, InputVector, LevelConfig } from './types'
 import { sound } from '../audio/sound'
@@ -304,8 +304,9 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
     const guide = m.userData.guide === true
     m.material = new THREE.MeshStandardMaterial({
       color,
-      roughness: metal ? 0.34 : 0.72,
-      metalness: metal ? 0.72 : 0.04,
+      roughness: metal ? 0.58 : 0.86,
+      metalness: metal ? 0.28 : 0,
+      flatShading: true,
       emissive: guide ? color : new THREE.Color(0x000000),
       emissiveIntensity: guide ? 0.22 : 0,
       transparent: m.material.transparent,
@@ -366,8 +367,8 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
         if (emptySeats.has(index)) return
         const activityRoll = (index * 7 + level * 3) % 20
         const activity = activityRoll < 6 ? 'reading' : activityRoll < 15 ? 'phone' : 'rest'
-        const profession = PROFESSION_KINDS[(index * 5 + level * 3) % PROFESSION_KINDS.length]
-        const group = makeSeatedProfessionPassenger(profession, activity)
+        const passengerId = HUMAN_LIBRARY_IDS[(index * 5 + level * 3) % HUMAN_LIBRARY_IDS.length]
+        const group = makeSeatedLibraryPassenger(passengerId, activity)
         const rig = group.userData.rig as CharacterRig
         const baseY = 0.75 - (rig.hipY ?? 1) * group.scale.y
         group.position.set(slot.x, baseY, slot.z)
@@ -414,9 +415,15 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
     while (made < passengerTarget && attempts < 2400) {
       attempts++
       const behavior: Body['behavior'] = made < moverTarget ? 'wandering' : 'stationary'
-      const monsterEvery = level < 3 ? 0 : level === 3 ? 7 : level === 4 ? 4 : level < 10 ? 3 : 2
-      const monsterKind = monsterEvery > 0 && made % monsterEvery === 0 ? MONSTER_KINDS[(made / monsterEvery + level) % MONSTER_KINDS.length | 0] : null
-      const profession = PROFESSION_KINDS[(made * 5 + level * 3) % PROFESSION_KINDS.length]
+      const ordinaryRoster = HUMAN_LIBRARY_IDS.slice(0, 30)
+      const roster = level === 0
+        ? ordinaryRoster.slice(0, 15)
+        : level === 1
+          ? ordinaryRoster
+          : level === 2
+            ? [...ordinaryRoster, ...MONSTER_LIBRARY_IDS]
+            : HERO_IDS
+      const passengerId = roster[(level * passengerTarget + made) % roster.length]
       const activityRoll = ((made - moverTarget) * 11 + level * 5 + 100) % 100
       const activity: PassengerActivity = behavior === 'wandering'
         ? 'natural'
@@ -425,11 +432,10 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
             : activityRoll < 60 ? 'reading'
               : activityRoll < 78 ? 'calling'
                 : activityRoll < 90 ? 'phone' : 'natural'
-      const broadProfession = profession === 'businessman' || profession === 'firefighter' || profession === 'construction' || profession === 'executive' || profession === 'security'
-      const smallProfession = profession === 'student' || profession === 'barista'
-      const broad = monsterKind === 'werewolf' || (!monsterKind && broadProfession)
-      const small = monsterKind === 'skeleton' || (!monsterKind && smallProfession)
-      const ghost = monsterKind === 'ghost'
+      const broad = isBroadLibraryCharacter(passengerId)
+      const small = isSmallLibraryCharacter(passengerId)
+      const ghost = passengerId === 'ghost'
+      const nonHuman = (MONSTER_LIBRARY_IDS as readonly string[]).includes(passengerId) || (ANIMAL_LIBRARY_IDS as readonly string[]).includes(passengerId)
       const r = broad ? 0.27 : small ? 0.18 : 0.22
       const strapStand = activity === 'strap-left' || activity === 'strap-right'
       const poleStand = behavior === 'stationary' && !strapStand && rand() >= 0.66
@@ -445,8 +451,9 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
       if (train.obstacles.some((o) => Math.hypot(x - o.x, z - o.z) < r + o.r + 0.10)) continue
       if (S.bodies.some((other) => Math.hypot(x - other.x, z - other.z) < r + other.r + 0.16)) continue
 
-      const group = monsterKind ? makeMonsterPassenger(monsterKind) : makeProfessionPassenger(profession)
-      applyPassengerActivity(group, monsterKind ? 'natural' : activity)
+      const group = makeLibraryPassenger(passengerId)
+      applyPassengerActivity(group, nonHuman ? 'natural' : activity)
+      group.userData.libraryId = passengerId
       group.position.set(x, 0.24, z)
       group.rotation.y = behavior === 'wandering' ? Math.PI / 2 : (z < 0 ? 0 : Math.PI) + (rand() - 0.5) * 0.16
       train.root.add(group)
@@ -1046,10 +1053,10 @@ export default function TrainScene(props: Props) {
       shadows
       dpr={[1, 1.65]}
       gl={{ antialias: true, alpha: false }}
-      onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 0.96 }}
+      onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.0; gl.shadowMap.type = THREE.PCFSoftShadowMap }}
     >
-      <color attach="background" args={[0x0d0b12]} />
-      <fog attach="fog" args={[0x0d0b12, 21, 42]} />
+      <color attach="background" args={[0x111a22]} />
+      <fog attach="fog" args={[0x111a22, 23, 46]} />
       <PerspectiveCamera
         makeDefault
         position={[START_X - FORWARD_X * 5.2, 6.05, START_Z - FORWARD_Z * 5.2]}
@@ -1057,9 +1064,10 @@ export default function TrainScene(props: Props) {
         near={0.15}
         far={100}
       />
-      <hemisphereLight args={[0xaeb1bd, 0x2b202b, 0.36]} />
-      <directionalLight position={[-6, 12, 8]} intensity={1.05} color={0xffe5b6} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={10} shadow-camera-bottom={-10} />
-      <directionalLight position={[8, 6, -9]} intensity={0.28} color={0x8db9c3} />
+      <hemisphereLight args={[0xffffff, 0x51636b, 0.55]} />
+      <directionalLight position={[-6.5, 16, 8]} intensity={3.05} color={0xffffff} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={10} shadow-camera-bottom={-10} shadow-camera-near={0.5} shadow-camera-far={60} shadow-bias={-0.0004} shadow-radius={2.4} />
+      <directionalLight position={[9, 5, -3]} intensity={0.18} color={0xdfe8ff} />
+      <directionalLight position={[5, 7, -10]} intensity={0.28} color={0xfff0d8} />
       <World {...props} />
     </Canvas>
   )

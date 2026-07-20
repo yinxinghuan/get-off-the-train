@@ -25,7 +25,7 @@ const zh = {
   dragUp: '任意位置拖动移动', exitAhead: '出口',
   collection: '角色收藏', coins: '金币', coinReward: '本关金币', equipped: '使用中', equip: '装备', unlock: '解锁角色',
   locked: '未解锁', owned: '已拥有', needCoins: '还差金币', closeCollection: '关闭角色收藏', collectionHint: '换个身份继续挤地铁',
-  human: '人物', monster: '怪物', animal: '动物', saving: '正在读取收藏',
+  human: '人物', monster: '怪物', animal: '动物', special: '特殊角色', saving: '正在读取收藏',
   previousHero: '上一个角色', nextHero: '下一个角色',
 }
 
@@ -44,7 +44,7 @@ const en: typeof zh = {
   dragUp: 'DRAG ANYWHERE TO MOVE', exitAhead: 'EXIT',
   collection: 'HEROES', coins: 'COINS', coinReward: 'CAR COINS', equipped: 'EQUIPPED', equip: 'EQUIP', unlock: 'UNLOCK',
   locked: 'LOCKED', owned: 'OWNED', needCoins: 'COINS NEEDED', closeCollection: 'CLOSE COLLECTION', collectionHint: 'Pick a new commuter for the next car.',
-  human: 'HUMAN', monster: 'MONSTER', animal: 'ANIMAL', saving: 'LOADING COLLECTION',
+  human: 'HUMAN', monster: 'MONSTER', animal: 'ANIMAL', special: 'SPECIAL', saving: 'LOADING COLLECTION',
   previousHero: 'PREVIOUS CHARACTER', nextHero: 'NEXT CHARACTER',
 }
 
@@ -52,8 +52,18 @@ const dict = locale === 'zh' ? zh : en
 export function t(key: keyof typeof zh) { return dict[key] }
 
 const heroNames = {
-  zh: { commuter: '赶班族', cop: '警察', nurse: '护士', firefighter: '消防员', chef: '厨师', courier: '快递员', zombie: '僵尸', vampire: '吸血鬼', cat: '地铁猫', dog: '通勤犬' },
-  en: { commuter: 'COMMUTER', cop: 'COP', nurse: 'NURSE', firefighter: 'FIREFIGHTER', chef: 'CHEF', courier: 'COURIER', zombie: 'ZOMBIE', vampire: 'VAMPIRE', cat: 'METRO CAT', dog: 'COMMUTER DOG' },
+  zh: {
+    commuter: '赶班族', shopkeeper: '店员', granny: '奶奶', oldman: '老先生', blonde: '金发女士', kid: '小学生', businessman: '商务主管', officeWoman: '办公室职员', student: '学生', darkWoman: '都市女士', worker: '工人', teen: '少年', fitWoman: '健身达人', chef: '厨师', bigGuy: '壮汉',
+    cop: '警察', nurse: '护士', firefighter: '消防员', construction: '建筑工', delivery: '报童', cowboy: '牛仔', punk: '朋克', rapper: '说唱歌手', biker: '机车客', goth: '哥特女士', executive: '高管', courier: '快递员', janitor: '清洁工', barista: '咖啡师', securityGuard: '保安', swat: '特警', viking: '维京战士', combatMech: '战斗机器人', minotaur: '牛头战士',
+    vampire: '吸血鬼', werewolf: '狼人', zombie: '僵尸', ghost: '幽灵', skeleton: '骷髅', mummy: '木乃伊',
+    pig: '小猪', cow: '奶牛', cat: '地铁猫', fox: '狐狸', chicken: '小鸡', frog: '青蛙', dog: '通勤犬', sheep: '绵羊', rabbit: '兔子', bear: '棕熊', duck: '鸭子',
+  },
+  en: {
+    commuter: 'COMMUTER', shopkeeper: 'SHOPKEEPER', granny: 'GRANNY', oldman: 'OLD MAN', blonde: 'BLONDE', kid: 'KID', businessman: 'BUSINESSMAN', officeWoman: 'OFFICE WOMAN', student: 'STUDENT', darkWoman: 'CITY WOMAN', worker: 'WORKER', teen: 'TEEN', fitWoman: 'FIT WOMAN', chef: 'CHEF', bigGuy: 'BIG GUY',
+    cop: 'COP', nurse: 'NURSE', firefighter: 'FIREFIGHTER', construction: 'CONSTRUCTION', delivery: 'NEWSIE', cowboy: 'COWBOY', punk: 'PUNK', rapper: 'RAPPER', biker: 'BIKER', goth: 'GOTH', executive: 'EXECUTIVE', courier: 'COURIER', janitor: 'JANITOR', barista: 'BARISTA', securityGuard: 'SECURITY', swat: 'SWAT', viking: 'VIKING', combatMech: 'COMBAT MECH', minotaur: 'MINOTAUR',
+    vampire: 'VAMPIRE', werewolf: 'WEREWOLF', zombie: 'ZOMBIE', ghost: 'GHOST', skeleton: 'SKELETON', mummy: 'MUMMY',
+    pig: 'PIG', cow: 'COW', cat: 'METRO CAT', fox: 'FOX', chicken: 'CHICKEN', frog: 'FROG', dog: 'COMMUTER DOG', sheep: 'SHEEP', rabbit: 'RABBIT', bear: 'BEAR', duck: 'DUCK',
+  },
 } as const
 
 export type HeroNameId = keyof typeof heroNames.zh

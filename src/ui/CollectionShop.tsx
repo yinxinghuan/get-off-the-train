@@ -2,7 +2,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import * as THREE from 'three'
-import { HERO_COLORS, HERO_COSTS, HERO_IDS, makePlayer, type HeroId } from '../game/models'
+import { ANIMAL_LIBRARY_IDS, HERO_COLORS, HERO_COSTS, HERO_IDS, makePlayer, MONSTER_LIBRARY_IDS, type HeroId } from '../game/models'
 import { heroName, t } from '../i18n'
 import { ChevronIcon, CloseIcon, CoinIcon, LockIcon } from './Icons'
 
@@ -18,8 +18,9 @@ interface Props {
 }
 
 function heroCategory(hero: HeroId) {
-  if (hero === 'cat' || hero === 'dog') return t('animal')
-  if (hero === 'zombie' || hero === 'vampire') return t('monster')
+  if ((ANIMAL_LIBRARY_IDS as readonly string[]).includes(hero)) return t('animal')
+  if ((MONSTER_LIBRARY_IDS as readonly string[]).includes(hero)) return t('monster')
+  if (hero === 'combatMech' || hero === 'viking' || hero === 'minotaur' || hero === 'swat') return t('special')
   return t('human')
 }
 
@@ -32,8 +33,15 @@ function PreviewHero({ heroId, side }: { heroId: HeroId; side: -1 | 0 | 1 }) {
     model.traverse((object) => {
       if (object instanceof THREE.Light) object.visible = false
     })
-    return model
-  }, [heroId])
+    const bounds = new THREE.Box3().setFromObject(model)
+    const size = bounds.getSize(new THREE.Vector3())
+    const center = bounds.getCenter(new THREE.Vector3())
+    const fitted = new THREE.Group()
+    model.position.set(-center.x, -bounds.min.y, -center.z)
+    fitted.scale.setScalar((side === 0 ? 2.18 : 1.35) / Math.max(0.01, size.y))
+    fitted.add(model)
+    return fitted
+  }, [heroId, side])
   useEffect(() => () => {
     hero.traverse((object) => {
       const mesh = object as THREE.Mesh
@@ -43,10 +51,10 @@ function PreviewHero({ heroId, side }: { heroId: HeroId; side: -1 | 0 | 1 }) {
   useFrame(({ clock }, dt) => {
     if (!root.current) return
     if (side === 0) root.current.rotation.y += dt * 0.36
-    root.current.position.y = -0.53 + Math.abs(Math.sin(clock.elapsedTime * 2.7 + side)) * (side === 0 ? 0.055 : 0.025)
+    root.current.position.y = -0.82 + Math.abs(Math.sin(clock.elapsedTime * 2.7 + side)) * (side === 0 ? 0.055 : 0.025)
   })
   return (
-    <group ref={root} position={[side * 1.55, -0.53, side === 0 ? 0.25 : -0.45]} scale={side === 0 ? 1.72 : 0.92}>
+    <group ref={root} position={[side * 1.58, -0.82, side === 0 ? 0.25 : -0.45]}>
       <primitive object={hero} dispose={null} />
     </group>
   )
@@ -100,10 +108,11 @@ export function CollectionShop({ coins, unlocked, selected, preview, loading, on
 
         <div className="got-collection__stage" style={{ '--hero-color': HERO_COLORS[preview] } as CSSProperties}>
           <div className="got-collection__platform" aria-hidden="true" />
-          <Canvas camera={{ position: [0, 2.35, 6.2], fov: 35 }} dpr={[1, 1.45]} gl={{ alpha: true, antialias: true }} onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 0.96 }}>
-            <hemisphereLight args={[0xffedd1, 0x443b46, 0.32]} />
-            <directionalLight position={[3, 5, 4]} intensity={1.35} color={0xffedc7} />
-            <directionalLight position={[-3, 2, -2]} intensity={0.38} color={0x8bd5cd} />
+          <Canvas camera={{ position: [0, 1.55, 6.2], fov: 35 }} dpr={[1, 1.45]} gl={{ alpha: true, antialias: true }} onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.0 }}>
+            <hemisphereLight args={[0xffffff, 0x51636b, 0.55]} />
+            <directionalLight position={[6.5, 16, 8]} intensity={3.05} color={0xffffff} />
+            <directionalLight position={[-9, 5, -3]} intensity={0.18} color={0xdfe8ff} />
+            <directionalLight position={[-5, 7, -10]} intensity={0.28} color={0xfff0d8} />
             <HeroStage preview={preview} />
           </Canvas>
           <button type="button" className="got-collection__step got-collection__step--prev" onClick={() => move(-1)} aria-label={t('previousHero')}><ChevronIcon /></button>

@@ -307,37 +307,53 @@ export function makeSeatedProfessionPassenger(kind: ProfessionKind, activity: 'r
   return poseAsSeated(makeProfessionPassenger(kind), activity)
 }
 
-export type HeroId = 'commuter' | 'cop' | 'nurse' | 'firefighter' | 'chef' | 'courier' | 'zombie' | 'vampire' | 'cat' | 'dog'
+export const HUMAN_LIBRARY_IDS = [
+  'commuter', 'shopkeeper', 'granny', 'oldman', 'blonde', 'kid', 'businessman', 'officeWoman', 'student', 'darkWoman', 'worker', 'teen', 'fitWoman', 'chef', 'bigGuy',
+  'cop', 'nurse', 'firefighter', 'construction', 'delivery', 'cowboy', 'punk', 'rapper', 'biker', 'goth',
+  'executive', 'courier', 'janitor', 'barista', 'securityGuard', 'swat', 'viking', 'combatMech', 'minotaur',
+] as const
+export const MONSTER_LIBRARY_IDS = ['vampire', 'werewolf', 'zombie', 'ghost', 'skeleton', 'mummy'] as const
+export const ANIMAL_LIBRARY_IDS = ['pig', 'cow', 'cat', 'fox', 'chicken', 'frog', 'dog', 'sheep', 'rabbit', 'bear', 'duck'] as const
+export const HERO_IDS = [...HUMAN_LIBRARY_IDS, ...MONSTER_LIBRARY_IDS, ...ANIMAL_LIBRARY_IDS] as const
+export type HeroId = (typeof HERO_IDS)[number]
+export type AnimalKind = (typeof ANIMAL_LIBRARY_IDS)[number]
 
-export const HERO_IDS: HeroId[] = ['commuter', 'cop', 'nurse', 'firefighter', 'chef', 'courier', 'zombie', 'vampire', 'cat', 'dog']
+export const HERO_COSTS = Object.fromEntries(HERO_IDS.map((id, index) => [id, index === 0 ? 0 : Math.min(945, 45 + index * 18)])) as Record<HeroId, number>
 
-export const HERO_COSTS: Record<HeroId, number> = {
-  commuter: 0,
-  cop: 60,
-  nurse: 90,
-  firefighter: 130,
-  chef: 170,
-  courier: 220,
-  zombie: 270,
-  vampire: 330,
-  cat: 400,
-  dog: 480,
+const heroAccent = (id: HeroId) => ANIMAL_LIBRARY_IDS.includes(id as AnimalKind)
+  ? '#c18b52'
+  : MONSTER_LIBRARY_IDS.includes(id as MonsterKind)
+    ? '#6f8f73'
+    : id === 'combatMech' ? '#62b8b0' : id === 'viking' || id === 'minotaur' ? '#a66a3f' : '#d6a74a'
+export const HERO_COLORS = Object.fromEntries(HERO_IDS.map((id) => [id, heroAccent(id)])) as Record<HeroId, string>
+
+const libraryHumanStyles: Partial<Record<HeroId, CharacterStyle>> = {
+  shopkeeper: professionStyles.shopkeeper,
+  granny: { skin: C.skin1, top: 0x68735a, bottom: 0x87566e, hair: 0xb7b1aa, accent: C.cyan, body: 'normal', feature: 'bun' },
+  oldman: { skin: C.skin3, top: 0x77736b, bottom: 0x604b39, hair: 0xb7b1aa, accent: C.cyan, body: 'normal', feature: 'scarf' },
+  blonde: { skin: C.skin1, top: 0x4e6684, bottom: 0x4e6684, hair: 0xd8c174, accent: C.cyan, body: 'normal', feature: 'vest' },
+  kid: { skin: C.skin1, top: 0x9a5b43, bottom: 0x405a73, hair: 0x654027, accent: C.cyan, body: 'small', feature: 'bag' },
+  businessman: professionStyles.businessman,
+  officeWoman: professionStyles['office-woman'],
+  student: professionStyles.student,
+  darkWoman: { skin: C.skin4, top: 0x875367, bottom: 0x5b3e54, hair: 0x231d25, accent: C.cyan, body: 'normal', feature: 'bun' },
+  worker: { skin: C.skin4, top: 0x73716d, bottom: 0x604a37, hair: 0x231d25, accent: C.cyan, body: 'broad', feature: 'hat' },
+  teen: { skin: C.skin3, top: 0x864743, bottom: 0x3c4655, hair: 0xc6b46b, accent: C.cyan, body: 'small', feature: 'hat' },
+  fitWoman: { skin: C.skin3, top: 0x9a5d60, bottom: 0x5f4e6b, hair: 0x231d25, accent: C.cyan, body: 'normal', feature: 'bun' },
+  chef: professionStyles.chef,
+  bigGuy: { skin: C.skin3, top: 0x546b55, bottom: 0x654d38, hair: 0xb7b1aa, accent: C.cyan, body: 'broad', feature: 'vest' },
+  cowboy: { skin: C.skin3, top: 0x795237, bottom: 0x4a5260, hair: 0x3c291e, accent: 0xb56c3f, body: 'normal', feature: 'hat' },
+  punk: { skin: C.skin1, top: 0x29252d, bottom: 0x3b3541, hair: C.cyan, accent: C.red, body: 'small', feature: 'vest' },
+  rapper: { skin: C.skin4, top: 0xb64337, bottom: 0xb64337, hair: 0x231d25, accent: 0xe5c24f, body: 'broad', feature: 'vest' },
+  biker: { skin: C.skin2, top: 0x29282a, bottom: 0x3b4450, hair: 0x231d25, accent: C.paper, body: 'broad', feature: 'scarf' },
+  goth: { skin: 0xd8d4cf, top: 0x27232b, bottom: 0x27232b, hair: 0x19151b, accent: C.cyan, body: 'normal', feature: 'scarf' },
+  viking: { skin: C.skin2, top: 0x55483c, bottom: 0x443c36, hair: 0x8a5631, accent: 0xc1aa75, body: 'broad', feature: 'hat' },
+  swat: { skin: C.skin3, top: 0x262f38, bottom: 0x202830, hair: 0x231d25, accent: C.cyan, body: 'broad', feature: 'vest' },
+  combatMech: { skin: 0x8e999d, top: 0x4b5960, bottom: 0x354148, hair: 0x323b40, accent: C.cyan, body: 'broad', feature: 'vest' },
+  minotaur: { skin: 0x765136, top: 0x765136, bottom: 0x45352b, hair: 0x38291f, accent: 0xc6b88f, body: 'broad', feature: 'vest' },
 }
 
-export const HERO_COLORS: Record<HeroId, string> = {
-  commuter: '#f3f02d',
-  cop: '#274f72',
-  nurse: '#e9e4d8',
-  firefighter: '#d28a25',
-  chef: '#efe8d8',
-  courier: '#3f7b70',
-  zombie: '#88a36c',
-  vampire: '#53405c',
-  cat: '#c89a55',
-  dog: '#8b5b38',
-}
-
-function makeAnimalHero(kind: 'cat' | 'dog') {
+function makeAnimalHero(kind: AnimalKind) {
   const g = new THREE.Group()
   const pose = new THREE.Group()
   const rearL = new THREE.Group()
@@ -345,38 +361,55 @@ function makeAnimalHero(kind: 'cat' | 'dog') {
   const frontL = new THREE.Group()
   const frontR = new THREE.Group()
   const head = new THREE.Group()
-  const fur = kind === 'cat' ? 0xc89a55 : 0x8b5b38
-  const dark = kind === 'cat' ? 0x6f4b2c : 0x4b3024
-  const muzzle = kind === 'cat' ? 0xf0cf9e : 0xd4a16f
+  const palette: Record<AnimalKind, [number, number, number]> = {
+    pig: [0xe7a0a1, 0xb96870, 0xf3bec0], cow: [0xf0e8d8, 0x40372f, 0xd2a778], cat: [0xc89a55, 0x6f4b2c, 0xf0cf9e],
+    fox: [0xc96937, 0x493126, 0xf0dfc5], chicken: [0xe8d7b2, 0xb94836, 0xe5b547], frog: [0x6e9b55, 0x3f653b, 0xb7cf74],
+    dog: [0x8b5b38, 0x4b3024, 0xd4a16f], sheep: [0xe9e4d7, 0x4a443e, 0xd6cdbd], rabbit: [0xd9d5ce, 0x8d8580, 0xeab6c1],
+    bear: [0x765037, 0x493327, 0xc69661], duck: [0xd9c86e, 0x577158, 0xe5a23f],
+  }
+  const [fur, dark, muzzle] = palette[kind]
+  const bird = kind === 'chicken' || kind === 'duck'
+  const squat = kind === 'frog'
+  const bulky = kind === 'cow' || kind === 'bear' || kind === 'sheep'
 
-  pose.add(box(kind === 'cat' ? 0.82 : 0.94, 0.55, kind === 'cat' ? 1.22 : 1.10, fur, 0, 1.02, -0.08))
+  pose.add(box(bulky ? 1.08 : bird ? 0.82 : 0.9, squat ? 0.38 : bird ? 0.72 : 0.55, bulky ? 1.32 : bird ? 0.82 : 1.12, fur, 0, squat ? 0.72 : 1.02, -0.08))
   head.position.set(0, 1.20, 0.67)
-  head.add(box(kind === 'cat' ? 0.62 : 0.70, 0.62, 0.58, fur, 0, 0, 0))
+  head.position.y = squat ? 0.84 : 1.20
+  head.add(box(bulky ? 0.78 : 0.66, squat ? 0.48 : 0.62, bird ? 0.54 : 0.58, fur, 0, 0, 0))
   head.add(box(0.34, 0.22, 0.22, muzzle, 0, -0.12, 0.38))
   head.add(box(0.10, 0.08, 0.05, C.ink, 0, -0.08, 0.51))
   head.add(box(0.09, 0.11, 0.04, C.ink, -0.16, 0.08, 0.31), box(0.09, 0.11, 0.04, C.ink, 0.16, 0.08, 0.31))
-  if (kind === 'cat') {
+  if (kind === 'cat' || kind === 'fox' || kind === 'rabbit') {
     const earGeo = new THREE.ConeGeometry(0.17, 0.34, 4)
-    head.add(mesh(earGeo, dark, -0.21, 0.42, 0), mesh(earGeo.clone(), dark, 0.21, 0.42, 0))
-  } else {
+    const tall = kind === 'rabbit' ? 1.75 : 1
+    const left = mesh(earGeo, dark, -0.21, 0.42, 0); left.scale.y = tall
+    const right = mesh(earGeo.clone(), dark, 0.21, 0.42, 0); right.scale.y = tall
+    head.add(left, right)
+  } else if (!bird && !squat) {
     const earL = box(0.20, 0.42, 0.16, dark, -0.31, 0.08, 0)
     const earR = box(0.20, 0.42, 0.16, dark, 0.31, 0.08, 0)
     earL.rotation.z = -0.24
     earR.rotation.z = 0.24
     head.add(earL, earR)
   }
+  if (kind === 'cow') head.add(box(0.52, 0.12, 0.14, muzzle, -0.43, 0.25, 0), box(0.52, 0.12, 0.14, muzzle, 0.43, 0.25, 0))
+  if (bird) head.add(box(0.24, 0.16, 0.28, muzzle, 0, -0.08, 0.42), box(0.16, 0.28, 0.12, kind === 'chicken' ? C.red : dark, 0, 0.43, 0))
+  if (squat) head.add(box(0.16, 0.16, 0.10, muzzle, -0.22, 0.25, 0.26), box(0.16, 0.16, 0.10, muzzle, 0.22, 0.25, 0.26))
   pose.add(head)
   const paw = (leg: THREE.Group, x: number, z: number) => {
     leg.position.set(x, 0.86, z)
     leg.add(box(0.24, 0.72, 0.25, dark, 0, -0.34, 0), box(0.29, 0.13, 0.36, muzzle, 0, -0.73, 0.06))
     pose.add(leg)
   }
-  paw(frontL, -0.31, 0.38)
-  paw(frontR, 0.31, 0.38)
-  paw(rearL, -0.31, -0.48)
-  paw(rearR, 0.31, -0.48)
-  const tail = box(0.16, 0.16, kind === 'cat' ? 0.82 : 0.60, fur, 0, 1.10, -0.92)
-  tail.rotation.x = kind === 'cat' ? -0.35 : 0.28
+  if (bird) {
+    paw(frontL, -0.20, 0.05); paw(frontR, 0.20, 0.05)
+    rearL.add(box(0.18, 0.52, 0.56, dark, 0, 0.2, 0)); rearL.position.set(-0.43, 1.04, -0.05); pose.add(rearL)
+    rearR.add(box(0.18, 0.52, 0.56, dark, 0, 0.2, 0)); rearR.position.set(0.43, 1.04, -0.05); pose.add(rearR)
+  } else {
+    paw(frontL, -0.31, 0.38); paw(frontR, 0.31, 0.38); paw(rearL, -0.31, -0.48); paw(rearR, 0.31, -0.48)
+  }
+  const tail = box(0.16, 0.16, kind === 'cat' || kind === 'fox' ? 0.82 : 0.60, fur, 0, 1.10, -0.92)
+  tail.rotation.x = kind === 'cat' || kind === 'fox' ? -0.35 : 0.28
   pose.add(tail)
   pose.add(box(0.72, 0.15, 0.65, C.red, 0, 1.28, 0.28))
   g.add(pose)
@@ -386,10 +419,10 @@ function makeAnimalHero(kind: 'cat' | 'dog') {
 }
 
 function addHeroMarker(player: THREE.Group, heroId: HeroId) {
-  if (heroId !== 'commuter' && heroId !== 'cat' && heroId !== 'dog') {
+  if (heroId !== 'commuter' && !ANIMAL_LIBRARY_IDS.includes(heroId as AnimalKind)) {
     player.add(box(0.56, 0.34, 0.18, C.red, 0, 1.30, -0.36))
   }
-  const playerLight = new THREE.SpotLight(0xffe7a0, 8.5, 5.2, 0.88, 0.8, 1.45)
+  const playerLight = new THREE.SpotLight(0xfff0d8, 5.4, 5.2, 0.88, 0.82, 1.45)
   const lightTarget = new THREE.Object3D()
   playerLight.position.set(0, 3.8, -0.18)
   lightTarget.position.set(0, 0.05, 0.22)
@@ -401,20 +434,7 @@ function addHeroMarker(player: THREE.Group, heroId: HeroId) {
 }
 
 export function makePlayer(heroId: HeroId = 'commuter') {
-  let player: THREE.Group
-  if (heroId === 'commuter') {
-    player = makeCharacter({
-      skin: C.skin2, top: C.yellow, bottom: C.aubergine, hair: C.paper,
-      accent: C.red, body: 'normal', feature: 'bag',
-    })
-    player.add(box(0.54, 0.09, 0.055, C.paper, 0, 1.38, -0.51))
-  } else if (heroId === 'cat' || heroId === 'dog') {
-    player = makeAnimalHero(heroId)
-  } else if (heroId === 'zombie' || heroId === 'vampire') {
-    player = makeMonsterPassenger(heroId)
-  } else {
-    player = makeProfessionPassenger(heroId)
-  }
+  const player = makeLibraryPassenger(heroId)
   player.scale.setScalar(0.58)
   return addHeroMarker(player, heroId)
 }
@@ -478,4 +498,66 @@ export function makeMonsterPassenger(kind: MonsterKind) {
   }
   g.userData.monsterKind = kind
   return g
+}
+
+const professionHeroMap: Partial<Record<HeroId, ProfessionKind>> = {
+  cop: 'cop', nurse: 'nurse', firefighter: 'firefighter', construction: 'construction', delivery: 'delivery',
+  executive: 'executive', courier: 'courier', janitor: 'janitor', barista: 'barista', securityGuard: 'security',
+}
+
+function addLibraryCue(g: THREE.Group, id: HeroId) {
+  const rig = g.userData.rig as CharacterRig
+  const upper = rig.upperBody ?? rig.pose
+  const head = rig.head ?? upper
+  if (id === 'cowboy') {
+    head.add(box(0.98, 0.08, 0.72, 0x81542f, 0, 0.43, 0), box(0.52, 0.30, 0.52, 0x6b4228, 0, 0.58, 0))
+  }
+  if (id === 'punk') {
+    for (let i = -2; i <= 2; i++) head.add(box(0.12, 0.28 + (2 - Math.abs(i)) * 0.12, 0.16, C.cyan, i * 0.12, 0.51, 0))
+  }
+  if (id === 'rapper') upper.add(box(0.62, 0.12, 0.07, 0xe5c24f, 0, 0.48, 0.29), box(0.18, 0.24, 0.07, 0xe5c24f, 0, 0.33, 0.29))
+  if (id === 'biker') upper.add(box(0.92, 0.12, 0.055, C.paper, 0, 0.58, 0.29))
+  if (id === 'goth') upper.add(box(0.12, 0.30, 0.055, C.cyan, 0, 0.46, 0.29), box(0.30, 0.12, 0.055, C.cyan, 0, 0.51, 0.29))
+  if (id === 'swat') {
+    const shield = box(0.62, 0.92, 0.12, 0x26323b, -0.72, 0.22, 0.18)
+    shield.rotation.z = -0.08; upper.add(shield, box(0.18, 0.08, 0.13, C.cyan, -0.72, 0.28, 0.26))
+  }
+  if (id === 'viking' || id === 'minotaur') {
+    const hornColor = 0xdfd2ae
+    const hornL = box(0.18, id === 'minotaur' ? 0.62 : 0.46, 0.18, hornColor, -0.40, 0.55, 0)
+    const hornR = box(0.18, id === 'minotaur' ? 0.62 : 0.46, 0.18, hornColor, 0.40, 0.55, 0)
+    hornL.rotation.z = 0.42; hornR.rotation.z = -0.42; head.add(hornL, hornR)
+  }
+  if (id === 'combatMech') {
+    head.add(box(0.56, 0.17, 0.08, C.cyan, 0, 0.05, 0.29), box(0.06, 0.40, 0.06, 0x59676e, 0.18, 0.55, -0.12), box(0.12, 0.12, 0.08, C.red, 0.18, 0.78, -0.12))
+    upper.add(box(0.48, 0.34, 0.08, C.cyan, 0, 0.38, 0.29))
+  }
+  return g
+}
+
+/** One canonical catalog used by both playable heroes and carriage crowds. */
+export function makeLibraryPassenger(id: HeroId) {
+  if (id === 'commuter') {
+    const g = makeCharacter({ skin: C.skin2, top: C.yellow, bottom: C.aubergine, hair: C.paper, accent: C.red, body: 'normal', feature: 'bag' })
+    g.add(box(0.54, 0.09, 0.055, C.paper, 0, 1.38, -0.51))
+    return g
+  }
+  if (ANIMAL_LIBRARY_IDS.includes(id as AnimalKind)) return makeAnimalHero(id as AnimalKind)
+  if (MONSTER_LIBRARY_IDS.includes(id as MonsterKind)) return makeMonsterPassenger(id as MonsterKind)
+  const profession = professionHeroMap[id]
+  if (profession) return makeProfessionPassenger(profession)
+  const style = libraryHumanStyles[id] ?? professionStyles.businessman
+  return addLibraryCue(makeCharacter(style), id)
+}
+
+export function makeSeatedLibraryPassenger(id: (typeof HUMAN_LIBRARY_IDS)[number], activity: 'reading' | 'phone' | 'rest' = 'rest') {
+  return poseAsSeated(makeLibraryPassenger(id), activity)
+}
+
+export function isBroadLibraryCharacter(id: HeroId) {
+  return ['businessman', 'worker', 'bigGuy', 'firefighter', 'construction', 'rapper', 'biker', 'executive', 'securityGuard', 'swat', 'viking', 'combatMech', 'minotaur', 'werewolf', 'cow', 'bear'].includes(id)
+}
+
+export function isSmallLibraryCharacter(id: HeroId) {
+  return ['kid', 'teen', 'student', 'barista', 'skeleton', 'chicken', 'frog', 'duck', 'rabbit'].includes(id)
 }

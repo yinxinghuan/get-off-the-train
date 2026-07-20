@@ -172,10 +172,10 @@ button { font: inherit; }
   &__identity > small { grid-column: 2; grid-row: 1 / 3; min-height: 36px; display: inline-flex; align-items: center; align-self: center; gap: 5px; padding: 7px 9px; color: @ink; background: @paper2; border: 2px solid @ink; border-radius: 999px; font-size: 10px; font-weight: 850; white-space: nowrap; }
   &__identity > small.is-owned { color: #296f48; border-color: #296f48; }
   &__identity > small.is-locked { color: @aubergine; }
-  &__rail { flex: 0 0 16px; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0 12px 7px; background: @paper; }
-  &__rail i { width: 15px; height: 4px; border-radius: 999px; background: #cfc1a8; transition: width 180ms ease, background 180ms ease; }
+  &__rail { flex: 0 0 16px; display: flex; align-items: center; justify-content: center; gap: 2px; padding: 0 12px 7px; overflow: hidden; background: @paper; }
+  &__rail i { flex: 0 0 3px; width: 3px; height: 4px; border-radius: 999px; background: #cfc1a8; transition: flex-basis 180ms ease, width 180ms ease, background 180ms ease; }
   &__rail i.is-owned { background: @teal; }
-  &__rail i.is-active { width: 30px; background: @ink; }
+  &__rail i.is-active { flex-basis: 14px; width: 14px; background: @ink; }
   &__action { flex: 0 0 auto; width: calc(100% - 24px); min-height: 54px; margin: 0 12px 12px; }
 }
 
