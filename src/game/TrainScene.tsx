@@ -102,6 +102,9 @@ function addFloorArrow(root: THREE.Group, x: number, z: number, scale = 1, rotat
   head.rotation.z = -Math.PI / 2
   head.position.set(0.55 * scale, 0.015, 0)
   arrow.add(stem, head)
+  arrow.traverse((object) => {
+    if ((object as THREE.Mesh).isMesh) object.userData.guide = true
+  })
   arrow.position.set(x, 0.19, z)
   arrow.rotation.y = rotationY
   root.add(arrow)
@@ -294,11 +297,11 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
   root.traverse((object) => {
     const m = object as THREE.Mesh
     if (m.userData.outlineShell) { m.visible = false; return }
-    if (!(m.material instanceof THREE.MeshToonMaterial)) return
+    if (!(m.material instanceof THREE.MeshStandardMaterial)) return
     const color = m.material.color.clone()
     const hex = color.getHex()
     const metal = hex === C.steel || hex === C.ink
-    const guide = hex === C.yellow
+    const guide = m.userData.guide === true
     m.material = new THREE.MeshStandardMaterial({
       color,
       roughness: metal ? 0.34 : 0.72,
@@ -1054,9 +1057,9 @@ export default function TrainScene(props: Props) {
         near={0.15}
         far={100}
       />
-      <hemisphereLight args={[0xaeb1bd, 0x2b202b, 0.64]} />
-      <directionalLight position={[-6, 12, 8]} intensity={1.46} color={0xffe5b6} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={10} shadow-camera-bottom={-10} />
-      <directionalLight position={[8, 6, -9]} intensity={0.54} color={0x8db9c3} />
+      <hemisphereLight args={[0xaeb1bd, 0x2b202b, 0.36]} />
+      <directionalLight position={[-6, 12, 8]} intensity={1.05} color={0xffe5b6} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={10} shadow-camera-bottom={-10} />
+      <directionalLight position={[8, 6, -9]} intensity={0.28} color={0x8db9c3} />
       <World {...props} />
     </Canvas>
   )

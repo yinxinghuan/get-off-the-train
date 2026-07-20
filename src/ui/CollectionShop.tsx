@@ -25,7 +25,15 @@ function heroCategory(hero: HeroId) {
 
 function PreviewHero({ heroId, side }: { heroId: HeroId; side: -1 | 0 | 1 }) {
   const root = useRef<THREE.Group>(null)
-  const hero = useMemo(() => makePlayer(heroId), [heroId])
+  const hero = useMemo(() => {
+    const model = makePlayer(heroId)
+    // The in-game hero carries a navigation light. Studio previews use only
+    // the shared three-point rig so neighboring models cannot light each other.
+    model.traverse((object) => {
+      if (object instanceof THREE.PointLight) object.visible = false
+    })
+    return model
+  }, [heroId])
   useEffect(() => () => {
     hero.traverse((object) => {
       const mesh = object as THREE.Mesh
@@ -92,10 +100,10 @@ export function CollectionShop({ coins, unlocked, selected, preview, loading, on
 
         <div className="got-collection__stage" style={{ '--hero-color': HERO_COLORS[preview] } as CSSProperties}>
           <div className="got-collection__platform" aria-hidden="true" />
-          <Canvas camera={{ position: [0, 2.35, 6.2], fov: 35 }} dpr={[1, 1.45]} gl={{ alpha: true, antialias: true }}>
-            <ambientLight intensity={1.3} />
-            <directionalLight position={[3, 5, 4]} intensity={2.45} color={0xffedc7} />
-            <directionalLight position={[-3, 2, -2]} intensity={0.9} color={0x8bd5cd} />
+          <Canvas camera={{ position: [0, 2.35, 6.2], fov: 35 }} dpr={[1, 1.45]} gl={{ alpha: true, antialias: true }} onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 0.96 }}>
+            <hemisphereLight args={[0xffedd1, 0x443b46, 0.32]} />
+            <directionalLight position={[3, 5, 4]} intensity={1.35} color={0xffedc7} />
+            <directionalLight position={[-3, 2, -2]} intensity={0.38} color={0x8bd5cd} />
             <HeroStage preview={preview} />
           </Canvas>
           <button type="button" className="got-collection__step got-collection__step--prev" onClick={() => move(-1)} aria-label={t('previousHero')}><ChevronIcon /></button>

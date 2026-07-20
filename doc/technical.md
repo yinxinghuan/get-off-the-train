@@ -52,7 +52,7 @@
 
 ### 场景照明与主角识别
 
-Canvas 使用 ACES Filmic 色调映射和 0.96 曝光，基础半球光强度 0.64、暖主光 1.46、冷轮廓填光 0.54。`buildTrain(config, exitSide)` 先用同一结构循环生成左右对称的门洞、门扇、玻璃、窗、广告和路线条，再让正确侧门扇停在门洞两端并点亮三盏绿灯、绿色补光与暖黄门区光，错误侧闭合门扇并点亮三盏红灯与低强度红光。绿色 3D 箭头使用 `color 0x7aff9d / emissive 0x159d55` 的 StandardMaterial，挂在车厢世界节点内以 1.35 Hz 浮动，因此与车体共同摇晃。环境 outline shell 隐藏，MeshToonMaterial 转为带粗糙度/金属度的 MeshStandardMaterial；角色材质不受这次环境转换影响。5 组暖白 PointLight 随车厢滚转。所有可选玩家模型自带 2.35 强度、4.2 world-unit 半径的暖色 PointLight，形成“主角亮区→出口亮区→较暗车厢”的层级；界面和场景不再绘制玩家脚底圈、固定头顶标签、二维出口标签或站稳徽章。
+Canvas 使用 ACES Filmic 色调映射和 0.96 曝光，基础半球光强度 0.36、暖主光 1.05、冷轮廓填光 0.28。`models.ts` 保留 `toon()` 函数名以避免改写所有模型工厂，但其实际返回与共享《Block Party》角色一致的 `MeshStandardMaterial`：`roughness=0.88 / metalness=0 / flatShading=true / emissive=0`，透明怪物另关闭深度写入；狼人耳朵等残留 outline shell 已移除。`buildTrain(config, exitSide)` 仍把车厢节点内的 StandardMaterial按金属/塑料规则重新实例化，只有显式标记 `userData.guide=true` 的地面箭头才获得 0.22 弱自发光，普通黄色吊环、广告和门槛不再误发光。正确侧的状态灯与绿色 3D 箭头继续使用功能性 emissive。5 组暖白 PointLight 随车厢滚转；所有可选玩家模型携带的暖色 PointLight 降至强度 0.68、半径 3.6，并移到 `(0,1.9,-0.38)` 上后方，保留地面识别但不把身体正面照平。角色商店在创建预览模型后隐藏其随身 PointLight，仅使用 0.32 半球光、1.35 暖主光和 0.38 冷填光的统一摄影棚灯组，因此三个轮播角色不会互相补光。界面和场景不绘制玩家脚底圈、固定头顶标签、二维出口标签或站稳徽章。
 
 ### 音频、多语言、排行榜与通知
 

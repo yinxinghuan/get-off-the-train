@@ -16,20 +16,23 @@ export const C = {
   skin4: 0x754323,
 }
 
-const materials = new Map<string, THREE.MeshToonMaterial>()
-const gradient = (() => {
-  const data = new Uint8Array([32, 32, 32, 142, 142, 142, 255, 255, 255])
-  const texture = new THREE.DataTexture(data, 3, 1, THREE.RedFormat)
-  texture.needsUpdate = true
-  texture.magFilter = THREE.NearestFilter
-  texture.minFilter = THREE.NearestFilter
-  return texture
-})()
+const materials = new Map<string, THREE.MeshStandardMaterial>()
 
+// Kept as `toon()` for compatibility with the existing model builders, but
+// the material now matches the shared Block Party low-poly PBR treatment:
+// flat polygon normals, high roughness, no metalness and no emissive body.
 export function toon(hex: number, transparent = false, opacity = 1) {
   const key = `${hex}-${transparent}-${opacity}`
   if (!materials.has(key)) {
-    materials.set(key, new THREE.MeshToonMaterial({ color: hex, gradientMap: gradient, transparent, opacity }))
+    materials.set(key, new THREE.MeshStandardMaterial({
+      color: hex,
+      roughness: 0.88,
+      metalness: 0,
+      flatShading: true,
+      transparent,
+      opacity,
+      depthWrite: !transparent || opacity >= 0.95,
+    }))
   }
   return materials.get(key)!
 }
@@ -386,8 +389,8 @@ function addHeroMarker(player: THREE.Group, heroId: HeroId) {
   if (heroId !== 'commuter' && heroId !== 'cat' && heroId !== 'dog') {
     player.add(box(0.56, 0.34, 0.18, C.red, 0, 1.30, -0.36))
   }
-  const playerLight = new THREE.PointLight(0xffe7a0, 2.35, 4.2, 1.65)
-  playerLight.position.set(0, 1.15, 0)
+  const playerLight = new THREE.PointLight(0xffe7a0, 0.68, 3.6, 1.8)
+  playerLight.position.set(0, 1.9, -0.38)
   playerLight.userData.playerLight = true
   player.add(playerLight)
   player.userData.heroId = heroId
@@ -466,9 +469,9 @@ export function makeMonsterPassenger(kind: MonsterKind) {
   }
   if (kind === 'werewolf') {
     const earGeo = new THREE.ConeGeometry(0.17, 0.34, 4)
-    const earL = mesh(earGeo, 0x33281f, -0.2, 2.35, 0, true)
-    const earR = mesh(earGeo.clone(), 0x33281f, 0.2, 2.35, 0, true)
-    upperAdd(earL, earR, box(0.36, 0.24, 0.24, 0x806950, 0, 1.96, 0.34, true))
+    const earL = mesh(earGeo, 0x33281f, -0.2, 2.35, 0)
+    const earR = mesh(earGeo.clone(), 0x33281f, 0.2, 2.35, 0)
+    upperAdd(earL, earR, box(0.36, 0.24, 0.24, 0x806950, 0, 1.96, 0.34))
   }
   g.userData.monsterKind = kind
   return g
