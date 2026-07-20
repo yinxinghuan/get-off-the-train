@@ -90,6 +90,16 @@ button { font: inherit; }
   border: 3px solid @ink; border-radius: 999px; box-shadow: 3px 3px 0 @ink; pointer-events: none;
   animation: got-level-intro 2.4s ease both;
   b { min-width: 0; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+  &--special { max-width: min(76%, 310px); min-height: 68px; align-items: flex-start; border-radius: 18px; animation-duration: 3.2s; }
+  &--special > svg { flex: 0 0 auto; margin-top: 4px; }
+  &__copy { min-width: 0; display: grid; gap: 2px; }
+  &__copy em { width: max-content; padding: 2px 6px; color: @paper; background: @red; border-radius: 999px; font-size: 8px; font-style: normal; font-weight: 900; letter-spacing: .08em; }
+  &__copy b { font-size: 13px; }
+  &__copy small { display: -webkit-box; overflow: hidden; color: @muted; font-size: 10px; font-weight: 700; line-height: 1.25; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  &--blackout { color: @paper; background: fade(#121820, 96%); }
+  &--blackout small { color: fade(@paper, 78%); }
+  &--red-alert { color: @paper; background: fade(#6f151b, 96%); }
+  &--red-alert small { color: fade(@paper, 82%); }
 }
 
 .got-pause {
@@ -121,7 +131,7 @@ button { font: inherit; }
   display: flex; flex-direction: column; align-items: center; gap: 15px; color: @paper; pointer-events: none;
   &__demo { position: relative; width: 172px; height: 92px; }
   &__trail { position: absolute; left: 20px; right: 20px; top: 45px; height: 4px; border-radius: 999px; background: repeating-linear-gradient(90deg, fade(#fff, 72%) 0 9px, transparent 9px 16px); filter: drop-shadow(0 2px 4px fade(#000, 62%)); animation: got-gesture-trail 1.8s ease-in-out infinite; }
-  &__finger { position: absolute; left: 6px; top: 3px; color: fade(@paper, 96%); filter: drop-shadow(0 0 5px fade(#fff, 88%)) drop-shadow(0 4px 5px fade(#000, 55%)); animation: got-gesture-finger 1.8s ease-in-out infinite; }
+  &__finger { position: absolute; left: 6px; top: 3px; color: rgba(30, 32, 44, .94); filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 7px fade(#fff, 96%)) drop-shadow(0 4px 5px fade(#000, 58%)); animation: got-gesture-finger 1.8s ease-in-out infinite; }
   b { color: fade(@paper, 92%); font-size: 12px; font-weight: 800; line-height: 1; letter-spacing: .08em; text-shadow: 0 2px 8px fade(#000, 72%); white-space: nowrap; animation: got-gesture-label 2.2s ease-in-out infinite; }
 }
 

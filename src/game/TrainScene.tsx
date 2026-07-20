@@ -45,7 +45,8 @@ interface Body {
   lastX: number
   lastZ: number
   player: boolean
-  behavior: 'player' | 'stationary' | 'wandering' | 'exiting' | 'departed'
+  behavior: 'player' | 'stationary' | 'wandering' | 'boarding' | 'exiting' | 'departed'
+  exitAt: number
 }
 
 interface Obstacle { x: number; z: number; r: number }
@@ -85,6 +86,7 @@ const QA_SEAT_VIEW = import.meta.env.DEV && new URLSearchParams(location.search)
 const QA_SEAT_COLLISION = import.meta.env.DEV && new URLSearchParams(location.search).has('qaSeatCollision')
 const QA_SEAT_STAND = import.meta.env.DEV && new URLSearchParams(location.search).has('qaSeatStand')
 const QA_WRONG_DOOR = import.meta.env.DEV && new URLSearchParams(location.search).has('qaWrongDoor')
+const QA_SPEED = import.meta.env.DEV ? THREE.MathUtils.clamp(Number(new URLSearchParams(location.search).get('qaSpeed') || 1), 1, 5) : 1
 
 function mulberry32(seed: number) {
   return () => {
@@ -93,6 +95,59 @@ function mulberry32(seed: number) {
     t ^= t + Math.imul(t ^ t >>> 7, t | 61)
     return ((t ^ t >>> 14) >>> 0) / 4294967296
   }
+}
+
+function themedPassengerId(config: LevelConfig): HeroId | null {
+  if (config.stationEvent === 'police') return 'cop'
+  if (config.stationEvent === 'pig') return 'pig'
+  if (config.stationEvent === 'zombie') return 'zombie'
+  return null
+}
+
+function passengerRoster(config: LevelConfig, level: number): readonly HeroId[] {
+  const themed = themedPassengerId(config)
+  if (themed) return [themed]
+  if (config.stationEvent === 'rescue') return ['firefighter', 'paramedic', 'nurse', 'swat', 'securityGuard']
+  if (config.stationEvent === 'construction-shift') return ['construction', 'worker', 'janitor', 'courier', 'bigGuy']
+  if (config.stationEvent === 'office-evac') return ['executive', 'businessman', 'officeWoman', 'darkWoman', 'barista', 'securityGuard']
+  if (config.stationEvent === 'haunted') return ['ghost', 'skeleton', 'vampire', 'werewolf', 'mummy', 'goth']
+  if (config.stationEvent === 'animal-rescue') return ANIMAL_LIBRARY_IDS
+  if (config.stationEvent === 'robot-expo') return ['combatMech', 'courier', 'executive', 'securityGuard', 'student']
+  if (config.stationEvent === 'afterparty') return ['punk', 'rapper', 'biker', 'goth', 'cowboy', 'viking']
+  const ordinary = HUMAN_LIBRARY_IDS.slice(0, 30)
+  if (level === 0) return ordinary.slice(0, 15)
+  if (level === 1) return ordinary
+  if (level === 2) return [...ordinary, ...MONSTER_LIBRARY_IDS]
+  return HERO_IDS
+}
+
+interface StationLighting {
+  background: number
+  fog: number
+  sky: number
+  ground: number
+  hemi: number
+  main: number
+  mainColor: number
+  fill: number
+  fillColor: number
+  rim: number
+  rimColor: number
+  lampColor: number
+  lampTube: number
+  lampStrength: number
+  litLamp?: number
+}
+
+function stationLighting(event: LevelConfig['stationEvent']): StationLighting {
+  const base: StationLighting = { background: 0x111a22, fog: 0x111a22, sky: 0xffffff, ground: 0x51636b, hemi: 0.55, main: 3.05, mainColor: 0xffffff, fill: 0.18, fillColor: 0xdfe8ff, rim: 0.28, rimColor: 0xfff0d8, lampColor: 0xffdfaa, lampTube: 0xffedbd, lampStrength: 1.24 }
+  if (event === 'blackout') return { ...base, background: 0x070a0e, fog: 0x070a0e, sky: 0x26313a, ground: 0x090b0e, hemi: 0.16, main: 0.62, mainColor: 0xa9bac2, fill: 0.04, rim: 0.08, lampColor: 0xffd783, lampTube: 0xffe5a3, lampStrength: 0.92, litLamp: 2 }
+  if (event === 'red-alert') return { ...base, background: 0x1b0709, fog: 0x1b0709, sky: 0x7d181c, ground: 0x21080a, hemi: 0.30, main: 1.72, mainColor: 0xd5292e, fill: 0.36, fillColor: 0x7f0f17, rim: 0.34, rimColor: 0xff3a32, lampColor: 0xff2428, lampTube: 0xff4b45, lampStrength: 1.34 }
+  if (event === 'police' || event === 'robot-expo') return { ...base, sky: 0xdcecff, mainColor: 0xe5f2ff, fill: 0.28, fillColor: 0x73a8d9, lampColor: 0xc7e5ff, lampTube: 0xe5f4ff }
+  if (event === 'rescue' || event === 'construction-shift') return { ...base, mainColor: 0xffe0b2, rim: 0.38, rimColor: 0xff9a4d, lampColor: 0xffbc6a, lampTube: 0xffd391 }
+  if (event === 'zombie' || event === 'haunted') return { ...base, background: 0x0d1717, fog: 0x0d1717, sky: 0x8fb99a, ground: 0x23332c, hemi: 0.42, main: 2.35, mainColor: 0xc8e3bc, fillColor: 0x57916d, lampColor: 0x9fcf9b, lampTube: 0xc4e1b4 }
+  if (event === 'afterparty') return { ...base, sky: 0xdab9ff, mainColor: 0xf0d6ff, fill: 0.34, fillColor: 0x7651bd, rim: 0.42, rimColor: 0xff68c8, lampColor: 0xc896ff, lampTube: 0xe3c7ff }
+  return base
 }
 
 function addFloorArrow(root: THREE.Group, x: number, z: number, scale = 1, rotationY = 0) {
@@ -116,6 +171,7 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
   const carriageLights: THREE.PointLight[] = []
   const obstacles: Obstacle[] = []
   const seatSlots: SeatSlot[] = []
+  const lighting = stationLighting(config.stationEvent)
   const bench = config.variant === 'ad-wrap' ? 0x3d6680 : config.variant === 'maintenance' ? 0x555d61 : 0x315f76
   const wall = config.variant === 'long-seat' ? 0xd9dddc : 0xcbd0d1
 
@@ -262,13 +318,15 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
     root.add(box(1.18, 0.09, 0.16, C.stainless, x, 3.23, -1.42))
     const tube = new THREE.Mesh(
       new THREE.BoxGeometry(1.02, 0.055, 0.11),
-      new THREE.MeshBasicMaterial({ color: i === 3 ? 0xd9decb : 0xffedbd }),
+      new THREE.MeshBasicMaterial({ color: lighting.litLamp === undefined || lighting.litLamp === i ? lighting.lampTube : 0x202428 }),
     )
     tube.position.set(x, 3.17, -1.42)
     root.add(tube)
-    const lamp = new THREE.PointLight(i === 3 ? 0xc9d9d2 : 0xffdfaa, 1.05, 5.8, 1.7)
+    const enabled = lighting.litLamp === undefined || lighting.litLamp === i
+    const lamp = new THREE.PointLight(lighting.lampColor, enabled ? 1.05 : 0, 5.8, 1.7)
     lamp.position.set(x, 2.92, -0.72)
     lamp.userData.phase = i * 1.37
+    lamp.userData.baseIntensity = enabled ? lighting.lampStrength : 0
     carriageLights.push(lamp)
     root.add(lamp)
   }
@@ -339,6 +397,8 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
     nextSway: config.swayPeriod, warningSent: false, swayDirection: (level % 2 ? -1 : 1) as -1 | 1,
     swayKick: 0, falls: 0, braceTime: 0, braced: false, hudT: 0, ended: false, lastFrame: 0,
     qaFallDone: false, lastSeatBump: Number.NEGATIVE_INFINITY,
+    boardingsSpawned: 0,
+    nextBoardingAt: config.stationEvent === 'inflow' ? 3.6 : 4.0 + ((level * 17) % 12) / 10,
   })
 
   useEffect(() => {
@@ -353,6 +413,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
       fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side', protectedUntil: 0, phase: 0,
       homeX: START_X, homeZ: START_Z, targetX: START_X, targetZ: START_Z, nextWander: 0, pauseUntil: 0,
       wanderSpeed: 0, gaitPhase: 0, lastX: START_X, lastZ: START_Z, player: true, behavior: 'player',
+      exitAt: Number.POSITIVE_INFINITY,
     }
     S.player = player
     S.bodies.push(player)
@@ -368,7 +429,8 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
         if (emptySeats.has(index)) return
         const activityRoll = (index * 7 + level * 3) % 20
         const activity = activityRoll < 6 ? 'reading' : activityRoll < 15 ? 'phone' : 'rest'
-        const passengerId = HUMAN_LIBRARY_IDS[(index * 5 + level * 3) % HUMAN_LIBRARY_IDS.length]
+        const seatRoster = passengerRoster(config, level)
+        const passengerId = seatRoster[(index * 5 + level * 3) % seatRoster.length]
         const group = makeSeatedLibraryPassenger(passengerId, activity)
         const rig = group.userData.rig as CharacterRig
         const baseY = 0.75 - (rig.hipY ?? 1) * group.scale.y
@@ -393,10 +455,10 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
         })
       })
 
-      const riserCount = Math.min(3, 1 + Math.floor((level + 1) / 2))
       const eligibleRisers = S.seated
         .filter((seat) => seat.seatX >= -3.8 && seat.seatX <= 4.6)
         .sort((a, b) => a.seatX - b.seatX)
+      const riserCount = Math.min(config.alightingCount, eligibleRisers.length)
       const chosen = new Set<SeatedVisual>()
       for (let i = 0; i < riserCount && chosen.size < eligibleRisers.length; i++) {
         let pick = Math.floor((i + 1) * eligibleRisers.length / (riserCount + 1))
@@ -404,8 +466,9 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
         const seat = eligibleRisers[pick]
         if (!seat || chosen.has(seat)) continue
         chosen.add(seat)
-        const interval = 4.6 - Math.min(level, 4) * 0.35
-        seat.scheduledAt = (QA_SEAT_STAND ? 0.85 : 4.8) + i * interval + rand() * (QA_SEAT_STAND ? 0.15 : 1.2)
+        const allExit = config.stationEvent === 'all-exit'
+        const interval = allExit ? 0.28 + rand() * 0.14 : 2.8 + rand() * 1.6
+        seat.scheduledAt = (QA_SEAT_STAND ? 0.85 : allExit ? 2.0 : 4.2 + rand() * 1.8) + i * interval
       }
     }
 
@@ -416,14 +479,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
     while (made < passengerTarget && attempts < 2400) {
       attempts++
       const behavior: Body['behavior'] = made < moverTarget ? 'wandering' : 'stationary'
-      const ordinaryRoster = HUMAN_LIBRARY_IDS.slice(0, 30)
-      const roster = level === 0
-        ? ordinaryRoster.slice(0, 15)
-        : level === 1
-          ? ordinaryRoster
-          : level === 2
-            ? [...ordinaryRoster, ...MONSTER_LIBRARY_IDS]
-            : HERO_IDS
+      const roster = passengerRoster(config, level)
       const passengerId = roster[(level * passengerTarget + made) % roster.length]
       const activityRoll = ((made - moverTarget) * 11 + level * 5 + 100) % 100
       const activity: PassengerActivity = behavior === 'wandering'
@@ -469,6 +525,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
         nextWander: Number.POSITIVE_INFINITY, pauseUntil: behavior === 'wandering' ? 0.8 + rand() * 1.5 : Number.POSITIVE_INFINITY,
         wanderSpeed: behavior === 'wandering' ? 0.28 + rand() * 0.16 : 0,
         gaitPhase: rand() * Math.PI * 2, lastX: x, lastZ: z, player: false, behavior,
+        exitAt: config.stationEvent === 'all-exit' ? 2.8 + made * (0.18 + rand() * 0.08) : Number.POSITIVE_INFINITY,
       })
       made++
     }
@@ -478,7 +535,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
       dispose(train.root)
       dispose(fx)
     }
-  }, [scene, camera, train, fx, config.passengers, level])
+  }, [scene, camera, train, fx, config, level])
 
   useEffect(() => {
     const player = state.current.player
@@ -502,7 +559,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
     if (!active || S.ended || !S.player) return
     const now = performance.now()
     if (!S.lastFrame) { S.lastFrame = now; return }
-    const dt = Math.min((now - S.lastFrame) / 1000, 0.033)
+    const dt = Math.min((now - S.lastFrame) / 1000, 0.033) * QA_SPEED
     S.lastFrame = now
     if (dt <= 0) return
     S.time += dt
@@ -576,7 +633,8 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
       const slowBreath = 0.78 + Math.sin(S.time * 0.72 + lamp.userData.phase) * 0.10
       const looseLamp = i === 3 ? 0.76 + Math.sin(S.time * 2.15) * 0.17 : 1
       const impactDip = S.swayKick > 0.55 && (i + Math.floor(S.time * 18)) % 3 === 0 ? 0.38 : 1
-      lamp.intensity = (reducedMotion ? 1.0 : slowBreath * looseLamp * impactDip) * 1.24
+      const baseIntensity = Number(lamp.userData.baseIntensity) || 0
+      lamp.intensity = (reducedMotion ? 1.0 : slowBreath * looseLamp * impactDip) * baseIntensity
     }
     const arrowMotion = reducedMotion ? 0.35 : 1
     const arrowPulse = 1 + Math.sin(S.time * Math.PI * 2 * 1.35) * 0.045 * arrowMotion
@@ -644,6 +702,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
             targetX: EXIT_X, targetZ: Math.sign(seated.aisleZ) * 0.62, nextWander: Number.POSITIVE_INFINITY,
             pauseUntil: 0, wanderSpeed: Math.min(1.15, 0.78 + level * 0.06), gaitPhase: 0,
             lastX: seated.seatX, lastZ: seated.aisleZ, player: false, behavior: 'exiting',
+            exitAt: Number.POSITIVE_INFINITY,
           })
           seated.state = 'departed'
         }
@@ -660,6 +719,40 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
       }
     }
 
+    if (S.boardingsSpawned < config.boardingCount && S.time >= S.nextBoardingAt) {
+      const index = S.boardingsSpawned
+      const roster = passengerRoster(config, level)
+      const passengerId = roster[(level * 13 + index * 7 + 3) % roster.length]
+      const broad = isBroadLibraryCharacter(passengerId)
+      const small = isSmallLibraryCharacter(passengerId)
+      const ghost = passengerId === 'ghost'
+      const group = makeLibraryPassenger(passengerId)
+      applyPassengerActivity(group, 'natural')
+      group.userData.libraryId = passengerId
+      const x = EXIT_X
+      const z = train.exitZ + train.exitSide * (0.55 + index % 2 * 0.10)
+      group.position.set(x, 0.24, z)
+      group.rotation.y = train.exitSide > 0 ? Math.PI : 0
+      train.root.add(group)
+      const targetX = THREE.MathUtils.clamp(4.25 - (index % 7) * 1.08, -2.8, 4.25)
+      const targetZ = (index % 2 ? -1 : 1) * (0.38 + index % 3 * 0.12)
+      S.bodies.push({
+        group, x, z, vx: 0, vz: 0, r: broad ? 0.27 : small ? 0.18 : 0.22,
+        mass: broad ? 1.72 : ghost ? 0.58 : small ? 0.72 : 1.05,
+        stability: ghost ? 1.55 : broad ? 2.9 : 2.1,
+        fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side', protectedUntil: S.time + 0.35,
+        phase: (index * 2.17 + level) % (Math.PI * 2), homeX: targetX, homeZ: targetZ,
+        targetX, targetZ, nextWander: Number.POSITIVE_INFINITY, pauseUntil: 0,
+        wanderSpeed: config.stationEvent === 'inflow' ? 0.92 : 0.78,
+        gaitPhase: 0, lastX: x, lastZ: z, player: false, behavior: 'boarding', exitAt: Number.POSITIVE_INFINITY,
+      })
+      S.boardingsSpawned++
+      S.nextBoardingAt += config.stationEvent === 'inflow'
+        ? 1.15 + ((index * 7 + level) % 5) * 0.10
+        : 2.4 + ((index * 11 + level) % 8) * 0.20
+      sound.boarding()
+    }
+
     const player = S.player
     if (QA_AUTORUN) input.current = QA_SEAT_COLLISION
       ? { x: -1, z: 0 }
@@ -668,6 +761,13 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
       if (b.behavior === 'departed') continue
       const fallen = b.fallenUntil > S.time
       let npcWalking = false
+      if (!b.player && b.behavior !== 'boarding' && b.behavior !== 'exiting' && S.time >= b.exitAt) {
+        b.behavior = 'exiting'
+        b.wanderSpeed = Math.min(1.18, 0.82 + level * 0.035)
+        b.homeX = b.x
+        b.homeZ = b.z
+        b.nextWander = Number.POSITIVE_INFINITY
+      }
       if (b.player) {
         if (!fallen) {
           // Temple-run style mapping: dragging toward the top of the screen moves
@@ -681,9 +781,33 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
           b.vx += (targetVx - b.vx) * Math.min(1, 18 * dt)
           b.vz += (targetVz - b.vz) * Math.min(1, 18 * dt)
         }
+      } else if (!fallen && b.behavior === 'boarding') {
+        const outsideDoor = Math.abs(b.z) > 1.05
+        const targetX = outsideDoor ? EXIT_X - 0.08 : b.targetX
+        const targetZ = outsideDoor ? train.exitSide * 0.68 : b.targetZ
+        const dx = targetX - b.x
+        const dz = targetZ - b.z
+        const distance = Math.hypot(dx, dz)
+        if (distance > 0.10) {
+          const desiredVx = dx / distance * b.wanderSpeed
+          const desiredVz = dz / distance * b.wanderSpeed
+          const steer = Math.min(1, dt * 5.2)
+          b.vx += (desiredVx - b.vx) * steer
+          b.vz += (desiredVz - b.vz) * steer
+          npcWalking = true
+        } else if (!outsideDoor) {
+          b.behavior = config.stationEvent === 'inflow' && (Math.floor(b.phase * 10) % 3 === 0) ? 'wandering' : 'stationary'
+          b.homeX = b.x
+          b.homeZ = b.z
+          b.nextWander = b.behavior === 'wandering' ? S.time + 1.2 : Number.POSITIVE_INFINITY
+          b.pauseUntil = S.time + 0.8
+        }
       } else if (!fallen && b.behavior === 'exiting') {
-        const turningToDoor = b.x >= EXIT_X - 0.25
-        const targetX = turningToDoor ? EXIT_X : EXIT_X - 0.10
+        const laneSeed = Math.sin((b.phase * 9.71 + 41.2) * 12.9898) * 43758.5453
+        const laneOffset = ((laneSeed - Math.floor(laneSeed)) - 0.5) * train.exitHalf * 0.92
+        const doorLaneX = EXIT_X + laneOffset
+        const turningToDoor = b.x >= doorLaneX - 0.25
+        const targetX = turningToDoor ? doorLaneX : doorLaneX - 0.10
         const targetZ = turningToDoor ? train.exitZ + train.exitSide * 0.72 : Math.sign(b.homeZ) * 0.62
         const dx = targetX - b.x
         const dz = targetZ - b.z
@@ -739,7 +863,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
       b.z += b.vz * dt
 
       const inExitLane = Math.abs(b.x - EXIT_X) < train.exitHalf + b.r * 0.65
-      const canUseExit = (b.player || b.behavior === 'exiting') && inExitLane
+      const canUseExit = (b.player || b.behavior === 'exiting' || b.behavior === 'boarding') && inExitLane
       const minZ = canUseExit && train.exitSide < 0 ? train.exitZ - 0.78 : CAR_MIN_Z + b.r
       const maxZ = canUseExit && train.exitSide > 0 ? train.exitZ + 0.78 : CAR_MAX_Z - b.r
       b.x = THREE.MathUtils.clamp(b.x, CAR_MIN_X + b.r, CAR_MAX_X - b.r)
@@ -792,7 +916,10 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
         if (b.behavior === 'departed') continue
         const dx = b.x - a.x, dz = b.z - a.z
         const d2 = dx * dx + dz * dz
-        const min = a.r + b.r
+        // Passengers leaving together naturally compress into a door queue;
+        // slightly softer NPC-to-NPC spacing prevents a permanent human wall.
+        const bothExiting = a.behavior === 'exiting' && b.behavior === 'exiting'
+        const min = (a.r + b.r) * (bothExiting ? 0.76 : 1)
         if (d2 >= min * min) continue
         const d = Math.sqrt(d2) || 0.001
         const nx = dx / d, nz = dz / d
@@ -1049,6 +1176,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onO
 }
 
 export default function TrainScene(props: Props) {
+  const lighting = stationLighting(props.config.stationEvent)
   return (
     <Canvas
       className="got__canvas"
@@ -1057,8 +1185,8 @@ export default function TrainScene(props: Props) {
       gl={{ antialias: true, alpha: false }}
       onCreated={({ gl }) => { gl.toneMapping = THREE.ACESFilmicToneMapping; gl.toneMappingExposure = 1.0; gl.shadowMap.type = THREE.PCFSoftShadowMap }}
     >
-      <color attach="background" args={[0x111a22]} />
-      <fog attach="fog" args={[0x111a22, 23, 46]} />
+      <color attach="background" args={[lighting.background]} />
+      <fog attach="fog" args={[lighting.fog, 23, 46]} />
       <PerspectiveCamera
         makeDefault
         position={[START_X - FORWARD_X * 5.2, 6.05, START_Z - FORWARD_Z * 5.2]}
@@ -1066,10 +1194,10 @@ export default function TrainScene(props: Props) {
         near={0.15}
         far={100}
       />
-      <hemisphereLight args={[0xffffff, 0x51636b, 0.55]} />
-      <directionalLight position={[-6.5, 16, 8]} intensity={3.05} color={0xffffff} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={10} shadow-camera-bottom={-10} shadow-camera-near={0.5} shadow-camera-far={60} shadow-bias={-0.0004} shadow-radius={2.4} />
-      <directionalLight position={[9, 5, -3]} intensity={0.18} color={0xdfe8ff} />
-      <directionalLight position={[5, 7, -10]} intensity={0.28} color={0xfff0d8} />
+      <hemisphereLight args={[lighting.sky, lighting.ground, lighting.hemi]} />
+      <directionalLight position={[-6.5, 16, 8]} intensity={lighting.main} color={lighting.mainColor} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={10} shadow-camera-bottom={-10} shadow-camera-near={0.5} shadow-camera-far={60} shadow-bias={-0.0004} shadow-radius={2.4} />
+      <directionalLight position={[9, 5, -3]} intensity={lighting.fill} color={lighting.fillColor} />
+      <directionalLight position={[5, 7, -10]} intensity={lighting.rim} color={lighting.rimColor} />
       <World {...props} />
     </Canvas>
   )

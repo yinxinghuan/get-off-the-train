@@ -169,7 +169,7 @@ export function makeLibraryPassenger(id: HeroId) {
   return makeCatalogCharacter(id)
 }
 
-export function makeSeatedLibraryPassenger(id: (typeof HUMAN_LIBRARY_IDS)[number], activity: 'reading' | 'phone' | 'rest' = 'rest') {
+export function makeSeatedLibraryPassenger(id: HeroId, activity: 'reading' | 'phone' | 'rest' = 'rest') {
   return poseAsSeated(makeCatalogCharacter(id), activity)
 }
 

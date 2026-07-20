@@ -42,6 +42,7 @@ export const sound = {
     tone(260, 0.07, 'triangle', 0.028, 190)
     tone(180, 0.09, 'triangle', 0.032, 130, 0.14)
   },
+  boarding: () => { tone(360, 0.06, 'sine', 0.026, 480); tone(540, 0.07, 'sine', 0.024, 430, 0.09) },
   warn: () => { tone(420, 0.09, 'square', 0.04, 310); tone(420, 0.09, 'square', 0.04, 310, 0.18) },
   sway: () => tone(120, 0.18, 'triangle', 0.075, 75),
   fall: () => tone(110, 0.22, 'sawtooth', 0.065, 62),

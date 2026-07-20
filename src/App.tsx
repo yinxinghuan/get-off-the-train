@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import TrainScene from './game/TrainScene'
-import { getLevelConfig, type HudState, type InputVector, type Phase } from './game/types'
+import { getLevelConfig, type HudState, type InputVector, type Phase, type StationEvent } from './game/types'
 import { HERO_COSTS, HERO_IDS, type HeroId } from './game/models'
 import { sound } from './audio/sound'
 import { locale, t } from './i18n'
@@ -31,10 +31,28 @@ const EN_LEVELS = [
   ['OLD NARROW DOOR', 'The exit only opens halfway'],
   ['LAST TRAIN WORKS', 'Shortest warning, most obstacles'],
 ] as const
+const EN_SPECIAL: Partial<Record<StationEvent, [string, string]>> = {
+  police: ['POLICE SPECIAL', 'Something at the last stop was just sealed off.'],
+  pig: ['PIG EXCURSION', 'The farm tour seems to have boarded the wrong train.'],
+  zombie: ['ZOMBIE LAST TRAIN', 'The lights went out at the previous station.'],
+  inflow: ['INBOUND SURGE', 'The green door keeps pouring people into your path.'],
+  'all-exit': ['EVERYONE OFF', 'Every passenger is racing for the same door.'],
+  rescue: ['RESCUE CREW RETURN', 'The incident ahead has only just been cleared.'],
+  'construction-shift': ['NIGHT CREW', 'The tunnel shift ended with tools still loose.'],
+  'office-evac': ['OFFICE EVACUATION', 'A nearby tower alarm has just gone silent.'],
+  haunted: ['MIDNIGHT MASQUERADE', 'Whatever the event was, it ended after midnight.'],
+  'animal-rescue': ['ANIMAL TRANSFER', 'The rescue center is moving tonight.'],
+  'robot-expo': ['ROBOT EXPO CLOSE', 'The convention center has just emptied.'],
+  afterparty: ['AFTERPARTY TRAIN', 'The underground show ended minutes ago.'],
+  blackout: ['BLACKOUT SECTION', 'Tunnel power failed. One lamp is still alive.'],
+  'red-alert': ['RED ALERT', 'No announcement explains why the whole car turned red.'],
+}
 
 function levelCopy(index: number, config: ReturnType<typeof getLevelConfig>) {
   if (locale === 'zh') return { name: config.name, subtitle: config.subtitle }
   if (EN_LEVELS[index]) return { name: EN_LEVELS[index][0], subtitle: EN_LEVELS[index][1] }
+  const special = EN_SPECIAL[config.stationEvent]
+  if (special) return { name: special[0], subtitle: special[1] }
   return { name: `CAR ${index + 1} · MONSTER RUSH`, subtitle: index % 2 ? 'Shorter warning. Heavier crowd.' : 'The line ends only when you miss.' }
 }
 
@@ -273,7 +291,18 @@ export default function App() {
         <span className="got-timer__distance">{t('distance')} {hud.distance.toFixed(1)}{t('meters')}</span>
       </div>
       {showGuide && <div className="got-mission" role="status"><TrainIcon size={16} /><span>{t('mission')}</span></div>}
-      {!showGuide && <div key={`level-intro-${level}`} className="got-level-intro" aria-hidden="true"><TrainIcon size={17} /><b>{String(level + 1).padStart(2, '0')} · {copy.name}</b></div>}
+      {!showGuide && (
+        <div key={`level-intro-${level}`} className={`got-level-intro${config.stationEvent === 'normal' ? '' : ` got-level-intro--special got-level-intro--${config.stationEvent}`}`} aria-hidden="true">
+          <TrainIcon size={17} />
+          {config.stationEvent === 'normal' ? <b>{String(level + 1).padStart(2, '0')} · {copy.name}</b> : (
+            <span className="got-level-intro__copy">
+              <em>{t('specialStation')}</em>
+              <b>{copy.name}</b>
+              <small>{copy.subtitle}</small>
+            </span>
+          )}
+        </div>
+      )}
       <button className="got-pause" aria-label={t('pause')} onPointerDown={pause}><PauseIcon /></button>
 
       {phase === 'playing' && (

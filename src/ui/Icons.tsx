@@ -37,10 +37,11 @@ export function CollectionIcon({ size = 24 }: IconProps) {
 export function ChevronIcon({ size = 24 }: IconProps) {
   return <svg {...base(size)}><path d="m15 5-7 7 7 7" /></svg>
 }
-export function GhostFingerIcon({ size = 64 }: IconProps) {
+/** Canonical Google Material Icons `touch_app` glyph used by our game tutorials. */
+export function TouchAppIcon({ size = 64 }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
-      <path d="M9 11.24V7.5a2.5 2.5 0 0 1 5 0v3.74c1.21-.81 2-2.18 2-3.74a4 4 0 1 0-8 0c0 1.56.79 2.93 2 3.74zM18.84 15.87l-4.54-2.26c-.17-.07-.35-.11-.54-.11H13v-6a1.5 1.5 0 0 0-3 0v10.74l-3.43-.72a1 1 0 0 0-1.05.49 1 1 0 0 0 .12 1.16l3.84 4.15c.37.4.89.63 1.43.63h6.55c.85 0 1.56-.6 1.74-1.42l.95-4.47a1.5 1.5 0 0 0-.8-1.92z" fill="currentColor" />
+      <path d="M9 11.24V7.5C9 6.12 10.12 5 11.5 5S14 6.12 14 7.5v3.74c1.21-.81 2-2.18 2-3.74C16 5.01 13.99 3 11.5 3S7 5.01 7 7.5c0 1.56.79 2.93 2 3.74zm9.84 4.63-4.54-2.26c-.17-.07-.35-.11-.54-.11H13v-6c0-.83-.67-1.5-1.5-1.5S10 6.67 10 7.5v10.74l-3.43-.72c-.08-.01-.15-.03-.24-.03-.31 0-.59.13-.79.33l-.79.8 4.94 4.94c.27.27.65.44 1.06.44h6.79c.75 0 1.33-.55 1.44-1.28l.75-5.27c.01-.07.02-.14.02-.2 0-.62-.38-1.16-.92-1.38z" fill="currentColor" />
     </svg>
   )
 }

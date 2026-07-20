@@ -27,6 +27,7 @@ const zh = {
   locked: '未解锁', owned: '已拥有', needCoins: '还差金币', closeCollection: '关闭角色收藏', collectionHint: '换个身份继续挤地铁',
   human: '人物', monster: '怪物', animal: '动物', special: '特殊角色', saving: '正在读取收藏',
   previousHero: '上一个角色', nextHero: '下一个角色',
+  specialStation: '特殊站',
 }
 
 const en: typeof zh = {
@@ -46,6 +47,7 @@ const en: typeof zh = {
   locked: 'LOCKED', owned: 'OWNED', needCoins: 'COINS NEEDED', closeCollection: 'CLOSE COLLECTION', collectionHint: 'Pick a new commuter for the next car.',
   human: 'HUMAN', monster: 'MONSTER', animal: 'ANIMAL', special: 'SPECIAL', saving: 'LOADING COLLECTION',
   previousHero: 'PREVIOUS CHARACTER', nextHero: 'NEXT CHARACTER',
+  specialStation: 'SPECIAL STATION',
 }
 
 const dict = locale === 'zh' ? zh : en
