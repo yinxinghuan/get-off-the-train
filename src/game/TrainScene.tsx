@@ -540,8 +540,9 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
         if (!seat || chosen.has(seat)) continue
         chosen.add(seat)
         const allExit = config.stationEvent === 'all-exit'
-        const interval = allExit ? 0.28 + rand() * 0.14 : 2.8 + rand() * 1.6
-        seat.scheduledAt = (QA_SEAT_STAND ? 0.85 : allExit ? 2.0 : 4.2 + rand() * 1.8) + i * interval
+        const interval = allExit ? 0.28 + rand() * 0.14 : level === 0 ? 1.45 + rand() * 0.35 : 0.85 + rand() * 0.40
+        const firstRiserAt = level === 0 ? 3.2 + rand() * 0.5 : 1.8 + rand() * 0.55
+        seat.scheduledAt = (QA_SEAT_STAND ? 0.85 : allExit ? 2.0 : firstRiserAt) + i * interval
       }
     }
 
@@ -604,7 +605,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
         exitAt: config.stationEvent === 'all-exit'
           ? 2.8 + made * (0.18 + rand() * 0.08)
           : made >= passengerTarget - standingExitCount
-            ? 5.4 + (made - (passengerTarget - standingExitCount)) * (1.7 + rand() * 1.1)
+            ? (level === 0 ? 4.2 : 2.6) + (made - (passengerTarget - standingExitCount)) * (0.75 + rand() * 0.50)
             : Number.POSITIVE_INFINITY,
       })
       made++
@@ -894,9 +895,15 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
     }
 
     const player = S.player
-    if (QA_AUTORUN) input.current = QA_SEAT_COLLISION
-      ? { x: -1, z: 0 }
-      : player.x < EXIT_X - 0.2 ? { x: QA_WALK ? 0.24 : 0, z: QA_WALK ? -0.97 : -1 } : { x: QA_WRONG_DOOR ? -train.exitSide : train.exitSide, z: 0 }
+    if (QA_AUTORUN) {
+      const routeZ = train.exitSide * 0.62
+      const routeCorrection = THREE.MathUtils.clamp((routeZ - player.z) * 1.8, -0.55, 0.55)
+      input.current = QA_SEAT_COLLISION
+        ? { x: -1, z: 0 }
+        : player.x < EXIT_X - 0.2
+          ? { x: QA_WALK ? 0.24 : routeCorrection, z: QA_WALK ? -0.97 : -1 }
+          : { x: QA_WRONG_DOOR ? -train.exitSide : train.exitSide, z: 0 }
+    }
     for (const b of S.bodies) {
       if (b.behavior === 'departed') continue
       const fallen = b.fallenUntil > S.time

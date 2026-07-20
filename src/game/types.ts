@@ -32,11 +32,11 @@ export interface LevelConfig {
 }
 
 export const LEVELS: LevelConfig[] = [
-  { name: '普通早班', subtitle: '先看懂人群，再找缝前进', time: 28, passengers: 9, swayPeriod: 6.8, warning: 1.15, impulse: 2.0, roll: 2.2, wander: 0.55, fallChance: 0.08, swayFallChance: 0.12, variant: 'commuter', stationEvent: 'normal', boardingCount: 0, alightingCount: 1 },
-  { name: '纵座快线', subtitle: '有人下车，也有人刚上来', time: 27, passengers: 12, swayPeriod: 6.1, warning: 1.0, impulse: 2.35, roll: 2.7, wander: 0.66, fallChance: 0.11, swayFallChance: 0.16, variant: 'long-seat', stationEvent: 'normal', boardingCount: 2, alightingCount: 2 },
-  { name: '广告包车', subtitle: '上下车客流开始打乱通道', time: 26, passengers: 14, swayPeriod: 5.5, warning: 0.85, impulse: 2.7, roll: 3.2, wander: 0.78, fallChance: 0.14, swayFallChance: 0.21, variant: 'ad-wrap', stationEvent: 'normal', boardingCount: 1, alightingCount: 3 },
-  { name: '老式窄门', subtitle: '门口横穿最频繁', time: 25, passengers: 16, swayPeriod: 4.9, warning: 0.72, impulse: 3.05, roll: 3.8, wander: 0.90, fallChance: 0.17, swayFallChance: 0.26, variant: 'narrow-door', stationEvent: 'normal', boardingCount: 3, alightingCount: 2 },
-  { name: '末班施工车', subtitle: '强晃动更容易摔倒', time: 24, passengers: 18, swayPeriod: 4.4, warning: 0.62, impulse: 3.4, roll: 4.4, wander: 1.0, fallChance: 0.20, swayFallChance: 0.31, variant: 'maintenance', stationEvent: 'normal', boardingCount: 2, alightingCount: 3 },
+  { name: '普通早班', subtitle: '先看懂人群，再找缝前进', time: 28, passengers: 9, swayPeriod: 6.8, warning: 1.15, impulse: 2.0, roll: 2.2, wander: 0.55, fallChance: 0.08, swayFallChance: 0.12, variant: 'commuter', stationEvent: 'normal', boardingCount: 0, alightingCount: 2 },
+  { name: '纵座快线', subtitle: '有人下车，也有人刚上来', time: 27, passengers: 12, swayPeriod: 6.1, warning: 1.0, impulse: 2.35, roll: 2.7, wander: 0.66, fallChance: 0.11, swayFallChance: 0.16, variant: 'long-seat', stationEvent: 'normal', boardingCount: 2, alightingCount: 3 },
+  { name: '广告包车', subtitle: '上下车客流开始打乱通道', time: 26, passengers: 14, swayPeriod: 5.5, warning: 0.85, impulse: 2.7, roll: 3.2, wander: 0.78, fallChance: 0.14, swayFallChance: 0.21, variant: 'ad-wrap', stationEvent: 'normal', boardingCount: 1, alightingCount: 4 },
+  { name: '老式窄门', subtitle: '门口横穿最频繁', time: 25, passengers: 16, swayPeriod: 4.9, warning: 0.72, impulse: 3.05, roll: 3.8, wander: 0.90, fallChance: 0.17, swayFallChance: 0.26, variant: 'narrow-door', stationEvent: 'normal', boardingCount: 3, alightingCount: 5 },
+  { name: '末班施工车', subtitle: '强晃动更容易摔倒', time: 24, passengers: 18, swayPeriod: 4.4, warning: 0.62, impulse: 3.4, roll: 4.4, wander: 1.0, fallChance: 0.20, swayFallChance: 0.31, variant: 'maintenance', stationEvent: 'normal', boardingCount: 2, alightingCount: 6 },
 ]
 
 const ENDLESS_NAMES = ['怪物早班', '幽灵换乘', '失控区间', '终点不存在']
@@ -93,9 +93,9 @@ export function getLevelConfig(index: number): LevelConfig {
   const basePassengers = Math.min(20, 19 + Math.floor(extra / 3))
   const flowTier = Math.floor(extra / 5)
   const normalBoarding = Math.min(7, 2 + flowTier + (index * 7 % 3))
-  const normalAlighting = Math.min(7, 2 + flowTier + (index * 5 % 3))
+  const normalAlighting = Math.min(12, 5 + flowTier * 2 + (index * 5 % 3))
   const storyBoarding = Math.min(7, 3 + flowTier + (index % 2))
-  const storyAlighting = Math.min(7, 3 + flowTier + ((index + 1) % 2))
+  const storyAlighting = Math.min(12, 6 + flowTier * 2 + ((index + 1) % 3))
   const config: LevelConfig = {
     name: specialCopy ? `第 ${index + 1} 节 · ${specialCopy.name}` : `第 ${index + 1} 节 · ${ENDLESS_NAMES[extra % ENDLESS_NAMES.length]}`,
     subtitle: specialCopy?.subtitle ?? ENDLESS_SUBTITLES[extra % ENDLESS_SUBTITLES.length],
@@ -111,7 +111,7 @@ export function getLevelConfig(index: number): LevelConfig {
     variant: (['maintenance', 'ad-wrap', 'narrow-door', 'long-seat'] as const)[extra % 4],
     stationEvent,
     boardingCount: stationEvent === 'all-exit' ? 0 : stationEvent === 'inflow' ? Math.min(14, 10 + flowTier) : stationEvent === 'normal' ? normalBoarding : storyBoarding,
-    alightingCount: stationEvent === 'all-exit' ? 99 : stationEvent === 'inflow' ? Math.min(5, 2 + flowTier) : stationEvent === 'normal' ? normalAlighting : storyAlighting,
+    alightingCount: stationEvent === 'all-exit' ? 99 : stationEvent === 'inflow' ? Math.min(8, 5 + flowTier) : stationEvent === 'normal' ? normalAlighting : storyAlighting,
   }
   endlessCache.set(index, config)
   return config
