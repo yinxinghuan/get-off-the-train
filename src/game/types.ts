@@ -32,11 +32,11 @@ export interface LevelConfig {
 }
 
 export const LEVELS: LevelConfig[] = [
-  { name: '普通早班', subtitle: '先看懂人群，再找缝前进', time: 28, passengers: 9, swayPeriod: 6.8, warning: 1.15, impulse: 2.0, roll: 2.2, wander: 0.55, fallChance: 0.08, swayFallChance: 0.12, variant: 'commuter', stationEvent: 'normal', boardingCount: 0, alightingCount: 2 },
-  { name: '纵座快线', subtitle: '有人下车，也有人刚上来', time: 27, passengers: 12, swayPeriod: 6.1, warning: 1.0, impulse: 2.35, roll: 2.7, wander: 0.66, fallChance: 0.11, swayFallChance: 0.16, variant: 'long-seat', stationEvent: 'normal', boardingCount: 2, alightingCount: 3 },
-  { name: '广告包车', subtitle: '上下车客流开始打乱通道', time: 26, passengers: 14, swayPeriod: 5.5, warning: 0.85, impulse: 2.7, roll: 3.2, wander: 0.78, fallChance: 0.14, swayFallChance: 0.21, variant: 'ad-wrap', stationEvent: 'normal', boardingCount: 1, alightingCount: 4 },
-  { name: '老式窄门', subtitle: '门口横穿最频繁', time: 25, passengers: 16, swayPeriod: 4.9, warning: 0.72, impulse: 3.05, roll: 3.8, wander: 0.90, fallChance: 0.17, swayFallChance: 0.26, variant: 'narrow-door', stationEvent: 'normal', boardingCount: 3, alightingCount: 5 },
-  { name: '末班施工车', subtitle: '强晃动更容易摔倒', time: 24, passengers: 18, swayPeriod: 4.4, warning: 0.62, impulse: 3.4, roll: 4.4, wander: 1.0, fallChance: 0.20, swayFallChance: 0.31, variant: 'maintenance', stationEvent: 'normal', boardingCount: 2, alightingCount: 6 },
+  { name: '普通早班', subtitle: '先看懂人群，再找缝前进', time: 18, passengers: 9, swayPeriod: 6.8, warning: 1.15, impulse: 2.0, roll: 2.2, wander: 0.55, fallChance: 0.08, swayFallChance: 0.12, variant: 'commuter', stationEvent: 'normal', boardingCount: 0, alightingCount: 2 },
+  { name: '纵座快线', subtitle: '有人下车，也有人刚上来', time: 17, passengers: 12, swayPeriod: 6.1, warning: 1.0, impulse: 2.35, roll: 2.7, wander: 0.66, fallChance: 0.11, swayFallChance: 0.16, variant: 'long-seat', stationEvent: 'normal', boardingCount: 2, alightingCount: 3 },
+  { name: '广告包车', subtitle: '上下车客流开始打乱通道', time: 16, passengers: 14, swayPeriod: 5.5, warning: 0.85, impulse: 2.7, roll: 3.2, wander: 0.78, fallChance: 0.14, swayFallChance: 0.21, variant: 'ad-wrap', stationEvent: 'normal', boardingCount: 1, alightingCount: 4 },
+  { name: '老式窄门', subtitle: '门口横穿最频繁', time: 15, passengers: 16, swayPeriod: 4.9, warning: 0.72, impulse: 3.05, roll: 3.8, wander: 0.90, fallChance: 0.17, swayFallChance: 0.26, variant: 'narrow-door', stationEvent: 'normal', boardingCount: 3, alightingCount: 5 },
+  { name: '末班施工车', subtitle: '强晃动更容易摔倒', time: 14, passengers: 18, swayPeriod: 4.4, warning: 0.62, impulse: 3.4, roll: 4.4, wander: 1.0, fallChance: 0.20, swayFallChance: 0.31, variant: 'maintenance', stationEvent: 'normal', boardingCount: 2, alightingCount: 6 },
 ]
 
 const ENDLESS_NAMES = ['怪物早班', '幽灵换乘', '失控区间', '终点不存在']
@@ -99,7 +99,7 @@ export function getLevelConfig(index: number): LevelConfig {
   const config: LevelConfig = {
     name: specialCopy ? `第 ${index + 1} 节 · ${specialCopy.name}` : `第 ${index + 1} 节 · ${ENDLESS_NAMES[extra % ENDLESS_NAMES.length]}`,
     subtitle: specialCopy?.subtitle ?? ENDLESS_SUBTITLES[extra % ENDLESS_SUBTITLES.length],
-    time: stationEvent === 'all-exit' ? 28 : stationEvent !== 'normal' ? 27 : Math.max(20, 24 - Math.floor(extra / 5) * 0.5),
+    time: stationEvent === 'all-exit' ? 18 : stationEvent !== 'normal' ? 17 : Math.max(10, 14 - Math.floor(extra / 5) * 0.5),
     passengers: stationEvent === 'inflow' ? 10 : stationEvent === 'pig' ? Math.min(16, basePassengers) : basePassengers,
     swayPeriod: Math.max(2.65, 4.25 - extra * 0.13) * (stationEvent === 'rough-section' ? 0.65 : 1),
     warning: Math.max(0.36, 0.60 - extra * 0.020),
