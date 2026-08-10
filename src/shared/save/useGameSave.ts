@@ -33,14 +33,15 @@ export function useGameSave<T>(gameId: string): UseGameSave<T> {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      if (canSync && sessionId && getTelegramId()!) {
+      const currentTelegramId = getTelegramId()!
+      if (isInAigramNow() && sessionId && currentTelegramId) {
         try {
           const res = await callAigramAPI<AigramResponse<SaveRow[]>>(
             `/note/aigram/ai/game/get/data/list?session_id=${encodeURIComponent(sessionId)}`,
             'GET',
           )
           const rows = Array.isArray(res?.data) ? res.data : []
-          const mine = rows.find((row) => String(row.user_id) === String(currentTelegramId)!)
+          const mine = rows.find((row) => String(row.user_id) === String(currentTelegramId))
           if (mine?.resource_data) {
             try {
               const save = JSON.parse(mine.resource_data) as T
