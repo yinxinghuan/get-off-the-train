@@ -9,7 +9,7 @@ import { Joystick } from './ui/Joystick'
 import { CollectionShop } from './ui/CollectionShop'
 import { Leaderboard } from './shared/leaderboard/Leaderboard'
 import { useGameScore, type LeaderboardEntry } from './shared/leaderboard/useGameScore'
-import { telegramId, useGameEvent } from './shared/runtime'
+import { getTelegramId, useGameEvent, isInAigramNow } from './shared/runtime'
 import { useGameSave } from './shared/save'
 
 const BEST_KEY = 'get-off-the-train.best.v1'
@@ -148,19 +148,19 @@ export default function App() {
     return rows
   }, [canRank, fetchLeaderboard])
 
-  useEffect(() => { refreshLeaderboard().catch(() => {}) }, [refreshLeaderboard])
+  useEffect(() => { if (!isInAigramNow()) return; refreshLeaderboard().catch(() => {}) }, [refreshLeaderboard])
 
   const snapshotPreRunBest = useCallback(() => {
-    if (!telegramId) { preRunBest.current = 0; return }
-    const me = leaderboardRows.find((row) => String(row.user_id) === String(telegramId))
+    if (!getTelegramId()!) { preRunBest.current = 0; return }
+    const me = leaderboardRows.find((row) => String(row.user_id) === String(getTelegramId()!))
     preRunBest.current = canRank && !leaderboardLoaded ? Number.POSITIVE_INFINITY : me ? Number(me.score) || 0 : 0
   }, [canRank, leaderboardLoaded, leaderboardRows])
 
   const sendBeatNotify = useCallback(async (myScore: number) => {
-    if (!canRank || !telegramId || !events.canEmit || myScore <= preRunBest.current) return
+    if (!canRank || !getTelegramId()! || !events.canEmit || myScore <= preRunBest.current) return
     try {
       const fresh = await refreshLeaderboard()
-      const meId = String(telegramId)
+      const meId = String(getTelegramId()!)
       const beaten = fresh
         .filter((row) => String(row.user_id) !== meId)
         .map((row) => ({ id: String(row.user_id), score: Number(row.score) || 0 }))

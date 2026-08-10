@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { isInAigram, openAigramProfile } from '../runtime'
+import { isInAigramNow, openAigramProfile } from '../runtime'
 import type { LeaderboardEntry } from './useGameScore'
 import { CrownIcon, CloseIcon } from '../../ui/Icons'
 import { t } from '../../i18n'
@@ -33,8 +33,8 @@ function RankRow({ entry, index }: { entry: LeaderboardEntry; index: number }) {
     <button
       type="button"
       className="got-lb__row"
-      onClick={(ev) => { ev.stopPropagation(); if (isInAigram) openAigramProfile(entry.user_id) }}
-      disabled={!isInAigram}
+      onClick={(ev) => { ev.stopPropagation(); if (isInAigramNow()) openAigramProfile(entry.user_id) }}
+      disabled={!isInAigramNow()}
       aria-label={`${t('openProfile')} ${entry.name || ''}`}
     >{content}</button>
   )
@@ -61,9 +61,9 @@ export function Leaderboard({ fetchEntries, onClose }: Props) {
         </header>
         <div className="got-lb__list">
           {loading && <div className="got-lb__state"><span className="got-lb__spinner" />{t('loading')}</div>}
-          {!loading && !isInAigram && <div className="got-lb__state"><CrownIcon size={38} /><b>{t('openAlterU')}</b><a href="https://alteru.app" target="_blank" rel="noopener noreferrer">{t('getAlterU')}</a></div>}
-          {!loading && isInAigram && entries.length === 0 && <div className="got-lb__state"><CrownIcon size={38} /><b>{t('emptyRank')}</b></div>}
-          {!loading && isInAigram && entries.map((entry, index) => <RankRow key={entry.user_id} entry={entry} index={index} />)}
+          {!loading && !isInAigramNow() && <div className="got-lb__state"><CrownIcon size={38} /><b>{t('openAlterU')}</b><a href="https://alteru.app" target="_blank" rel="noopener noreferrer">{t('getAlterU')}</a></div>}
+          {!loading && isInAigramNow() && entries.length === 0 && <div className="got-lb__state"><CrownIcon size={38} /><b>{t('emptyRank')}</b></div>}
+          {!loading && isInAigramNow() && entries.map((entry, index) => <RankRow key={entry.user_id} entry={entry} index={index} />)}
         </div>
       </section>
     </div>

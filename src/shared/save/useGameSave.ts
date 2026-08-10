@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   callAigramAPI,
   postAigramAPI,
-  isInAigram,
-  telegramId,
+  isInAigramNow,
+  getTelegramId,
   type AigramResponse,
 } from '../runtime/bridge'
 import { getGameUuid } from '../runtime/game-id'
@@ -26,21 +26,21 @@ export function useGameSave<T>(gameId: string): UseGameSave<T> {
   const [savedData, setSavedData] = useState<T | null | undefined>(undefined)
   const lsKey = `${gameId}-save`
   const sessionId = getGameUuid()
-  const canSync = isInAigram && !!sessionId && !!telegramId
+  const canSync = isInAigramNow() && !!sessionId && !!getTelegramId()!
   const cloudTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingDataRef = useRef<T | null>(null)
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      if (canSync && sessionId && telegramId) {
+      if (canSync && sessionId && getTelegramId()!) {
         try {
           const res = await callAigramAPI<AigramResponse<SaveRow[]>>(
             `/note/aigram/ai/game/get/data/list?session_id=${encodeURIComponent(sessionId)}`,
             'GET',
           )
           const rows = Array.isArray(res?.data) ? res.data : []
-          const mine = rows.find((row) => row.user_id === telegramId)
+          const mine = rows.find((row) => String(row.user_id) === String(currentTelegramId)!)
           if (mine?.resource_data) {
             try {
               const save = JSON.parse(mine.resource_data) as T
@@ -72,12 +72,12 @@ export function useGameSave<T>(gameId: string): UseGameSave<T> {
       session_id: sessionId,
       resource_data: JSON.stringify(payload),
     })
-  }, [canSync, sessionId])
+  }, [sessionId])
 
   const persist = useCallback((data: T) => {
     const withTs = { ...(data as object), _lastActive: Date.now() } as T
     try { localStorage.setItem(lsKey, JSON.stringify(withTs)) } catch { /* storage is optional */ }
-    if (canSync) {
+    if (isInAigramNow()) {
       pendingDataRef.current = withTs
       if (cloudTimerRef.current) clearTimeout(cloudTimerRef.current)
       cloudTimerRef.current = setTimeout(flushCloud, 1000)
@@ -95,7 +95,7 @@ export function useGameSave<T>(gameId: string): UseGameSave<T> {
     cloudTimerRef.current = null
     pendingDataRef.current = null
     try { localStorage.removeItem(lsKey) } catch { /* ignore */ }
-    if (canSync && sessionId) {
+    if (isInAigramNow() && sessionId) {
       postAigramAPI('/note/aigram/ai/game/save/data', { session_id: sessionId, resource_data: '' })
     }
     setSavedData(null)
