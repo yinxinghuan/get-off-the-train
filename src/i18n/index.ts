@@ -3,7 +3,7 @@ export type Locale = 'zh' | 'en'
 function detectLocale(): Locale {
   const query = new URLSearchParams(location.search).get('lang')
   if (query === 'en' || query === 'zh') return query
-  const override = localStorage.getItem('game_locale')
+  const override = alteruLocalStorage.getItem('game_locale')
   if (override === 'en' || override === 'zh') return override
   return navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en'
 }

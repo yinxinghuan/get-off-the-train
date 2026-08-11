@@ -103,7 +103,7 @@ export default function App() {
   const [score, setScore] = useState(QA_SCORE)
   const [levelScore, setLevelScore] = useState(0)
   const [totalFalls, setTotalFalls] = useState(0)
-  const [best, setBest] = useState(() => Number(localStorage.getItem(BEST_KEY) || 0))
+  const [best, setBest] = useState(() => Number(alteruLocalStorage.getItem(BEST_KEY) || 0))
   const [reducedMotion, setReducedMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches)
   const [runStarted, setRunStarted] = useState(QA_ACTIVE)
   const [showGuide, setShowGuide] = useState(!QA_ACTIVE)
@@ -206,7 +206,7 @@ export default function App() {
     if (kind === 'fail') {
       setLevelCoins(0)
       const finalScore = score
-      setBest((old) => { const value = Math.max(old, finalScore); localStorage.setItem(BEST_KEY, String(value)); return value })
+      setBest((old) => { const value = Math.max(old, finalScore); alteruLocalStorage.setItem(BEST_KEY, String(value)); return value })
       submitScore(finalScore).then(() => sendBeatNotify(finalScore)).catch(() => {})
       setPhase('game-over')
       return

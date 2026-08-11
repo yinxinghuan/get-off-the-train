@@ -52,7 +52,7 @@ export function useGameSave<T>(gameId: string): UseGameSave<T> {
         } catch { /* bridge/network failure falls back to local */ }
       }
       try {
-        const raw = localStorage.getItem(lsKey)
+        const raw = alteruLocalStorage.getItem(lsKey)
         if (raw) {
           const save = JSON.parse(raw) as T
           if (!cancelled) setSavedData(save)
@@ -77,7 +77,7 @@ export function useGameSave<T>(gameId: string): UseGameSave<T> {
 
   const persist = useCallback((data: T) => {
     const withTs = { ...(data as object), _lastActive: Date.now() } as T
-    try { localStorage.setItem(lsKey, JSON.stringify(withTs)) } catch { /* storage is optional */ }
+    try { alteruLocalStorage.setItem(lsKey, JSON.stringify(withTs)) } catch { /* storage is optional */ }
     if (isInAigramNow()) {
       pendingDataRef.current = withTs
       if (cloudTimerRef.current) clearTimeout(cloudTimerRef.current)
@@ -95,7 +95,7 @@ export function useGameSave<T>(gameId: string): UseGameSave<T> {
     if (cloudTimerRef.current) clearTimeout(cloudTimerRef.current)
     cloudTimerRef.current = null
     pendingDataRef.current = null
-    try { localStorage.removeItem(lsKey) } catch { /* ignore */ }
+    try { alteruLocalStorage.removeItem(lsKey) } catch { /* ignore */ }
     if (isInAigramNow() && sessionId) {
       postAigramAPI('/note/aigram/ai/game/save/data', { session_id: sessionId, resource_data: '' })
     }
