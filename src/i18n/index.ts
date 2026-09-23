@@ -10,6 +10,8 @@ function detectLocale(): Locale {
 
 export const locale = detectLocale()
 
+const guestBuild = import.meta.env.MODE === 'crazygames'
+
 const zh = {
   level: '车厢', time: '关门', distance: '距门', falls: '摔倒',
   meters: '米', brace: '站稳了', warning: '要晃了！', left: '向左倒', right: '向右倒',
@@ -21,7 +23,10 @@ const zh = {
   reduced: '减弱动态',
   leaderboard: '最高分榜', rankRule: '整局累计分 · 只保留个人最高', board: '排行榜',
   you: '你', yourRun: '你的纪录', openProfile: '打开主页', close: '关闭', loading: '正在读取车厢记录',
-  openAlterU: '在 AlterU 中打开即可查看真实排行榜', getAlterU: '下载 AlterU', emptyRank: '还没人挤到这里，等你上榜',
+  openAlterU: guestBuild ? '最高分保存在本机，无需登录即可游玩。' : '在 AlterU 中打开即可查看真实排行榜',
+  getAlterU: guestBuild ? '本机纪录' : '下载 AlterU',
+  guestScore: '最高分保存在本机，无需登录即可游玩。',
+  emptyRank: '还没人挤到这里，等你上榜',
   dragUp: '任意位置滑动移动', mission: '任务：走到车厢门口下地铁', exitAhead: '出口',
   collection: '角色收藏', coins: '金币', coinReward: '本关金币', equipped: '使用中', equip: '装备', unlock: '解锁角色',
   locked: '未解锁', owned: '已拥有', needCoins: '还差金币', closeCollection: '关闭角色收藏', collectionHint: '换个身份继续挤地铁',
@@ -41,7 +46,10 @@ const en: typeof zh = {
   reduced: 'REDUCE MOTION',
   leaderboard: 'HIGH SCORE', rankRule: 'RUN TOTAL · PERSONAL BEST ONLY', board: 'LEADERBOARD',
   you: 'YOU', yourRun: 'YOUR RECORD', openProfile: 'OPEN PROFILE', close: 'CLOSE', loading: 'READING CAR RECORDS',
-  openAlterU: 'Open in AlterU to view the live leaderboard.', getAlterU: 'GET ALTERU', emptyRank: 'No one made it this far. Be first.',
+  openAlterU: guestBuild ? 'Your best score stays on this device. No account is required to play.' : 'Open in AlterU to view the live leaderboard.',
+  getAlterU: guestBuild ? 'ON THIS DEVICE' : 'GET ALTERU',
+  guestScore: 'Your best score stays on this device. No account is required to play.',
+  emptyRank: 'No one made it this far. Be first.',
   dragUp: 'SWIPE ANYWHERE TO MOVE', mission: 'MISSION: REACH THE TRAIN DOOR AND GET OFF', exitAhead: 'EXIT',
   collection: 'HEROES', coins: 'COINS', coinReward: 'CAR COINS', equipped: 'EQUIPPED', equip: 'EQUIP', unlock: 'UNLOCK',
   locked: 'LOCKED', owned: 'OWNED', needCoins: 'COINS NEEDED', closeCollection: 'CLOSE COLLECTION', collectionHint: 'Pick a new commuter for the next car.',

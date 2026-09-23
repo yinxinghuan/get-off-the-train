@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { isInAigramNow, openAigramProfile } from '../runtime'
+import { isCrazyGamesBuild } from '../runtime/deployTarget'
+import { AlterULeaderboardPrompt } from './AlterULeaderboardPrompt'
 import type { LeaderboardEntry } from './useGameScore'
 import { CrownIcon, CloseIcon } from '../../ui/Icons'
 import { t } from '../../i18n'
@@ -45,6 +47,11 @@ export function Leaderboard({ fetchEntries, onClose }: Props) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (isCrazyGamesBuild) {
+      setEntries([])
+      setLoading(false)
+      return
+    }
     let alive = true
     setLoading(true)
     fetchEntries().then((rows) => { if (alive) setEntries(rows) }).finally(() => { if (alive) setLoading(false) })
@@ -61,7 +68,9 @@ export function Leaderboard({ fetchEntries, onClose }: Props) {
         </header>
         <div className="got-lb__list">
           {loading && <div className="got-lb__state"><span className="got-lb__spinner" />{t('loading')}</div>}
-          {!loading && !isInAigramNow() && <div className="got-lb__state"><CrownIcon size={38} /><b>{t('openAlterU')}</b><a href="https://alteru.app" target="_blank" rel="noopener noreferrer">{t('getAlterU')}</a></div>}
+          {!loading && !isInAigramNow() && (isCrazyGamesBuild
+            ? <div className="got-lb__state"><CrownIcon size={38} /><b>{t('guestScore')}</b></div>
+            : <AlterULeaderboardPrompt />)}
           {!loading && isInAigramNow() && entries.length === 0 && <div className="got-lb__state"><CrownIcon size={38} /><b>{t('emptyRank')}</b></div>}
           {!loading && isInAigramNow() && entries.map((entry, index) => <RankRow key={entry.user_id} entry={entry} index={index} />)}
         </div>

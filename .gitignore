@@ -1,5 +1,8 @@
 node_modules/
 dist/
+dist-crazygames/
+artifacts/*.zip
+artifacts/crazygames/
 .DS_Store
 *.log
 *.tsbuildinfo
