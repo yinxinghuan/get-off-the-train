@@ -6,10 +6,11 @@ import { sound } from './audio/sound'
 import { locale, t } from './i18n'
 import { ArrowIcon, CoinIcon, CollectionIcon, CrownIcon, PauseIcon, TrainIcon } from './ui/Icons'
 import { Joystick } from './ui/Joystick'
+import { CrazyGamesFrame } from './ui/CrazyGamesFrame'
 import { CollectionShop } from './ui/CollectionShop'
 import { Leaderboard } from './shared/leaderboard/Leaderboard'
 import { useGameScore, type LeaderboardEntry } from './shared/leaderboard/useGameScore'
-import { getTelegramId, useGameEvent, isInAigramNow } from './shared/runtime'
+import { getTelegramId, useGameEvent, isInAigramNow, isCrazyGamesBuild } from './shared/runtime'
 import { useGameSave } from './shared/save'
 
 const BEST_KEY = 'get-off-the-train.best.v1'
@@ -294,6 +295,8 @@ export default function App() {
   }, [phase, pause])
 
   return (
+    <>
+    {isCrazyGamesBuild && <CrazyGamesFrame />}
     <main className={`got${hud.swayWarning ? ' got--warning' : ''}${phase === 'fail-cinematic' ? ' got--failure-shot' : ''}${phase === 'game-over' ? ' got--failed' : ''}`}>
       <TrainScene key={level} level={level} heroId={selectedHero} config={config} active={(phase === 'playing' || phase === 'fail-cinematic') && runStarted} input={input} reducedMotion={reducedMotion} onHud={setHud} onFailureStart={handleFailureStart} onOutcome={handleOutcome} />
       <div className="got__halftone" aria-hidden="true" />
@@ -367,7 +370,8 @@ export default function App() {
           onClose={() => setShowCollection(false)}
         />
       )}
-      <span className="got__brand" aria-hidden="true">AIGRAM // {locale.toUpperCase()}</span>
+      {!isCrazyGamesBuild && <span className="got__brand" aria-hidden="true">AIGRAM // {locale.toUpperCase()}</span>}
     </main>
+    </>
   )
 }

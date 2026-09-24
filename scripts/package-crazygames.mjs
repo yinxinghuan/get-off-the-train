@@ -43,9 +43,24 @@ for (const file of walk(dist)) {
     if (text.includes(needle)) leaks.push(`${path.relative(root, file)} contains ${needle}`);
   }
 }
+const indexHtml = readFileSync(path.join(dist, 'index.html'), 'utf8');
+if (!/class="cg-guest"/.test(indexHtml) || !/lang="en"/.test(indexHtml)) {
+  leaks.push('dist-crazygames/index.html must be <html lang="en" class="cg-guest">');
+}
+if (!indexHtml.includes('<title>Get Off the Train!</title>')) {
+  leaks.push('dist-crazygames/index.html title must be Get Off the Train!');
+}
+if (indexHtml.includes('挤下地铁') || /lang="zh/.test(indexHtml)) {
+  leaks.push('dist-crazygames/index.html still has a Chinese document title or lang');
+}
+for (const file of walk(dist)) {
+  if (!/\.(html|js|css)$/.test(file)) continue;
+  const text = readFileSync(file, 'utf8');
+  if (text.includes('AIGRAM')) leaks.push(`${path.relative(root, file)} contains AIGRAM watermark`);
+}
 if (leaks.length) {
   console.error(leaks.join('\n'));
-  console.error('Crazy Games output still contains an AlterU login wall or download gate.');
+  console.error('Crazy Games output still contains an AlterU login wall, download gate, or guest-shell watermark.');
   process.exit(1);
 }
 

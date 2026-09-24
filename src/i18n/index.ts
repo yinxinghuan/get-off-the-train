@@ -5,10 +5,17 @@ function detectLocale(): Locale {
   if (query === 'en' || query === 'zh') return query
   const override = alteruLocalStorage.getItem('game_locale')
   if (override === 'en' || override === 'zh') return override
+  // Crazy Games guests land in English unless they asked for a language.
+  // A saved game_locale or ?lang= still wins, so zh strings stay available.
+  if (import.meta.env.MODE === 'crazygames') return 'en'
   return navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en'
 }
 
 export const locale = detectLocale()
+
+if (import.meta.env.MODE === 'crazygames' && typeof document !== 'undefined') {
+  document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en'
+}
 
 const guestBuild = import.meta.env.MODE === 'crazygames'
 

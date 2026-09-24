@@ -11,5 +11,5 @@ preloadCharacterLibrary()
   .then(() => root.render(<React.StrictMode><App /></React.StrictMode>))
   .catch((error) => {
     console.error(error)
-    root.render(<main className="got-boot-error">角色资源加载失败，请刷新重试。</main>)
+    root.render(<main className="got-boot-error">{import.meta.env.MODE === 'crazygames' ? 'Could not load the characters. Refresh to try again.' : '角色资源加载失败，请刷新重试。'}</main>)
   })
