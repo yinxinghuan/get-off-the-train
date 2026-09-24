@@ -288,6 +288,116 @@ button { font: inherit; }
 
 @media (min-width: 700px) {
   .got { max-width: 500px; margin: 0 auto; box-shadow: 0 0 0 4px @paper2, 0 0 0 8px @ink; }
+
+  // Crazy Games desktop iframe: keep the portrait column, and paint the side
+  // gutters as a station wall instead of an empty black letterbox.
+  html.cg-guest,
+  html.cg-guest body,
+  html.cg-guest #root {
+    background-color: #3d3128;
+    background-image:
+      radial-gradient(ellipse at 0% 50%, fade(@yellow, 34%), transparent 42%),
+      radial-gradient(ellipse at 100% 50%, fade(@red, 24%), transparent 40%),
+      radial-gradient(circle, fade(@paper, 32%) 1.25px, transparent 1.4px);
+    background-size: auto, auto, 13px 13px;
+  }
+  html.cg-guest .got {
+    z-index: 1;
+    box-shadow: 0 0 0 4px @paper2, 0 0 0 8px @ink, 0 0 0 12px @yellow;
+  }
+  html.cg-guest .cg-frame {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+  html.cg-guest .cg-frame::before,
+  html.cg-guest .cg-frame::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 10px;
+    background: repeating-linear-gradient(180deg, @yellow 0 14px, @ink 14px 28px);
+  }
+  html.cg-guest .cg-frame::before { left: calc(50% - 282px); }
+  html.cg-guest .cg-frame::after { left: calc(50% + 272px); }
+  html.cg-guest .cg-rail {
+    display: block;
+    position: absolute;
+    top: 50%;
+    max-height: calc(100dvh - 36px);
+    margin: 0;
+    overflow: hidden;
+    color: fade(@paper, 92%);
+    font: 900 clamp(14px, 2.5vh, 22px)/1 "Arial Rounded MT Bold", "Avenir Next", system-ui, sans-serif;
+    letter-spacing: .18em;
+    text-shadow: 0 2px 0 @ink;
+    white-space: nowrap;
+    writing-mode: vertical-rl;
+  }
+  html.cg-guest .cg-rail--left { left: 18px; transform: translateY(-50%); }
+  html.cg-guest .cg-rail--right { right: 18px; transform: translateY(-50%); }
+}
+
+.cg-frame, .cg-poster, .cg-rail { display: none; }
+
+@media (min-width: 1020px) and (min-height: 520px) {
+  html.cg-guest .cg-rail { display: none; }
+  html.cg-guest .cg-poster {
+    position: fixed;
+    top: 50%;
+    z-index: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 14px;
+    width: clamp(164px, calc(50vw - 360px), 300px);
+    min-height: 280px;
+    margin: 0;
+    padding: 16px 16px 14px;
+    color: @ink;
+    background: @paper;
+    border: 4px solid @ink;
+    border-radius: 16px;
+    box-shadow: 7px 7px 0 @ink;
+    pointer-events: none;
+  }
+  html.cg-guest .cg-poster--left { left: calc(25vw - 141px); transform: translate(-50%, -50%) rotate(-2deg); }
+  html.cg-guest .cg-poster--right { left: calc(75vw + 141px); background: @paper2; transform: translate(-50%, -50%) rotate(2deg); }
+  html.cg-guest .cg-poster span {
+    align-self: flex-start;
+    padding: 4px 8px;
+    color: @ink;
+    background: @yellow;
+    border: 2px solid @ink;
+    border-radius: 999px;
+    font: 900 10px/1 ui-monospace, monospace;
+    letter-spacing: .08em;
+  }
+  html.cg-guest .cg-poster--right span { background: @teal; }
+  html.cg-guest .cg-poster strong {
+    display: flex;
+    flex-direction: column;
+    margin: 4px 0;
+    font: 900 clamp(26px, 2.4vw, 36px)/.84 "Arial Rounded MT Bold", "Avenir Next", system-ui, sans-serif;
+    letter-spacing: -.045em;
+  }
+  html.cg-guest .cg-poster strong b { display: block; font: inherit; letter-spacing: inherit; white-space: nowrap; }
+  html.cg-guest .cg-poster em {
+    align-self: flex-start;
+    padding: 6px 8px;
+    color: @paper;
+    background: @red;
+    border: 2px solid @ink;
+    border-radius: 999px;
+    font-size: 10px;
+    font-style: normal;
+    font-weight: 850;
+    letter-spacing: .08em;
+  }
+  html.cg-guest .cg-poster--right em { color: @ink; background: @cyan; }
 }
 
 @media (prefers-reduced-motion: reduce) {

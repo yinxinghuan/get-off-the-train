@@ -3,9 +3,9 @@ import react from '@vitejs/plugin-react'
 
 const GUEST_SHELL_SRC = 'https://images.aiwaves.tech/alteru/guest-shell.js'
 
-function stripAlteruGuestShell(mode: string): Plugin {
+function crazyGamesIndexHtml(mode: string): Plugin {
   return {
-    name: 'strip-alteru-guest-shell',
+    name: 'crazygames-index-html',
     apply: 'build',
     transformIndexHtml(html) {
       if (mode !== 'crazygames') return html
@@ -13,7 +13,10 @@ function stripAlteruGuestShell(mode: string): Plugin {
         `\\s*<script\\s+src=["']${GUEST_SHELL_SRC.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'][^>]*>\\s*</script>\\s*`,
         'gi',
       )
-      return html.replace(pattern, '\n')
+      return html
+        .replace(pattern, '\n')
+        .replace(/<html\b[^>]*>/i, '<html lang="en" class="cg-guest">')
+        .replace(/<title>[\s\S]*?<\/title>/i, '<title>Get Off the Train!</title>')
     },
   }
 }
@@ -22,7 +25,7 @@ export default defineConfig(({ mode }) => ({
   // Relative base so the bundle loads inside a Crazy Games (or Pages) iframe
   // regardless of the host path.
   base: './',
-  plugins: [react(), stripAlteruGuestShell(mode)],
+  plugins: [react(), crazyGamesIndexHtml(mode)],
   css: { preprocessorOptions: { less: { javascriptEnabled: true } } },
   build: {
     outDir: mode === 'crazygames' ? 'dist-crazygames' : 'dist',
