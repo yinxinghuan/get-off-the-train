@@ -91,6 +91,12 @@ html.cg-guest .got-timer strong {
 }
 html.cg-guest .got-timer small,
 html.cg-guest .got-timer__distance { font-size: 12px; }
+/* The host danger pulse is centered with translateX(-50%). The guest timer is left-aligned. */
+html.cg-guest .got-timer.is-danger { animation-name: cg-danger; }
+@keyframes cg-danger {
+  from { transform: scale(1); }
+  to { transform: scale(1.04); }
+}
 
 html.cg-guest .cg-tools {
   position: absolute;
