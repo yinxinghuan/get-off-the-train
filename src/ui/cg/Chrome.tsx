@@ -142,20 +142,8 @@ export function CgUpgrades({
 export function CgNext({ bestClear, onStart }: { bestClear: number; onStart: (level: number) => void }) {
   if (bestClear < 1) return null
   const next = Math.min(bestClear + 1, 8)
-  const earlier = []
-  for (let car = 2; car < next; car++) earlier.push(car)
   return (
-    <div className="cg-next">
-      <button type="button" className="cg-next__go" onClick={() => onStart(next - 1)}>NEXT CAR {String(next).padStart(2, '0')}</button>
-      {earlier.length > 0 && (
-        <div className="cg-next__alts">
-          <span>OR</span>
-          {earlier.map((car) => (
-            <button key={car} type="button" onClick={() => onStart(car - 1)}>{String(car).padStart(2, '0')}</button>
-          ))}
-        </div>
-      )}
-    </div>
+    <button type="button" className="cg-next__go" onClick={() => onStart(next - 1)}>NEXT CAR {String(next).padStart(2, '0')}</button>
   )
 }
 
