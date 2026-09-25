@@ -6,6 +6,7 @@ import { ANIMAL_LIBRARY_IDS, applyPassengerActivity, box, C, cyl, HERO_IDS, HUMA
 import type { CharacterRig, HeroId, PassengerActivity } from './models'
 import type { HudState, InputVector, LevelConfig } from './types'
 import type { CoachStep } from '../ui/cg/tutorial'
+import type { Upgrades } from '../ui/cg/progress'
 import { sound } from '../audio/sound'
 import { integrateSteer, stepBlend } from './stepBlend'
 
@@ -26,6 +27,8 @@ interface Props {
   rateStable?: boolean
   /** Guest tutorial sway. Host builds leave this unset. */
   coachStep?: CoachStep | null
+  /** Guest grip/hustle ranks. Host builds leave this unset, so cruise and stability stay put. */
+  upgrades?: Upgrades | null
 }
 
 interface Body {
@@ -470,7 +473,7 @@ function dispose(root: THREE.Object3D) {
   })
 }
 
-function World({ level, heroId, config, active, input, reducedMotion, onHud, onFailureStart, onOutcome, desk = false, rateStable = false, coachStep = null }: Props) {
+function World({ level, heroId, config, active, input, reducedMotion, onHud, onFailureStart, onOutcome, desk = false, rateStable = false, coachStep = null, upgrades = null }: Props) {
   const { scene, camera } = useThree()
   const exitSide = level % 2 === 0 ? 1 : -1
   const train = useMemo(() => buildTrain(config, exitSide), [config, exitSide])
@@ -497,7 +500,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
     playerGroup.rotation.y = Math.atan2(FORWARD_X, FORWARD_Z)
     train.root.add(playerGroup)
     const player: Body = {
-      group: playerGroup, x: START_X, z: START_Z, vx: 0, vz: 0, r: 0.22, mass: 1.28, stability: 2.25,
+      group: playerGroup, x: START_X, z: START_Z, vx: 0, vz: 0, r: 0.22, mass: 1.28, stability: 2.25 + (upgrades?.grip ?? 0) * 0.42,
       fallenUntil: 0, fallStarted: 0, fallDuration: 0, fallKind: 'side', protectedUntil: 0, phase: 0,
       homeX: START_X, homeZ: START_Z, targetX: START_X, targetZ: START_Z, nextWander: 0, pauseUntil: 0,
       wanderSpeed: 0, gaitPhase: 0, lastX: START_X, lastZ: START_Z, player: true, behavior: 'player',
@@ -737,6 +740,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
     }
     const knockDown = (b: Body, kind: 'side' | 'forward', duration: number) => {
       if (S.time < b.protectedUntil) return false
+      if (b.player && upgrades?.grip) duration *= 1 - upgrades.grip * 0.08
       b.fallKind = kind
       b.fallStarted = S.time
       b.fallDuration = duration
@@ -968,8 +972,9 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
           const stickX = rawMag > 0.1 ? input.current.x / rawMag : 0
           const stickZ = rawMag > 0.1 ? input.current.z / rawMag : 0
           const forward = -stickZ
-          const targetVx = (FORWARD_X * forward + RIGHT_X * stickX) * 4.1
-          const targetVz = (FORWARD_Z * forward + RIGHT_Z * stickX) * 4.1
+          const cruise = 4.1 * (1 + (upgrades?.hustle ?? 0) * 0.07)
+          const targetVx = (FORWARD_X * forward + RIGHT_X * stickX) * cruise
+          const targetVz = (FORWARD_Z * forward + RIGHT_Z * stickX) * cruise
           if (rateStable) {
             const sx = integrateSteer(b.vx, targetVx, 18, 5.6, dt)
             const sz = integrateSteer(b.vz, targetVz, 18, 5.6, dt)

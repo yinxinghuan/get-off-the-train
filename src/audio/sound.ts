@@ -5,13 +5,25 @@ let muted = false
 let lastBump = 0
 
 const MUTE_KEY = 'get-off-the-train.cg.muted'
+const VOL_KEY = 'get-off-the-train.cg.volume'
 
 function readGuestMuted() {
   if (!isCrazyGamesBuild) return false
   try { return alteruLocalStorage.getItem(MUTE_KEY) === '1' } catch { return false }
 }
 
+function readGuestVolume() {
+  if (!isCrazyGamesBuild) return 1
+  try {
+    const raw = alteruLocalStorage.getItem(VOL_KEY)
+    if (raw == null) return 0.8
+    const n = Number(raw)
+    return Number.isFinite(n) ? Math.max(0.15, Math.min(1, n)) : 0.8
+  } catch { return 0.8 }
+}
+
 muted = readGuestMuted()
+let volume = readGuestVolume()
 
 function context() {
   if (!ctx) ctx = new AudioContext()
@@ -38,20 +50,11 @@ function tone(freq: number, duration: number, type: OscillatorType, volume: numb
   } catch { /* audio is optional */ }
 }
 
-// Guest music and layered effects. Original synthesis only — see doc/audio.md.
-// Stays silent until the first gesture (`armed`).
+// Guest bed is a recorded loop. Effects stay layered. Silent until the first gesture.
 let armed = false
 let master: GainNode | null = null
 let sfxBus: GainNode | null = null
 let musicBus: GainNode | null = null
-let scheduler: number | null = null
-let nextNoteAt = 0
-let stepIndex = 0
-let pad: OscillatorNode | null = null
-
-const SFX_BUS = 0.62
-const MUSIC_BUS = 0.16
-const BEAT = 60 / 92 / 2
 
 function ensureGuest(): AudioContext | null {
   if (!armed) return null
@@ -59,7 +62,7 @@ function ensureGuest(): AudioContext | null {
     const ac = context()
     if (!master) {
       master = ac.createGain()
-      master.gain.value = muted ? 0 : 1
+      master.gain.value = muted ? 0 : volume
       const comp = ac.createDynamicsCompressor()
       comp.threshold.value = -14
       comp.knee.value = 10
@@ -69,10 +72,10 @@ function ensureGuest(): AudioContext | null {
       master.connect(comp)
       comp.connect(ac.destination)
       sfxBus = ac.createGain()
-      sfxBus.gain.value = SFX_BUS
+      sfxBus.gain.value = 0.7
       sfxBus.connect(master)
       musicBus = ac.createGain()
-      musicBus.gain.value = MUSIC_BUS
+      musicBus.gain.value = 0.46
       musicBus.connect(master)
     }
     return ac
@@ -147,118 +150,139 @@ function guestWarn() { voice(440, 0.09, 'square', 0.08, 320); voice(440, 0.09, '
 function guestSway() { voice(90, 0.22, 'sine', 0.14, 54); noise(0.2, 0.07, 180, 'lowpass') }
 function guestFall() { voice(110, 0.18, 'triangle', 0.14, 60); noise(0.16, 0.08, 240, 'lowpass') }
 function guestTrip() { noise(0.12, 0.07, 700, 'bandpass'); voice(180, 0.12, 'triangle', 0.1, 90); voice(70, 0.2, 'sine', 0.12, 48, 0.1) }
-function guestWin() { [523, 659, 784].forEach((f, i) => voice(f, 0.14, 'triangle', 0.12, undefined, i * 0.08)) }
+function guestWin() { playSting('clear') }
 function guestCoins() { voice(880, 0.07, 'triangle', 0.12, 1040, 0.02); voice(1310, 0.08, 'sine', 0.1, undefined, 0.1) }
 function guestEquip() { voice(620, 0.05, 'triangle', 0.12, 480); noise(0.03, 0.04, 1600, 'highpass') }
-function guestLose() {
-  voice(220, 0.16, 'triangle', 0.12, 140)
-  voice(110, 0.28, 'sine', 0.12, 70, 0.1)
-  noise(0.3, 0.06, 200, 'lowpass', 0.12)
-}
+function guestLose() { playSting('miss') }
 function guestHero() {
   ;[440, 554, 659].forEach((f, i) => voice(f, 0.12, 'triangle', 0.12, undefined, i * 0.07))
 }
 
-function musicNote(ac: AudioContext, time: number, freq: number, dur: number, gain: number, type: OscillatorType) {
-  if (!musicBus) return
-  const osc = ac.createOscillator()
-  const amp = ac.createGain()
-  const filter = ac.createBiquadFilter()
-  filter.type = 'lowpass'
-  filter.frequency.value = 1400
-  osc.type = type
-  osc.frequency.setValueAtTime(freq, time)
-  amp.gain.setValueAtTime(0.0001, time)
-  amp.gain.exponentialRampToValueAtTime(gain, time + 0.02)
-  amp.gain.exponentialRampToValueAtTime(0.0001, time + dur)
-  osc.connect(filter)
-  filter.connect(amp)
-  amp.connect(musicBus)
-  osc.start(time)
-  osc.stop(time + dur + 0.02)
+type StingKind = 'clear' | 'miss'
+type Bed = 'loop' | 'sting'
+
+let want: Bed = 'loop'
+let pendingSting: StingKind = 'miss'
+let loopSrc: AudioBufferSourceNode | null = null
+let stingSrc: AudioBufferSourceNode | null = null
+let tracks: { loop: AudioBuffer; clear: AudioBuffer; miss: AudioBuffer } | null = null
+let loading: Promise<void> | null = null
+
+function applyBuses() {
+  if (master) master.gain.setValueAtTime(muted ? 0 : volume, ctx?.currentTime ?? 0)
+  if (musicBus) musicBus.gain.value = 0.46
+  if (sfxBus) sfxBus.gain.value = 0.7
 }
 
-function clack(ac: AudioContext, time: number, gain: number) {
-  if (!musicBus) return
-  const n = Math.floor(ac.sampleRate * 0.05)
-  const buf = ac.createBuffer(1, n, ac.sampleRate)
-  const data = buf.getChannelData(0)
-  for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n) ** 2
-  const src = ac.createBufferSource()
-  src.buffer = buf
-  const filter = ac.createBiquadFilter()
-  filter.type = 'bandpass'
-  filter.frequency.value = 220
-  filter.Q.value = 0.8
-  const amp = ac.createGain()
-  amp.gain.value = gain
-  src.connect(filter)
-  filter.connect(amp)
-  amp.connect(musicBus)
-  src.start(time)
+function stopNode(node: AudioBufferSourceNode | null) {
+  if (!node) return
+  try { node.stop() } catch { /* already stopped */ }
 }
 
-const MOTIF = [220, 262, 294, 330, 294, 247, 220, 196]
-
-function stopMusic() {
-  if (scheduler != null) { window.clearInterval(scheduler); scheduler = null }
-  if (pad) { try { pad.stop() } catch { /* already stopped */ } pad = null }
+function stopLoop() {
+  stopNode(loopSrc)
+  loopSrc = null
 }
 
-function startMusic() {
+function stopSting() {
+  stopNode(stingSrc)
+  stingSrc = null
+}
+
+function startLoop() {
   const ac = ensureGuest()
-  if (!ac || !musicBus || muted || scheduler != null) return
-  const osc = ac.createOscillator()
-  const amp = ac.createGain()
-  const filter = ac.createBiquadFilter()
-  filter.type = 'lowpass'
-  filter.frequency.value = 280
-  osc.type = 'sine'
-  osc.frequency.value = 110
-  amp.gain.value = 0.04
-  osc.connect(filter)
-  filter.connect(amp)
-  amp.connect(musicBus)
-  osc.start()
-  pad = osc
-  nextNoteAt = ac.currentTime + 0.05
-  stepIndex = 0
-  const tick = () => {
-    const live = ensureGuest()
-    if (!live || muted) return
-    const horizon = live.currentTime + 0.28
-    while (nextNoteAt < horizon) {
-      const eighth = stepIndex % 8
-      clack(live, nextNoteAt, eighth % 2 === 0 ? 0.09 : 0.035)
-      if (eighth % 4 === 0) musicNote(live, nextNoteAt, eighth % 8 === 0 ? 55 : 82, 0.22, 0.05, 'sine')
-      if (eighth % 2 === 0) musicNote(live, nextNoteAt, MOTIF[(stepIndex / 2) % MOTIF.length], 0.28, 0.045, 'triangle')
-      nextNoteAt += BEAT
-      stepIndex++
+  if (!ac || !musicBus || muted || !tracks || loopSrc || want !== 'loop') return
+  const src = ac.createBufferSource()
+  src.buffer = tracks.loop
+  src.loop = true
+  src.connect(musicBus)
+  src.start()
+  loopSrc = src
+  src.onended = () => { if (loopSrc === src) loopSrc = null }
+}
+
+function startSting() {
+  const ac = ensureGuest()
+  if (!ac || !musicBus || muted || !tracks || want !== 'sting') return
+  stopSting()
+  const src = ac.createBufferSource()
+  src.buffer = pendingSting === 'clear' ? tracks.clear : tracks.miss
+  src.connect(musicBus)
+  src.start()
+  stingSrc = src
+  src.onended = () => { if (stingSrc === src) stingSrc = null }
+}
+
+function loadTracks() {
+  if (tracks || loading) return loading ?? Promise.resolve()
+  loading = (async () => {
+    if (import.meta.env.MODE !== 'crazygames') return
+    const ac = ensureGuest()
+    if (!ac) return
+    const mod = await import('./cgTracks')
+    const decode = async (url: string) => {
+      const res = await fetch(url)
+      const raw = await res.arrayBuffer()
+      return ac.decodeAudioData(raw.slice(0))
     }
-  }
-  tick()
-  scheduler = window.setInterval(tick, 80)
+    tracks = {
+      loop: await decode(mod.loopUrl),
+      clear: await decode(mod.clearUrl),
+      miss: await decode(mod.missUrl),
+    }
+    if (want === 'loop') startLoop()
+    else startSting()
+  })().catch(() => { loading = null })
+  return loading
+}
+
+function playSting(kind: StingKind) {
+  want = 'sting'
+  pendingSting = kind
+  stopLoop()
+  if (!tracks) { loadTracks(); return }
+  startSting()
+}
+
+function resumeLoop() {
+  want = 'loop'
+  stopSting()
+  if (muted) return
+  if (!tracks) { loadTracks(); return }
+  startLoop()
 }
 
 function guestUnlock() {
   armed = true
   ensureGuest()
-  if (!muted) startMusic()
+  applyBuses()
+  if (want === 'loop' && !muted) loadTracks()
 }
 
 function guestToggle() {
   muted = !muted
   try { alteruLocalStorage.setItem(MUTE_KEY, muted ? '1' : '0') } catch { /* private mode */ }
-  if (master && ctx) master.gain.setValueAtTime(muted ? 0 : 1, ctx.currentTime)
-  if (muted) stopMusic()
-  else if (armed) startMusic()
+  applyBuses()
+  if (muted) { stopLoop(); stopSting() }
+  else if (armed && want === 'loop') { if (!tracks) loadTracks(); else startLoop() }
+  else if (armed && want === 'sting') { if (!tracks) loadTracks(); else startSting() }
   return muted
+}
+
+function guestNudgeVolume(delta: number) {
+  volume = Math.max(0.15, Math.min(1, Math.round((volume + delta) * 100) / 100))
+  try { alteruLocalStorage.setItem(VOL_KEY, String(volume)) } catch { /* private mode */ }
+  applyBuses()
+  return volume
 }
 
 const host = {
   unlock: () => { if (!muted) context() },
   toggle: () => (muted = !muted),
   isMuted: () => muted,
+  resumeLoop: () => {},
+  nudgeVolume: (_delta: number) => 1,
+  getVolume: () => 1,
   tap: () => tone(220, 0.045, 'triangle', 0.035),
   bump: () => {
     const now = performance.now()
@@ -290,6 +314,9 @@ const guest = {
   unlock: guestUnlock,
   toggle: guestToggle,
   isMuted: () => muted,
+  resumeLoop,
+  nudgeVolume: guestNudgeVolume,
+  getVolume: () => volume,
   tap: guestTap,
   bump: guestBump,
   seatRise: guestSeat,

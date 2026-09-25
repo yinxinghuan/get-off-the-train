@@ -69,16 +69,42 @@ html.cg-guest .got-timer strong {
 html.cg-guest .got-timer small,
 html.cg-guest .got-timer__distance { font-size: 12px; }
 
-html.cg-guest .got-pause,
-html.cg-guest .cg-mute {
+html.cg-guest .got-pause {
   top: 12px;
+  right: 12px;
   width: 44px;
   height: 44px;
   border-width: 3px;
   box-shadow: 3px 3px 0 var(--cg-ink);
 }
-html.cg-guest .got-pause { right: 12px; }
-html.cg-guest .cg-mute { right: 64px; }
+html.cg-guest .cg-vol {
+  position: absolute;
+  z-index: 12;
+  top: 12px;
+  right: 64px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+html.cg-guest .cg-vol button {
+  position: static;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--cg-ink);
+  background: var(--cg-paper);
+  border: 3px solid var(--cg-ink);
+  border-radius: 50%;
+  box-shadow: 2px 2px 0 var(--cg-ink);
+  font: 800 18px/1 var(--cg-font);
+  cursor: pointer;
+}
+html.cg-guest .cg-vol .cg-mute {
+  width: 44px;
+  height: 44px;
+}
 
 html.cg-guest .got-mission { display: none; }
 html.cg-guest .got-level-intro { display: none; }
@@ -386,6 +412,8 @@ html.cg-guest .got--desk .got-panel > h2,
 html.cg-guest .got--desk .got-panel > p,
 html.cg-guest .got--desk .got-panel > .got-stats,
 html.cg-guest .got--desk .got-panel > .cg-progress,
+html.cg-guest .got--desk .got-panel > .cg-upgrades,
+html.cg-guest .got--desk .got-panel > .cg-starts,
 html.cg-guest .got--desk .got-panel > .cg-textbtn { grid-column: 1; }
 html.cg-guest .got--desk .got-panel__actions {
   display: flex;
@@ -450,6 +478,85 @@ html.cg-guest .cg-progress__goal i {
 }
 html.cg-guest .cg-progress__goal i b { display: block; height: 100%; background: var(--cg-teal); }
 
+html.cg-guest .cg-ladder {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+html.cg-guest .cg-ladder span {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 4px;
+  border: 2px solid var(--cg-ink);
+  border-radius: 6px;
+  background: var(--cg-paper);
+  color: var(--cg-ink);
+  font-size: 11px;
+  font-weight: 800;
+}
+html.cg-guest .cg-ladder .is-done { background: var(--cg-teal); color: var(--cg-paper); }
+html.cg-guest .cg-ladder .is-next { background: var(--cg-yellow); }
+html.cg-guest .cg-ladder .is-lock { color: var(--cg-muted); }
+html.cg-guest .cg-ladder em {
+  margin-left: auto;
+  color: var(--cg-teal);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+html.cg-guest .cg-upgrades {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+html.cg-guest .cg-upgrades button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-height: 36px;
+  padding: 4px 8px;
+  color: var(--cg-ink);
+  background: var(--cg-paper);
+  border: 2px solid var(--cg-ink);
+  border-radius: 8px;
+  font: 800 12px/1 var(--cg-font);
+  cursor: pointer;
+}
+html.cg-guest .cg-upgrades button:disabled { opacity: .55; cursor: default; }
+html.cg-guest .cg-upgrades .is-ready { background: var(--cg-yellow); box-shadow: 2px 2px 0 var(--cg-ink); }
+html.cg-guest .cg-upgrades .is-max { background: var(--cg-sand); }
+html.cg-guest .cg-upgrades span { color: var(--cg-teal); }
+
+html.cg-guest .cg-starts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+html.cg-guest .cg-starts > span {
+  color: var(--cg-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+html.cg-guest .cg-starts button {
+  min-width: 36px;
+  height: 32px;
+  padding: 0 8px;
+  color: var(--cg-ink);
+  background: var(--cg-yellow);
+  border: 2px solid var(--cg-ink);
+  border-radius: 8px;
+  box-shadow: 2px 2px 0 var(--cg-ink);
+  font: 800 13px/1 var(--cg-font);
+  cursor: pointer;
+}
+
 html.cg-guest .cg-textbtn {
   justify-self: start;
   padding: 0;
@@ -482,7 +589,10 @@ html.cg-guest .got-lb__panel {
 @media (orientation: landscape) and (max-height: 560px) {
   html.cg-guest .cg-stage small { display: none; }
   html.cg-guest .cg-chip { top: 60px; }
+  html.cg-guest .got--desk .got-panel > p { display: none; }
   html.cg-guest .got-panel { padding: 8px 12px; }
+  html.cg-guest .cg-upgrades button { min-height: 32px; padding: 2px 6px; }
+  html.cg-guest .cg-progress__goal { padding: 4px 8px; }
   html.cg-guest .got-panel h2 { font-size: 28px; }
   html.cg-guest .got-stats { gap: 6px; margin: 4px 0; }
   html.cg-guest .got-stats div { padding: 6px; }

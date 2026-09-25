@@ -24,8 +24,9 @@ Crazy Games requires that guests can play and that the game does not add its own
 - Desktop landscape (including 800×450) is a full-bleed 16:9 view. The carriage fills the frame; there is no 500px portrait column and no decorative side posters. Phone portrait stays full-bleed.
 - Keyboard: WASD and arrows move, Space or Enter confirms (resume, next car, try again), P pauses, M mutes. Escape is not used.
 - The first run is a four-step coach (move, let go on sway, get up, exit). Skip writes `get-off-the-train.cg.tutorial`. Replay tips is on the result card.
-- Failing or clearing a car pays coins, shows the car and the best car, and the next hero still locked. Stage banners play at the start of each car.
-- Music and layered effects are synthesized in the browser (see `doc/audio.md`). Mute persists. Audio starts after the first gesture.
+- Five named cars get harder in order (less time, denser crowd, stronger sway), then endless specials. A clear saves the highest car finished (`get-off-the-train.cg.best-clear`). The result card shows that ladder, the coins just earned, and the next purchase.
+- Coins buy three persistent ranks — grip (harder to fall), hustle (faster walk), pocket (more coins next run) — at 40, then 90, then 160, saved in `get-off-the-train.cg.upgrades`. The same coins still unlock heroes. After the first clear, RIDE starts a later car you have opened.
+- Music is a CC0 loop plus clear and miss stings (see `doc/audio.md` for each file, source URL, and licence). Effects stay synthesized. Mute and volume persist. Audio starts after the first gesture.
 
 UI spec for this build (see `src/ui/cg-theme.less`): space 4/8/12/16/24; type 11/13/16/22/32; strokes 2px chips, 3px controls, 4px panels; ink `#1a1612`, paper `#fff8ee`, sand `#f3e7cf`, yellow `#f5c518` for actions, red `#d4534a` for danger, teal `#2f7f76` for progress. Nunito ExtraBold (SIL OFL) is the UI face.
 

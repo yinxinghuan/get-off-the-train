@@ -1,7 +1,7 @@
 import { heroName, type HeroNameId } from '../../i18n'
 import type { HeroId } from '../../game/models'
 import { CoinIcon } from '../Icons'
-import { nextLockedHero } from './progress'
+import { nextCoinGoal, upgradeCost, UPGRADE_MAX, type UpgradeId, type Upgrades } from './progress'
 import type { CoachStep } from './tutorial'
 
 function Keys({ arrows = false }: { arrows?: boolean }) {
@@ -72,24 +72,35 @@ export function CgLegend() {
   )
 }
 
+const UPGRADE_LABEL: Record<UpgradeId, string> = { grip: 'GRIP', hustle: 'HUSTLE', pocket: 'POCKET' }
+
+function goalName(goal: NonNullable<ReturnType<typeof nextCoinGoal>>) {
+  return goal.kind === 'hero' ? heroName(goal.id as HeroNameId) : UPGRADE_LABEL[goal.id]
+}
+
 export function CgGoal({
   coins,
   unlocked,
+  upgrades,
   earned,
   stage,
   bestStage,
+  bestClear,
   cleared,
 }: {
   coins: number
   unlocked: readonly HeroId[]
+  upgrades: Upgrades
   earned?: number
   stage: number
   bestStage: number
+  bestClear: number
   cleared?: boolean
 }) {
-  const next = nextLockedHero(unlocked)
+  const next = nextCoinGoal(coins, unlocked, upgrades)
   const left = next ? Math.max(0, next.cost - coins) : 0
   const pct = next ? Math.max(0, Math.min(100, Math.round((coins / next.cost) * 100))) : 100
+  const nextCar = Math.min(bestClear + 1, 5)
   return (
     <div className="cg-progress">
       <div className="cg-progress__row">
@@ -99,17 +110,23 @@ export function CgGoal({
           <strong className="cg-progress__earn"><CoinIcon size={16} />+{earned}</strong>
         )}
       </div>
+      <div className="cg-ladder" aria-label="Cars">
+        {[1, 2, 3, 4, 5].map((car) => (
+          <span key={car} className={car <= bestClear ? 'is-done' : car === nextCar ? 'is-next' : 'is-lock'}>{String(car).padStart(2, '0')}</span>
+        ))}
+        <em>{bestClear >= 5 ? 'ENDLESS OPEN' : `CLEAR ${String(nextCar).padStart(2, '0')}`}</em>
+      </div>
       {next ? (
         <div className="cg-progress__goal">
           <span>NEXT</span>
-          <strong>{heroName(next.id as HeroNameId)}</strong>
+          <strong>{goalName(next)}</strong>
           <em>{left === 0 ? 'READY' : `${left} LEFT`}</em>
           <i aria-hidden="true"><b style={{ width: `${pct}%` }} /></i>
         </div>
       ) : (
         <div className="cg-progress__goal">
           <span>NEXT</span>
-          <strong>EVERY HERO</strong>
+          <strong>ALL BOUGHT</strong>
           <em>KEEP GOING</em>
           <i aria-hidden="true"><b style={{ width: '100%' }} /></i>
         </div>
@@ -118,14 +135,54 @@ export function CgGoal({
   )
 }
 
-export function CgChip({ coins, unlocked }: { coins: number; unlocked: readonly HeroId[] }) {
-  const next = nextLockedHero(unlocked)
+export function CgUpgrades({
+  coins,
+  upgrades,
+  onBuy,
+}: {
+  coins: number
+  upgrades: Upgrades
+  onBuy: (id: UpgradeId) => void
+}) {
+  return (
+    <div className="cg-upgrades">
+      {(['grip', 'hustle', 'pocket'] as const).map((id) => {
+        const rank = upgrades[id]
+        const cost = upgradeCost(rank)
+        const ready = cost != null && coins >= cost
+        return (
+          <button key={id} type="button" className={rank >= UPGRADE_MAX ? 'is-max' : ready ? 'is-ready' : ''} disabled={cost == null || coins < cost} onClick={() => onBuy(id)}>
+            <b>{UPGRADE_LABEL[id]} {rank || ''}</b>
+            <span>{cost == null ? 'MAX' : `${cost}`}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+export function CgStarts({ bestClear, onStart }: { bestClear: number; onStart: (level: number) => void }) {
+  if (bestClear < 1) return null
+  const cars = []
+  for (let car = 2; car <= Math.min(bestClear + 1, 8); car++) cars.push(car)
+  return (
+    <div className="cg-starts">
+      <span>RIDE</span>
+      {cars.map((car) => (
+        <button key={car} type="button" onClick={() => onStart(car - 1)}>{String(car).padStart(2, '0')}</button>
+      ))}
+    </div>
+  )
+}
+
+export function CgChip({ coins, unlocked, upgrades }: { coins: number; unlocked: readonly HeroId[]; upgrades: Upgrades }) {
+  const next = nextCoinGoal(coins, unlocked, upgrades)
   const left = next ? Math.max(0, next.cost - coins) : 0
   return (
     <div className="cg-chip">
       <CoinIcon size={16} />
       <strong>{coins}</strong>
-      {next ? <span>{heroName(next.id as HeroNameId)} · {left === 0 ? 'READY' : `${left} LEFT`}</span> : <span>ALL HEROES</span>}
+      {next ? <span>{goalName(next)} · {left === 0 ? 'READY' : `${left} LEFT`}</span> : <span>ALL BOUGHT</span>}
     </div>
   )
 }

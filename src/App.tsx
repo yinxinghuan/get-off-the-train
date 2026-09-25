@@ -8,8 +8,8 @@ import { ArrowIcon, CoinIcon, CollectionIcon, CrownIcon, MutedIcon, PauseIcon, S
 import { Joystick } from './ui/Joystick'
 import { CrazyGamesFrame } from './ui/CrazyGamesFrame'
 import { useGuestDesk } from './ui/cg/desk'
-import { CgChip, CgCoach, CgGoal, CgLegend } from './ui/cg/Chrome'
-import { readBestStage, writeBestStage } from './ui/cg/progress'
+import { CgChip, CgCoach, CgGoal, CgLegend, CgStarts, CgUpgrades } from './ui/cg/Chrome'
+import { pocketMultiplier, readBestClear, readBestStage, readUpgrades, upgradeCost, writeBestClear, writeBestStage, writeUpgrades, EMPTY_UPGRADES, type UpgradeId } from './ui/cg/progress'
 import { useCoach } from './ui/cg/tutorial'
 import { useCgKeys } from './ui/cg/useCgKeys'
 import { CollectionShop } from './ui/CollectionShop'
@@ -131,12 +131,23 @@ export default function App() {
   const coach = useCoach(hud, phase)
   const [muted, setMuted] = useState(() => sound.isMuted())
   const [bestStage, setBestStage] = useState(() => (isCrazyGamesBuild ? readBestStage() : 0))
+  const [bestClear, setBestClear] = useState(() => (isCrazyGamesBuild ? readBestClear() : 0))
+  const [upgrades, setUpgrades] = useState(() => (isCrazyGamesBuild ? readUpgrades() : EMPTY_UPGRADES))
+  const [runId, setRunId] = useState(0)
   const toggleMute = useCallback(() => { setMuted(sound.toggle()) }, [])
   const rememberStage = useCallback((stage: number) => {
     if (!isCrazyGamesBuild) return
     setBestStage((prev) => {
       const next = Math.max(prev, stage)
       if (next !== prev) writeBestStage(next)
+      return next
+    })
+  }, [])
+  const rememberClear = useCallback((car: number) => {
+    if (!isCrazyGamesBuild) return
+    setBestClear((prev) => {
+      const next = Math.max(prev, car)
+      if (next !== prev) writeBestClear(next)
       return next
     })
   }, [])
@@ -199,6 +210,7 @@ export default function App() {
 
   const restartRun = useCallback(() => {
     sound.unlock()
+    if (isCrazyGamesBuild) { sound.resumeLoop(); setRunId((n) => n + 1) }
     snapshotPreRunBest()
     input.current = { x: 0, z: 0 }
     setLevel(0); setScore(0); setLevelScore(0); setTotalFalls(0)
@@ -208,6 +220,34 @@ export default function App() {
     setShowGuide(false)
     setPhase('playing')
   }, [snapshotPreRunBest])
+
+  const beginAt = useCallback((index: number) => {
+    sound.unlock()
+    sound.resumeLoop()
+    setRunId((n) => n + 1)
+    snapshotPreRunBest()
+    input.current = { x: 0, z: 0 }
+    setLevel(Math.max(0, index))
+    setScore(0); setLevelScore(0); setTotalFalls(0)
+    setLevelCoins(0); setShowCollection(false)
+    setHud({ ...initialHud, timeLeft: getLevelConfig(Math.max(0, index)).time })
+    setRunStarted(true)
+    setShowGuide(false)
+    setPhase('playing')
+  }, [snapshotPreRunBest])
+
+  const buyUpgrade = useCallback((id: UpgradeId) => {
+    if (!isCrazyGamesBuild || !collectionMirror) return
+    const cost = upgradeCost(upgrades[id])
+    if (cost == null || collectionMirror.coins < cost) return
+    const nextUpgrades = { ...upgrades, [id]: upgrades[id] + 1 }
+    setUpgrades(nextUpgrades)
+    writeUpgrades(nextUpgrades)
+    const nextCollection = { ...collectionMirror, coins: collectionMirror.coins - cost }
+    setCollectionMirror(nextCollection)
+    persist(nextCollection)
+    sound.tap()
+  }, [collectionMirror, persist, upgrades])
 
   const beginFromInput = useCallback(() => {
     sound.unlock()
@@ -224,7 +264,7 @@ export default function App() {
     setTotalFalls(nextFalls)
     if (kind === 'fail') {
       if (isCrazyGamesBuild) {
-        const earnedCoins = 10 + Math.min(level, 8) * 3
+        const earnedCoins = Math.round((18 + level * 10) * pocketMultiplier(upgrades.pocket))
         setLevelCoins(earnedCoins)
         rememberStage(level + 1)
         if (collectionMirror) {
@@ -243,7 +283,8 @@ export default function App() {
       return
     }
     const earned = Math.ceil(data.timeLeft * 100) + 1000 + Math.max(0, 3 - data.falls) * 250 + level * 120
-    const earnedCoins = 30 + Math.min(level + 1, 10) * 5 + (data.falls === 0 ? 10 : 0)
+    const baseCoins = 30 + Math.min(level + 1, 10) * 5 + (data.falls === 0 ? 10 : 0)
+    const earnedCoins = isCrazyGamesBuild ? Math.round(baseCoins * pocketMultiplier(upgrades.pocket)) : baseCoins
     setLevelScore(earned)
     setLevelCoins(earnedCoins)
     setScore((current) => current + earned)
@@ -253,9 +294,9 @@ export default function App() {
       persist(nextCollection)
       sound.coins()
     }
-    if (isCrazyGamesBuild) rememberStage(level + 1)
+    if (isCrazyGamesBuild) { rememberStage(level + 1); rememberClear(level + 1) }
     setPhase('level-clear')
-  }, [collectionMirror, level, persist, rememberStage, score, sendBeatNotify, submitScore, totalFalls])
+  }, [collectionMirror, level, persist, rememberClear, rememberStage, score, sendBeatNotify, submitScore, totalFalls, upgrades.pocket])
 
   const handleFailureStart = useCallback(() => {
     input.current = { x: 0, z: 0 }
@@ -268,6 +309,7 @@ export default function App() {
     setHud({ ...initialHud, timeLeft: getLevelConfig(next).time })
     setShowCollection(false)
     setPhase('playing')
+    if (isCrazyGamesBuild) sound.resumeLoop()
     rememberStage(next + 1)
   }
 
@@ -376,7 +418,7 @@ export default function App() {
     <>
     {isCrazyGamesBuild && <CrazyGamesFrame />}
     <main className={`got${hud.swayWarning ? ' got--warning' : ''}${phase === 'fail-cinematic' ? ' got--failure-shot' : ''}${phase === 'game-over' ? ' got--failed' : ''}${isCrazyGamesBuild ? ' got--cg' : ''}${desk ? ' got--desk' : ''}`}>
-      <TrainScene key={level} level={level} heroId={selectedHero} config={config} active={(phase === 'playing' || phase === 'fail-cinematic') && runStarted} input={input} reducedMotion={reducedMotion} onHud={setHud} onFailureStart={handleFailureStart} onOutcome={handleOutcome} desk={desk} rateStable={isCrazyGamesBuild} coachStep={coach.step} />
+      <TrainScene key={isCrazyGamesBuild ? `${level}:${runId}` : level} level={level} heroId={selectedHero} config={config} active={(phase === 'playing' || phase === 'fail-cinematic') && runStarted} input={input} reducedMotion={reducedMotion} onHud={setHud} onFailureStart={handleFailureStart} onOutcome={handleOutcome} desk={desk} rateStable={isCrazyGamesBuild} coachStep={coach.step} upgrades={isCrazyGamesBuild ? upgrades : undefined} />
       <div className="got__halftone" aria-hidden="true" />
       <div className="got__frame" aria-hidden="true" />
 
@@ -405,7 +447,11 @@ export default function App() {
         </div>
       )}
       {isCrazyGamesBuild && phase !== 'fail-cinematic' && (
-        <button type="button" className="got-pause cg-mute" aria-label={muted ? 'Unmute' : 'Mute'} onPointerDown={(ev) => { ev.preventDefault(); ev.stopPropagation(); sound.unlock(); toggleMute() }}>{muted ? <MutedIcon /> : <SoundIcon />}</button>
+        <div className="cg-vol">
+          <button type="button" aria-label="Quieter" onPointerDown={(ev) => { ev.preventDefault(); ev.stopPropagation(); sound.unlock(); sound.nudgeVolume(-0.15) }}>−</button>
+          <button type="button" className="cg-mute" aria-label={muted ? 'Unmute' : 'Mute'} onPointerDown={(ev) => { ev.preventDefault(); ev.stopPropagation(); sound.unlock(); toggleMute() }}>{muted ? <MutedIcon /> : <SoundIcon />}</button>
+          <button type="button" aria-label="Louder" onPointerDown={(ev) => { ev.preventDefault(); ev.stopPropagation(); sound.unlock(); sound.nudgeVolume(0.15) }}>+</button>
+        </div>
       )}
       {phase !== 'fail-cinematic' && <button className="got-pause" aria-label={t('pause')} onPointerDown={pause}><PauseIcon /></button>}
 
@@ -415,7 +461,7 @@ export default function App() {
         <>
           {hud.swayWarning && <div className="got-warning"><span>{hud.swayDirection > 0 ? t('right') : t('left')}</span><strong>{t('warning')}</strong></div>}
           <Joystick input={input} enabled={phase === 'playing'} showGuide={showGuide && !isCrazyGamesBuild} onFirstInput={beginFromInput} />
-          {isCrazyGamesBuild && <CgChip coins={collectionMirror?.coins ?? 0} unlocked={collectionMirror?.unlocked ?? ['commuter']} />}
+          {isCrazyGamesBuild && <CgChip coins={collectionMirror?.coins ?? 0} unlocked={collectionMirror?.unlocked ?? ['commuter']} upgrades={upgrades} />}
           {coach.step && <CgCoach step={coach.step} onSkip={() => { sound.tap(); coach.skip() }} />}
           {!coach.step && desk && <CgLegend />}
         </>
@@ -445,7 +491,9 @@ export default function App() {
                   <div><span>{t('falls')}</span><strong>{totalFalls}</strong></div>
                   <div><span>{phase === 'game-over' ? t('best') : t('totalScore')}</span><strong>{phase === 'game-over' ? Math.max(best, score) : score}</strong></div>
                 </div>
-                <CgGoal coins={collectionMirror?.coins ?? 0} unlocked={collectionMirror?.unlocked ?? ['commuter']} earned={levelCoins} stage={level + 1} bestStage={Math.max(bestStage, level + 1)} cleared={phase === 'level-clear'} />
+                <CgGoal coins={collectionMirror?.coins ?? 0} unlocked={collectionMirror?.unlocked ?? ['commuter']} upgrades={upgrades} earned={levelCoins} stage={level + 1} bestStage={Math.max(bestStage, level + 1)} bestClear={bestClear} cleared={phase === 'level-clear'} />
+                <CgUpgrades coins={collectionMirror?.coins ?? 0} upgrades={upgrades} onBuy={buyUpgrade} />
+                {phase === 'game-over' && <CgStarts bestClear={bestClear} onStart={beginAt} />}
               </>
             )}
             {isCrazyGamesBuild && phase === 'game-over' && <button type="button" className="cg-textbtn" onClick={() => { sound.tap(); replayTips() }}>REPLAY TIPS</button>}
