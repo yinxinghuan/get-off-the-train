@@ -36,6 +36,9 @@ html.cg-guest body,
 html.cg-guest #root {
   background: #14181c;
   background-image: none;
+  width: 100%;
+  max-width: 100vw;
+  overflow: hidden;
 }
 
 html.cg-guest .cg-frame,
@@ -45,12 +48,15 @@ html.cg-guest .cg-rail {
 }
 
 html.cg-guest .got {
-  max-width: none !important;
+  /* min-width:0 stops a zoomed result card from stretching the stage past the iframe. */
+  min-width: 0 !important;
+  max-width: 100% !important;
   width: 100%;
   height: 100dvh;
   min-height: 0;
   margin: 0 !important;
   box-shadow: none !important;
+  overflow: hidden;
   font-family: var(--cg-font);
 }
 
