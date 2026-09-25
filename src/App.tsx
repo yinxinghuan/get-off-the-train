@@ -306,6 +306,18 @@ export default function App() {
     setShowGuide(true)
   }
 
+  const panelActions = (
+    <>
+      {phase === 'paused' && <ActionButton onPress={() => setPhase('playing')}>{t('resume')} <ArrowIcon /></ActionButton>}
+      {phase === 'level-clear' && <ActionButton onPress={nextLevel}>{t('next')} <ArrowIcon /></ActionButton>}
+      {phase === 'game-over' && <ActionButton onPress={restartRun}>{t('retry')} <ArrowIcon /></ActionButton>}
+      <ChampionPill champion={champion} onOpen={() => setShowBoard(true)} />
+      <button className="got-btn got-btn--secondary" onClick={openCollection}><CollectionIcon />{t('collection')}<span className="got-btn__balance"><CoinIcon size={16} />{collectionMirror?.coins ?? 0}</span></button>
+      {phase === 'paused' && <ActionButton secondary onPress={restartRun}>{t('restart')}</ActionButton>}
+      {phase === 'paused' && <ActionButton secondary onPress={() => setReducedMotion((value) => !value)}>{t('reduced')}</ActionButton>}
+    </>
+  )
+
   useCgKeys(input, {
     phase,
     showGuide,
@@ -436,14 +448,8 @@ export default function App() {
                 <CgGoal coins={collectionMirror?.coins ?? 0} unlocked={collectionMirror?.unlocked ?? ['commuter']} earned={levelCoins} stage={level + 1} bestStage={Math.max(bestStage, level + 1)} cleared={phase === 'level-clear'} />
               </>
             )}
-            {phase === 'paused' && <ActionButton onPress={() => setPhase('playing')}>{t('resume')} <ArrowIcon /></ActionButton>}
-            {phase === 'level-clear' && <ActionButton onPress={nextLevel}>{t('next')} <ArrowIcon /></ActionButton>}
-            {phase === 'game-over' && <ActionButton onPress={restartRun}>{t('retry')} <ArrowIcon /></ActionButton>}
-            <ChampionPill champion={champion} onOpen={() => setShowBoard(true)} />
-            <button className="got-btn got-btn--secondary" onClick={openCollection}><CollectionIcon />{t('collection')}<span className="got-btn__balance"><CoinIcon size={16} />{collectionMirror?.coins ?? 0}</span></button>
-            {phase === 'paused' && <ActionButton secondary onPress={restartRun}>{t('restart')}</ActionButton>}
-            {phase === 'paused' && <ActionButton secondary onPress={() => setReducedMotion((value) => !value)}>{t('reduced')}</ActionButton>}
             {isCrazyGamesBuild && phase === 'game-over' && <button type="button" className="cg-textbtn" onClick={() => { sound.tap(); replayTips() }}>REPLAY TIPS</button>}
+            {isCrazyGamesBuild ? <div className="got-panel__actions">{panelActions}</div> : panelActions}
           </section>
         </div>
       )}

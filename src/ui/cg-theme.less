@@ -375,11 +375,11 @@ html.cg-guest .got-champ {
 
 html.cg-guest .got--desk .got-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(210px, 0.8fr);
+  grid-template-columns: minmax(0, 1.25fr) minmax(200px, 0.72fr);
   column-gap: 16px;
   row-gap: 6px;
-  align-items: center;
-  overflow: hidden;
+  align-items: start;
+  overflow: auto;
 }
 html.cg-guest .got--desk .got-panel > .got-panel__eyebrow,
 html.cg-guest .got--desk .got-panel > h2,
@@ -387,8 +387,21 @@ html.cg-guest .got--desk .got-panel > p,
 html.cg-guest .got--desk .got-panel > .got-stats,
 html.cg-guest .got--desk .got-panel > .cg-progress,
 html.cg-guest .got--desk .got-panel > .cg-textbtn { grid-column: 1; }
-html.cg-guest .got--desk .got-panel > .got-btn,
-html.cg-guest .got--desk .got-panel > .got-champ { grid-column: 2; width: 100%; }
+html.cg-guest .got--desk .got-panel__actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  grid-column: 2;
+  grid-row: 1 / span 8;
+  align-self: center;
+  min-width: 0;
+}
+html.cg-guest .got--desk .got-panel__actions .got-btn,
+html.cg-guest .got--desk .got-panel__actions .got-champ {
+  width: 100%;
+  margin-top: 0;
+}
 
 html.cg-guest .cg-progress { display: grid; gap: 6px; margin: 4px 0 8px; }
 html.cg-guest .cg-progress__row {
@@ -469,6 +482,13 @@ html.cg-guest .got-lb__panel {
 @media (orientation: landscape) and (max-height: 560px) {
   html.cg-guest .cg-stage small { display: none; }
   html.cg-guest .cg-chip { top: 60px; }
+  html.cg-guest .got-panel { padding: 8px 12px; }
+  html.cg-guest .got-panel h2 { font-size: 28px; }
+  html.cg-guest .got-stats { gap: 6px; margin: 4px 0; }
+  html.cg-guest .got-stats div { padding: 6px; }
+  html.cg-guest .got-stats strong { font-size: 18px; }
+  html.cg-guest .got-btn { min-height: 40px; }
+  html.cg-guest .cg-progress { margin: 2px 0 4px; }
   html.cg-guest .got-collection__panel {
     display: grid;
     grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
