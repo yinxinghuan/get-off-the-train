@@ -5,6 +5,6 @@ Captured from the guest build at devicePixelRatio 1.
 - `before-*` is the default branch (`master`) Crazy Games build.
 - `after-*` is `cursor/cg-train-polish-2674`.
 
-907×510, 1920×1080, and 800×450. The after 907 start frame includes the car intro banner. Tutorial frames are move, let go, get up, and exit.
+Each size has a start frame, one tutorial step, a mid-car frame, a MADE IT card, and a MISSED IT card. 800×450 has start, made, and missed.
 
-`after-907-upgrades` and `after-800-upgrades` are the later result card: car ladder, next purchase, and grip / hustle / pocket. The 907 frame is after buying hustle.
+The made card is a real keyboard clear of car 01 with no seeded best (BEST 01, +45 coins). The missed card is a seeded save so the upgrades show one price you cannot afford (grip 90) and two you can (hustle and pocket 40), plus NEXT CAR 02.
