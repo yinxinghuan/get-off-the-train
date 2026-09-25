@@ -24,7 +24,7 @@ Crazy Games requires that guests can play and that the game does not add its own
 - Desktop landscape (including 800×450) is a full-bleed 16:9 view. The carriage fills the frame; there is no 500px portrait column and no decorative side posters. Phone portrait stays full-bleed.
 - Keyboard: WASD and arrows move, Space or Enter confirms (resume, next car, try again), P pauses, M mutes. Escape is not used.
 - The first run is a four-step coach (move, let go on sway, get up, exit). Skip writes `get-off-the-train.cg.tutorial`. Replay tips is on the result card.
-- Five named cars get harder in order (less time, denser crowd, stronger sway), then endless specials. A clear saves the highest car finished (`get-off-the-train.cg.best-clear`). The result card shows that ladder, the coins just earned, and the next purchase.
+- Car 01 is the tutorial car: fewer people in the aisle, a longer clock, and holding forward follows the exit so a first try can clear it. Car 02 is denser. Later cars keep rising. A clear saves the highest car finished (`get-off-the-train.cg.best-clear`). The result card shows that ladder, the coins just earned, and the three upgrades.
 - Coins buy three persistent ranks — grip (harder to fall), hustle (faster walk), pocket (more coins next run) — at 40, then 90, then 160, saved in `get-off-the-train.cg.upgrades`. The same coins still unlock heroes. After the first clear, RIDE starts a later car you have opened.
 - Music is a CC0 loop plus clear and miss stings (see `doc/audio.md` for each file, source URL, and licence). Effects stay synthesized. Mute and volume persist. Audio starts after the first gesture.
 

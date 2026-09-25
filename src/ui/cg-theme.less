@@ -26,6 +26,8 @@ html.cg-guest {
   --cg-teal: #2f7f76;
   --cg-muted: #6e6258;
   --cg-font: "Nunito CG", "Avenir Next", "Trebuchet MS", system-ui, sans-serif;
+  /* 510px tall is scale 1, so 1920×1080 reads as that layout enlarged. */
+  --cg-s: clamp(0.84, 100dvh / 510, 2.16);
   background: var(--cg-ink);
 }
 
@@ -52,10 +54,25 @@ html.cg-guest .got {
   font-family: var(--cg-font);
 }
 
-html.cg-guest .got-timer {
-  top: 12px;
-  left: 12px;
+html.cg-guest .cg-stack {
+  position: absolute;
+  z-index: 12;
+  top: calc(12px * var(--cg-s));
+  left: calc(12px * var(--cg-s));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  zoom: var(--cg-s);
+}
+html.cg-guest .cg-stack .got-timer,
+html.cg-guest .cg-stack .cg-chip {
+  position: static;
+  top: auto;
+  left: auto;
   transform: none;
+}
+html.cg-guest .got-timer {
   min-width: 0;
   padding: 6px 12px 7px;
   border-width: 3px;
@@ -64,24 +81,34 @@ html.cg-guest .got-timer {
 }
 html.cg-guest .got-timer strong {
   font-family: var(--cg-font);
-  font-size: clamp(32px, 3.4vw, 48px);
+  font-size: 32px;
 }
 html.cg-guest .got-timer small,
 html.cg-guest .got-timer__distance { font-size: 12px; }
 
+html.cg-guest .cg-tools {
+  position: absolute;
+  z-index: 12;
+  top: calc(12px * var(--cg-s));
+  right: calc(12px * var(--cg-s));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  zoom: var(--cg-s);
+}
+html.cg-guest .cg-tools .got-pause,
+html.cg-guest .cg-tools .cg-vol {
+  position: static;
+  top: auto;
+  right: auto;
+}
 html.cg-guest .got-pause {
-  top: 12px;
-  right: 12px;
   width: 44px;
   height: 44px;
   border-width: 3px;
   box-shadow: 3px 3px 0 var(--cg-ink);
 }
 html.cg-guest .cg-vol {
-  position: absolute;
-  z-index: 12;
-  top: 12px;
-  right: 64px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -110,23 +137,25 @@ html.cg-guest .got-mission { display: none; }
 html.cg-guest .got-level-intro { display: none; }
 
 html.cg-guest .got-warning {
-  top: 72px;
-  width: min(420px, calc(100% - 32px));
+  top: calc(88px * var(--cg-s));
+  width: min(420px, calc((100% - 32px) / var(--cg-s)));
   border-width: 3px;
   border-radius: 8px;
   box-shadow: 3px 3px 0 var(--cg-ink);
+  zoom: var(--cg-s);
 }
 html.cg-guest .got-warning strong {
   font-family: var(--cg-font);
-  font-size: clamp(22px, 3vw, 32px);
+  font-size: 22px;
 }
 
 html.cg-guest .cg-stage {
   position: absolute;
   z-index: 14;
-  top: 14px;
+  top: calc(14px * var(--cg-s));
   left: 50%;
-  max-width: min(420px, calc(100% - 340px));
+  max-width: min(420px, calc((100% - 340px) / var(--cg-s)));
+  zoom: var(--cg-s);
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -169,9 +198,7 @@ html.cg-guest .cg-stage small {
 html.cg-guest .cg-chip {
   position: absolute;
   z-index: 12;
-  top: 64px;
-  left: 12px;
-  max-width: min(280px, calc(100% - 24px));
+  max-width: 280px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -196,8 +223,9 @@ html.cg-guest .cg-chip span {
 html.cg-guest .cg-legend {
   position: absolute;
   z-index: 12;
-  left: 12px;
-  bottom: 12px;
+  left: calc(12px * var(--cg-s));
+  bottom: calc(12px * var(--cg-s));
+  zoom: var(--cg-s);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -240,10 +268,11 @@ html.cg-guest .cg-coach {
   position: absolute;
   z-index: 16;
   left: 50%;
-  bottom: 12px;
-  width: min(520px, calc(100% - 24px));
+  bottom: calc(12px * var(--cg-s));
+  width: min(520px, calc((100% - 24px) / var(--cg-s)));
   transform: translateX(-50%);
   pointer-events: none;
+  zoom: var(--cg-s);
 }
 html.cg-guest .cg-coach__card {
   display: grid;
@@ -360,19 +389,22 @@ html.cg-guest .got-overlay {
   overflow: auto;
 }
 html.cg-guest .got-panel {
-  width: min(920px, calc(100vw - 16px));
-  max-height: calc(100dvh - 16px);
-  padding: 12px 16px;
+  zoom: var(--cg-s);
+  width: min(920px, calc((100vw - 16px) / var(--cg-s)));
+  max-height: calc((100dvh - 16px) / var(--cg-s));
+  padding: 16px;
   border-width: 3px;
   border-radius: 8px;
   box-shadow: 4px 4px 0 var(--cg-ink);
   text-align: left;
 }
 html.cg-guest .got-panel--game-over { box-shadow: 4px 4px 0 var(--cg-red); }
+html.cg-guest .got-panel--level-clear { box-shadow: 4px 4px 0 var(--cg-teal); }
 html.cg-guest .got-panel h2 {
-  margin: 4px 0;
+  margin: 4px 0 8px;
   font-family: var(--cg-font);
-  font-size: clamp(28px, 4vw, 36px);
+  font-size: 32px;
+  line-height: .96;
 }
 html.cg-guest .got-panel p {
   margin: 0 0 8px;
@@ -411,10 +443,7 @@ html.cg-guest .got--desk .got-panel > .got-panel__eyebrow,
 html.cg-guest .got--desk .got-panel > h2,
 html.cg-guest .got--desk .got-panel > p,
 html.cg-guest .got--desk .got-panel > .got-stats,
-html.cg-guest .got--desk .got-panel > .cg-progress,
-html.cg-guest .got--desk .got-panel > .cg-upgrades,
-html.cg-guest .got--desk .got-panel > .cg-starts,
-html.cg-guest .got--desk .got-panel > .cg-textbtn { grid-column: 1; }
+html.cg-guest .got--desk .got-panel > .cg-result__main { grid-column: 1; }
 html.cg-guest .got--desk .got-panel__actions {
   display: flex;
   flex-direction: column;
@@ -508,51 +537,120 @@ html.cg-guest .cg-ladder em {
   letter-spacing: .04em;
 }
 
-html.cg-guest .cg-upgrades {
+html.cg-guest .cg-result__main { display: grid; gap: 8px; min-width: 0; }
+html.cg-guest .cg-result__main h2 { margin: 0; }
+html.cg-guest .cg-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
 }
-html.cg-guest .cg-upgrades button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  min-height: 36px;
-  padding: 4px 8px;
-  color: var(--cg-ink);
-  background: var(--cg-paper);
+html.cg-guest .cg-metrics span {
+  min-width: 0;
+  padding: 8px;
+  background: var(--cg-sand);
   border: 2px solid var(--cg-ink);
   border-radius: 8px;
-  font: 800 12px/1 var(--cg-font);
-  cursor: pointer;
 }
-html.cg-guest .cg-upgrades button:disabled { opacity: .55; cursor: default; }
-html.cg-guest .cg-upgrades .is-ready { background: var(--cg-yellow); box-shadow: 2px 2px 0 var(--cg-ink); }
-html.cg-guest .cg-upgrades .is-max { background: var(--cg-sand); }
-html.cg-guest .cg-upgrades span { color: var(--cg-teal); }
-
-html.cg-guest .cg-starts {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-html.cg-guest .cg-starts > span {
+html.cg-guest .cg-metrics small {
+  display: block;
   color: var(--cg-muted);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .06em;
 }
-html.cg-guest .cg-starts button {
-  min-width: 36px;
+html.cg-guest .cg-metrics b {
+  display: block;
+  margin-top: 4px;
+  font-size: 16px;
+  line-height: 1;
+}
+html.cg-guest .cg-reward {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  color: var(--cg-ink);
+  background: var(--cg-yellow);
+  border: 3px solid var(--cg-ink);
+  border-radius: 8px;
+  box-shadow: 3px 3px 0 var(--cg-ink);
+}
+html.cg-guest .cg-reward b { font-size: 22px; line-height: 1; }
+html.cg-guest .cg-reward small {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+
+html.cg-guest .cg-upgrades {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+html.cg-guest .cg-upgrades button {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  gap: 2px 8px;
+  align-items: center;
+  min-height: 64px;
+  padding: 8px;
+  color: var(--cg-ink);
+  background: var(--cg-paper);
+  border: 3px solid var(--cg-ink);
+  border-radius: 8px;
+  box-shadow: 3px 3px 0 var(--cg-ink);
+  font: 800 13px/1 var(--cg-font);
+  text-align: left;
+  cursor: pointer;
+}
+html.cg-guest .cg-upgrades button:disabled { cursor: default; }
+html.cg-guest .cg-upgrades .is-ready { background: var(--cg-yellow); }
+html.cg-guest .cg-upgrades .is-short { background: var(--cg-sand); box-shadow: none; }
+html.cg-guest .cg-upgrades .is-short strong { color: var(--cg-muted); }
+html.cg-guest .cg-upgrades .is-max { background: var(--cg-paper); color: var(--cg-teal); }
+html.cg-guest .cg-upgrade__icon,
+html.cg-guest .cg-upgrades svg { grid-row: 1 / span 2; width: 22px; height: 22px; }
+html.cg-guest .cg-upgrades b { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+html.cg-guest .cg-upgrades strong { grid-row: 1 / span 2; font-size: 16px; }
+html.cg-guest .cg-pips { display: flex; gap: 4px; }
+html.cg-guest .cg-pips em {
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--cg-ink);
+  border-radius: 999px;
+  background: transparent;
+}
+html.cg-guest .cg-pips em.is-on { background: var(--cg-teal); }
+
+html.cg-guest .cg-next { display: grid; gap: 8px; }
+html.cg-guest .cg-next__go {
+  min-height: 44px;
+  padding: 8px 12px;
+  color: var(--cg-ink);
+  background: var(--cg-yellow);
+  border: 3px solid var(--cg-ink);
+  border-radius: 8px;
+  box-shadow: 3px 3px 0 var(--cg-ink);
+  font: 800 16px/1 var(--cg-font);
+  cursor: pointer;
+}
+html.cg-guest .cg-next__alts { display: flex; align-items: center; gap: 8px; }
+html.cg-guest .cg-next__alts span {
+  color: var(--cg-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+html.cg-guest .cg-next__alts button {
+  min-width: 44px;
   height: 32px;
   padding: 0 8px;
   color: var(--cg-ink);
-  background: var(--cg-yellow);
+  background: var(--cg-paper);
   border: 2px solid var(--cg-ink);
   border-radius: 8px;
-  box-shadow: 2px 2px 0 var(--cg-ink);
   font: 800 13px/1 var(--cg-font);
   cursor: pointer;
 }
@@ -588,17 +686,6 @@ html.cg-guest .got-lb__panel {
 
 @media (orientation: landscape) and (max-height: 560px) {
   html.cg-guest .cg-stage small { display: none; }
-  html.cg-guest .cg-chip { top: 60px; }
-  html.cg-guest .got--desk .got-panel > p { display: none; }
-  html.cg-guest .got-panel { padding: 8px 12px; }
-  html.cg-guest .cg-upgrades button { min-height: 32px; padding: 2px 6px; }
-  html.cg-guest .cg-progress__goal { padding: 4px 8px; }
-  html.cg-guest .got-panel h2 { font-size: 28px; }
-  html.cg-guest .got-stats { gap: 6px; margin: 4px 0; }
-  html.cg-guest .got-stats div { padding: 6px; }
-  html.cg-guest .got-stats strong { font-size: 18px; }
-  html.cg-guest .got-btn { min-height: 40px; }
-  html.cg-guest .cg-progress { margin: 2px 0 4px; }
   html.cg-guest .got-collection__panel {
     display: grid;
     grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);

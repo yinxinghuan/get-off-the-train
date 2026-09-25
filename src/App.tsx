@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import TrainScene from './game/TrainScene'
-import { getLevelConfig, type HudState, type InputVector, type Phase, type StationEvent } from './game/types'
+import { getLevelConfig, type HudState, type InputVector, type LevelConfig, type Phase, type StationEvent } from './game/types'
 import { HERO_COSTS, HERO_IDS, type HeroId } from './game/models'
 import { sound } from './audio/sound'
 import { locale, t } from './i18n'
@@ -8,7 +8,7 @@ import { ArrowIcon, CoinIcon, CollectionIcon, CrownIcon, MutedIcon, PauseIcon, S
 import { Joystick } from './ui/Joystick'
 import { CrazyGamesFrame } from './ui/CrazyGamesFrame'
 import { useGuestDesk } from './ui/cg/desk'
-import { CgChip, CgCoach, CgGoal, CgLegend, CgStarts, CgUpgrades } from './ui/cg/Chrome'
+import { CgChip, CgCoach, CgLadder, CgLegend, CgNext, CgUpgrades } from './ui/cg/Chrome'
 import { pocketMultiplier, readBestClear, readBestStage, readUpgrades, upgradeCost, writeBestClear, writeBestStage, writeUpgrades, EMPTY_UPGRADES, type UpgradeId } from './ui/cg/progress'
 import { useCoach } from './ui/cg/tutorial'
 import { useCgKeys } from './ui/cg/useCgKeys'
@@ -68,6 +68,16 @@ const EN_SPECIAL: Partial<Record<StationEvent, [string, string]>> = {
   'fog-night': ['FOG LAST TRAIN', 'The far doors keep fading into the mist.'],
 }
 
+function guestEase(config: LevelConfig, level: number): LevelConfig {
+  if (level === 0) {
+    return { ...config, time: 32, passengers: 4, alightingCount: 1, boardingCount: 0, fallChance: 0.03, swayFallChance: 0.05, impulse: 1.15, roll: 1.3, warning: 1.45, wander: 0.25, swayPeriod: 8.2 }
+  }
+  if (level === 1) {
+    return { ...config, time: 32, passengers: 5, alightingCount: 1, boardingCount: 0, fallChance: 0.05, swayFallChance: 0.08, impulse: 1.4, roll: 1.5, warning: 1.25, wander: 0.32 }
+  }
+  return config
+}
+
 function levelCopy(index: number, config: ReturnType<typeof getLevelConfig>) {
   if (locale === 'zh') return { name: config.name, subtitle: config.subtitle }
   if (EN_LEVELS[index]) return { name: EN_LEVELS[index][0], subtitle: EN_LEVELS[index][1] }
@@ -103,7 +113,10 @@ export default function App() {
   const [level, setLevel] = useState(QA_LEVEL)
   // Endless configs are generated objects. Memoizing by level prevents each
   // 80 ms HUD sample from rebuilding the entire Three.js world from scratch.
-  const config = useMemo(() => getLevelConfig(level), [level])
+  const config = useMemo(() => {
+    const base = getLevelConfig(level)
+    return isCrazyGamesBuild ? guestEase(base, level) : base
+  }, [level])
   const copy = levelCopy(level, config)
   const [hud, setHud] = useState(initialHud)
   const [score, setScore] = useState(QA_SCORE)
@@ -356,6 +369,7 @@ export default function App() {
       <ChampionPill champion={champion} onOpen={() => setShowBoard(true)} />
       <button className="got-btn got-btn--secondary" onClick={openCollection}><CollectionIcon />{t('collection')}<span className="got-btn__balance"><CoinIcon size={16} />{collectionMirror?.coins ?? 0}</span></button>
       {phase === 'paused' && <ActionButton secondary onPress={restartRun}>{t('restart')}</ActionButton>}
+      {phase === 'paused' && isCrazyGamesBuild && <ActionButton secondary onPress={replayTips}>REPLAY TIPS</ActionButton>}
       {phase === 'paused' && <ActionButton secondary onPress={() => setReducedMotion((value) => !value)}>{t('reduced')}</ActionButton>}
     </>
   )
@@ -422,7 +436,16 @@ export default function App() {
       <div className="got__halftone" aria-hidden="true" />
       <div className="got__frame" aria-hidden="true" />
 
-      {phase !== 'fail-cinematic' && <div className={`got-timer${hud.timeLeft < 5 ? ' is-danger' : ''}`} role="timer" aria-label={`${t('time')} ${Math.ceil(hud.timeLeft)}, ${t('distance')} ${hud.distance.toFixed(1)} ${t('meters')}`}>
+      {phase !== 'fail-cinematic' && isCrazyGamesBuild && (
+        <div className="cg-stack">
+          <div className={`got-timer${hud.timeLeft < 5 ? ' is-danger' : ''}`} role="timer" aria-label={`${t('time')} ${Math.ceil(hud.timeLeft)}, ${t('distance')} ${hud.distance.toFixed(1)} ${t('meters')}`}>
+            <div className="got-timer__time"><strong>{Math.ceil(hud.timeLeft)}</strong><small>s</small></div>
+            <span className="got-timer__distance">{t('distance')} {hud.distance.toFixed(1)}{t('meters')}</span>
+          </div>
+          {phase === 'playing' && <CgChip coins={collectionMirror?.coins ?? 0} unlocked={collectionMirror?.unlocked ?? ['commuter']} upgrades={upgrades} />}
+        </div>
+      )}
+      {phase !== 'fail-cinematic' && !isCrazyGamesBuild && <div className={`got-timer${hud.timeLeft < 5 ? ' is-danger' : ''}`} role="timer" aria-label={`${t('time')} ${Math.ceil(hud.timeLeft)}, ${t('distance')} ${hud.distance.toFixed(1)} ${t('meters')}`}>
         <div className="got-timer__time"><strong>{Math.ceil(hud.timeLeft)}</strong><small>s</small></div>
         <span className="got-timer__distance">{t('distance')} {hud.distance.toFixed(1)}{t('meters')}</span>
       </div>}
@@ -447,13 +470,16 @@ export default function App() {
         </div>
       )}
       {isCrazyGamesBuild && phase !== 'fail-cinematic' && (
-        <div className="cg-vol">
-          <button type="button" aria-label="Quieter" onPointerDown={(ev) => { ev.preventDefault(); ev.stopPropagation(); sound.unlock(); sound.nudgeVolume(-0.15) }}>−</button>
-          <button type="button" className="cg-mute" aria-label={muted ? 'Unmute' : 'Mute'} onPointerDown={(ev) => { ev.preventDefault(); ev.stopPropagation(); sound.unlock(); toggleMute() }}>{muted ? <MutedIcon /> : <SoundIcon />}</button>
-          <button type="button" aria-label="Louder" onPointerDown={(ev) => { ev.preventDefault(); ev.stopPropagation(); sound.unlock(); sound.nudgeVolume(0.15) }}>+</button>
+        <div className="cg-tools">
+          <div className="cg-vol">
+            <button type="button" aria-label="Quieter" onPointerDown={(ev) => { ev.preventDefault(); ev.stopPropagation(); sound.unlock(); sound.nudgeVolume(-0.15) }}>−</button>
+            <button type="button" className="cg-mute" aria-label={muted ? 'Unmute' : 'Mute'} onPointerDown={(ev) => { ev.preventDefault(); ev.stopPropagation(); sound.unlock(); toggleMute() }}>{muted ? <MutedIcon /> : <SoundIcon />}</button>
+            <button type="button" aria-label="Louder" onPointerDown={(ev) => { ev.preventDefault(); ev.stopPropagation(); sound.unlock(); sound.nudgeVolume(0.15) }}>+</button>
+          </div>
+          <button className="got-pause" aria-label={t('pause')} onPointerDown={pause}><PauseIcon /></button>
         </div>
       )}
-      {phase !== 'fail-cinematic' && <button className="got-pause" aria-label={t('pause')} onPointerDown={pause}><PauseIcon /></button>}
+      {!isCrazyGamesBuild && phase !== 'fail-cinematic' && <button className="got-pause" aria-label={t('pause')} onPointerDown={pause}><PauseIcon /></button>}
 
       {phase === 'fail-cinematic' && <div className="got-fail-shot" role="status" aria-live="assertive"><span>{t('doorsClosed')}</span></div>}
 
@@ -461,7 +487,6 @@ export default function App() {
         <>
           {hud.swayWarning && <div className="got-warning"><span>{hud.swayDirection > 0 ? t('right') : t('left')}</span><strong>{t('warning')}</strong></div>}
           <Joystick input={input} enabled={phase === 'playing'} showGuide={showGuide && !isCrazyGamesBuild} onFirstInput={beginFromInput} />
-          {isCrazyGamesBuild && <CgChip coins={collectionMirror?.coins ?? 0} unlocked={collectionMirror?.unlocked ?? ['commuter']} upgrades={upgrades} />}
           {coach.step && <CgCoach step={coach.step} onSkip={() => { sound.tap(); coach.skip() }} />}
           {!coach.step && desk && <CgLegend />}
         </>
@@ -470,9 +495,9 @@ export default function App() {
       {(phase === 'paused' || phase === 'level-clear' || phase === 'game-over') && (
         <div className="got-overlay">
           <section className={`got-panel got-panel--${phase}`}>
-            <span className="got-panel__eyebrow">{phase === 'paused' ? `${t('level')} ${level + 1}` : copy.name}</span>
-            <h2>{phase === 'paused' ? t('pause') : phase === 'level-clear' ? t('clear') : t('miss')}</h2>
-            {phase !== 'paused' && <p>{phase === 'level-clear' ? t('clearCopy') : t('missCopy')}</p>}
+            {!(isCrazyGamesBuild && phase !== 'paused') && <span className="got-panel__eyebrow">{phase === 'paused' ? `${t('level')} ${level + 1}` : copy.name}</span>}
+            {!(isCrazyGamesBuild && phase !== 'paused') && <h2>{phase === 'paused' ? t('pause') : phase === 'level-clear' ? t('clear') : t('miss')}</h2>}
+            {phase !== 'paused' && !isCrazyGamesBuild && <p>{phase === 'level-clear' ? t('clearCopy') : t('missCopy')}</p>}
             {phase !== 'paused' && !isCrazyGamesBuild && (
               <div className="got-stats">
                 {phase === 'level-clear' && <div><span>{t('remaining')}</span><strong>{hud.timeLeft.toFixed(1)}s</strong></div>}
@@ -484,19 +509,21 @@ export default function App() {
               </div>
             )}
             {phase !== 'paused' && isCrazyGamesBuild && (
-              <>
-                <div className="got-stats">
-                  <div><span>CAR</span><strong>{String(level + 1).padStart(2, '0')}</strong></div>
-                  <div><span>BEST CAR</span><strong>{String(Math.max(bestStage, level + 1)).padStart(2, '0')}</strong></div>
-                  <div><span>{t('falls')}</span><strong>{totalFalls}</strong></div>
-                  <div><span>{phase === 'game-over' ? t('best') : t('totalScore')}</span><strong>{phase === 'game-over' ? Math.max(best, score) : score}</strong></div>
+              <div className="cg-result__main">
+                <span className="got-panel__eyebrow">{copy.name}</span>
+                <h2>{phase === 'level-clear' ? t('clear') : t('miss')}</h2>
+                <div className="cg-metrics">
+                  <span><small>CAR</small><b>{String(level + 1).padStart(2, '0')}</b></span>
+                  <span><small>BEST</small><b>{String(Math.max(bestStage, level + 1)).padStart(2, '0')}</b></span>
+                  <span><small>{t('falls')}</small><b>{totalFalls}</b></span>
+                  <span><small>{phase === 'game-over' ? t('best') : t('totalScore')}</small><b>{phase === 'game-over' ? Math.max(best, score) : score}</b></span>
                 </div>
-                <CgGoal coins={collectionMirror?.coins ?? 0} unlocked={collectionMirror?.unlocked ?? ['commuter']} upgrades={upgrades} earned={levelCoins} stage={level + 1} bestStage={Math.max(bestStage, level + 1)} bestClear={bestClear} cleared={phase === 'level-clear'} />
+                <div className="cg-reward"><CoinIcon size={22} /><b>+{levelCoins}</b><small>COINS</small></div>
+                <CgLadder bestClear={bestClear} />
                 <CgUpgrades coins={collectionMirror?.coins ?? 0} upgrades={upgrades} onBuy={buyUpgrade} />
-                {phase === 'game-over' && <CgStarts bestClear={bestClear} onStart={beginAt} />}
-              </>
+                {phase === 'game-over' && <CgNext bestClear={bestClear} onStart={beginAt} />}
+              </div>
             )}
-            {isCrazyGamesBuild && phase === 'game-over' && <button type="button" className="cg-textbtn" onClick={() => { sound.tap(); replayTips() }}>REPLAY TIPS</button>}
             {isCrazyGamesBuild ? <div className="got-panel__actions">{panelActions}</div> : panelActions}
           </section>
         </div>

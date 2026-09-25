@@ -347,9 +347,12 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
   root.add(cyl(0.055, 15.0, C.stainless, 0, 3.0, 0, false, 8).rotateZ(Math.PI / 2))
   root.add(cyl(0.026, 14.8, 0xe8edef, 0, 3.0, -0.022, false, 8).rotateZ(Math.PI / 2))
   const poleXs = config.variant === 'commuter' ? [-5.4, -1.9, 1.7] : [-5.6, -2.7, 0.2, 3.0]
+  const grabPoles: THREE.Object3D[] = []
   for (const x of poleXs) {
-    root.add(cyl(0.11, 2.82, C.stainless, x, 1.55, 0, true, 8))
-    root.add(cyl(0.055, 2.78, 0xe8edef, x - 0.035, 1.55, -0.035, false, 8))
+    const pole = cyl(0.11, 2.82, C.stainless, x, 1.55, 0, true, 8)
+    const shine = cyl(0.055, 2.78, 0xe8edef, x - 0.035, 1.55, -0.035, false, 8)
+    grabPoles.push(pole, shine)
+    root.add(pole, shine)
     obstacles.push({ x, z: 0, r: 0.24 })
   }
   for (let i = 0; i < 8; i++) {
@@ -462,7 +465,7 @@ function buildTrain(config: LevelConfig, exitSide: -1 | 1) {
     m.userData.ownsMaterial = true
   })
 
-  return { root, handles, carriageLights, obstacles, seatSlots, poleXs, exitHalf, exitSide, exitZ, exitArrow, exitArrowBaseY, weatherDrops, puddles, exitDoorLeaves, exitSignals, exitStatusLight }
+  return { root, handles, carriageLights, obstacles, seatSlots, poleXs, grabPoles, exitHalf, exitSide, exitZ, exitArrow, exitArrowBaseY, weatherDrops, puddles, exitDoorLeaves, exitSignals, exitStatusLight }
 }
 
 function dispose(root: THREE.Object3D) {
@@ -972,9 +975,23 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
           const stickX = rawMag > 0.1 ? input.current.x / rawMag : 0
           const stickZ = rawMag > 0.1 ? input.current.z / rawMag : 0
           const forward = -stickZ
+          // Guest runs: holding forward follows the exit lane, so the first cars
+          // are clearable without fighting the center poles. A real strafe still wins.
+          let aimX = stickX
+          let advance = forward
+          if (rateStable && forward > 0.45 && Math.abs(stickX) < 0.45) {
+            if (b.x < EXIT_X - 0.35) {
+              const routeZ = train.exitSide * 0.85
+              aimX = THREE.MathUtils.clamp((routeZ - b.z) * 1.6, -0.7, 0.7)
+              advance = forward
+            } else {
+              aimX = train.exitSide
+              advance = 0.12
+            }
+          }
           const cruise = 4.1 * (1 + (upgrades?.hustle ?? 0) * 0.07)
-          const targetVx = (FORWARD_X * forward + RIGHT_X * stickX) * cruise
-          const targetVz = (FORWARD_Z * forward + RIGHT_Z * stickX) * cruise
+          const targetVx = (FORWARD_X * advance + RIGHT_X * aimX) * cruise
+          const targetVz = (FORWARD_Z * advance + RIGHT_Z * aimX) * cruise
           if (rateStable) {
             const sx = integrateSteer(b.vx, targetVx, 18, 5.6, dt)
             const sz = integrateSteer(b.vz, targetVz, 18, 5.6, dt)
@@ -1085,8 +1102,11 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
         const min = b.r + o.r
         if (d < min) {
           const push = min - d
-          b.x += dx / d * push
-          b.z += dz / d * push
+          let ox = dx / d * push
+          let oz = dz / d * push
+          if (rateStable && b.player && b.vx > 0.15 && Math.abs(dx) > Math.abs(dz) * 1.6) oz += train.exitSide * push * 1.1
+          b.x += ox
+          b.z += oz
           const vn = b.vx * dx / d + b.vz * dz / d
           if (vn < 0) { b.vx -= vn * dx / d * 1.35; b.vz -= vn * dz / d * 1.35 }
         }
@@ -1133,7 +1153,9 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
         if (d2 >= min * min) continue
         const d = Math.sqrt(d2) || 0.001
         const nx = dx / d, nz = dz / d
-        const invA = 1 / a.mass, invB = 1 / b.mass
+        let invA = 1 / a.mass, invB = 1 / b.mass
+        if (rateStable && a.player) { invA *= 0.12; invB *= 2.6 }
+        else if (rateStable && b.player) { invB *= 0.12; invA *= 2.6 }
         const pen = min - d
         a.x -= nx * pen * invA / (invA + invB)
         a.z -= nz * pen * invA / (invA + invB)
@@ -1377,9 +1399,23 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
     // foreground while the green exit arrow remains ahead at the top of the screen.
     const cameraTrackZ = player.z * 0.35
     if (desk && !QA_SEAT_VIEW) {
-      cameraGoal.current.set(player.x - 4.15, 4.85, cameraTrackZ)
+      cameraGoal.current.set(player.x - 4.15, 4.85, cameraTrackZ + 0.9)
       camera.position.lerp(cameraGoal.current, 1 - Math.exp(-dt * 7.5))
       cameraLook.current.lerp(cameraGoal.current.set(player.x + 3.35, 0.58, cameraTrackZ), 1 - Math.exp(-dt * 9))
+      for (const pole of train.grabPoles) {
+        const ahead = pole.position.x - player.x
+        const block = ahead > -0.15 && ahead < 2.4 && Math.abs(pole.position.z - player.z) < 0.5
+        const opacity = block ? 0.32 : 1
+        pole.traverse((object) => {
+          const mesh = object as THREE.Mesh
+          if (!mesh.isMesh || !mesh.userData.ownsMaterial) return
+          const mat = mesh.material as THREE.MeshStandardMaterial
+          if (mat.opacity === opacity) return
+          mat.opacity = opacity
+          mat.transparent = opacity < 1
+          mat.depthWrite = opacity > 0.9
+        })
+      }
     } else {
       cameraGoal.current.set(QA_SEAT_VIEW ? -2.20 : player.x - 5.2, QA_SEAT_VIEW ? 3.50 : 6.05, QA_SEAT_VIEW ? 0.40 : cameraTrackZ)
       camera.position.lerp(cameraGoal.current, 1 - Math.exp(-dt * 7.5))

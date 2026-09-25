@@ -78,59 +78,32 @@ function goalName(goal: NonNullable<ReturnType<typeof nextCoinGoal>>) {
   return goal.kind === 'hero' ? heroName(goal.id as HeroNameId) : UPGRADE_LABEL[goal.id]
 }
 
-export function CgGoal({
-  coins,
-  unlocked,
-  upgrades,
-  earned,
-  stage,
-  bestStage,
-  bestClear,
-  cleared,
-}: {
-  coins: number
-  unlocked: readonly HeroId[]
-  upgrades: Upgrades
-  earned?: number
-  stage: number
-  bestStage: number
-  bestClear: number
-  cleared?: boolean
-}) {
-  const next = nextCoinGoal(coins, unlocked, upgrades)
-  const left = next ? Math.max(0, next.cost - coins) : 0
-  const pct = next ? Math.max(0, Math.min(100, Math.round((coins / next.cost) * 100))) : 100
+function UpgradeIcon({ id }: { id: UpgradeId }) {
+  if (id === 'pocket') return <CoinIcon size={18} />
+  if (id === 'hustle') {
+    return (
+      <svg className="cg-upgrade__icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 16l5-5 3 3 6-7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M14 7h5v5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    )
+  }
+  return (
+    <svg className="cg-upgrade__icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      <rect x="6" y="11" width="12" height="9" rx="2" fill="none" stroke="currentColor" strokeWidth="2.4" />
+    </svg>
+  )
+}
+
+export function CgLadder({ bestClear }: { bestClear: number }) {
   const nextCar = Math.min(bestClear + 1, 5)
   return (
-    <div className="cg-progress">
-      <div className="cg-progress__row">
-        <span>CAR {String(stage).padStart(2, '0')}{cleared ? ' CLEAR' : ''}</span>
-        <span>BEST {String(Math.max(bestStage, stage)).padStart(2, '0')}</span>
-        {earned != null && (
-          <strong className="cg-progress__earn"><CoinIcon size={16} />+{earned}</strong>
-        )}
-      </div>
-      <div className="cg-ladder" aria-label="Cars">
-        {[1, 2, 3, 4, 5].map((car) => (
-          <span key={car} className={car <= bestClear ? 'is-done' : car === nextCar ? 'is-next' : 'is-lock'}>{String(car).padStart(2, '0')}</span>
-        ))}
-        <em>{bestClear >= 5 ? 'ENDLESS OPEN' : `CLEAR ${String(nextCar).padStart(2, '0')}`}</em>
-      </div>
-      {next ? (
-        <div className="cg-progress__goal">
-          <span>NEXT</span>
-          <strong>{goalName(next)}</strong>
-          <em>{left === 0 ? 'READY' : `${left} LEFT`}</em>
-          <i aria-hidden="true"><b style={{ width: `${pct}%` }} /></i>
-        </div>
-      ) : (
-        <div className="cg-progress__goal">
-          <span>NEXT</span>
-          <strong>ALL BOUGHT</strong>
-          <em>KEEP GOING</em>
-          <i aria-hidden="true"><b style={{ width: '100%' }} /></i>
-        </div>
-      )}
+    <div className="cg-ladder" aria-label="Cars">
+      {[1, 2, 3, 4, 5].map((car) => (
+        <span key={car} className={car <= bestClear ? 'is-done' : car === nextCar ? 'is-next' : 'is-lock'}>{String(car).padStart(2, '0')}</span>
+      ))}
+      <em>{bestClear >= 5 ? 'ENDLESS OPEN' : `CLEAR ${String(nextCar).padStart(2, '0')}`}</em>
     </div>
   )
 }
@@ -150,10 +123,15 @@ export function CgUpgrades({
         const rank = upgrades[id]
         const cost = upgradeCost(rank)
         const ready = cost != null && coins >= cost
+        const maxed = rank >= UPGRADE_MAX
         return (
-          <button key={id} type="button" className={rank >= UPGRADE_MAX ? 'is-max' : ready ? 'is-ready' : ''} disabled={cost == null || coins < cost} onClick={() => onBuy(id)}>
-            <b>{UPGRADE_LABEL[id]} {rank || ''}</b>
-            <span>{cost == null ? 'MAX' : `${cost}`}</span>
+          <button key={id} type="button" className={maxed ? 'is-max' : ready ? 'is-ready' : 'is-short'} disabled={!ready} onClick={() => onBuy(id)}>
+            <UpgradeIcon id={id} />
+            <b>{UPGRADE_LABEL[id]}</b>
+            <i className="cg-pips" aria-label={`Rank ${rank} of ${UPGRADE_MAX}`}>
+              {[0, 1, 2].map((pip) => <em key={pip} className={pip < rank ? 'is-on' : ''} />)}
+            </i>
+            <strong>{maxed ? 'MAX' : cost}</strong>
           </button>
         )
       })}
@@ -161,16 +139,22 @@ export function CgUpgrades({
   )
 }
 
-export function CgStarts({ bestClear, onStart }: { bestClear: number; onStart: (level: number) => void }) {
+export function CgNext({ bestClear, onStart }: { bestClear: number; onStart: (level: number) => void }) {
   if (bestClear < 1) return null
-  const cars = []
-  for (let car = 2; car <= Math.min(bestClear + 1, 8); car++) cars.push(car)
+  const next = Math.min(bestClear + 1, 8)
+  const earlier = []
+  for (let car = 2; car < next; car++) earlier.push(car)
   return (
-    <div className="cg-starts">
-      <span>RIDE</span>
-      {cars.map((car) => (
-        <button key={car} type="button" onClick={() => onStart(car - 1)}>{String(car).padStart(2, '0')}</button>
-      ))}
+    <div className="cg-next">
+      <button type="button" className="cg-next__go" onClick={() => onStart(next - 1)}>NEXT CAR {String(next).padStart(2, '0')}</button>
+      {earlier.length > 0 && (
+        <div className="cg-next__alts">
+          <span>OR</span>
+          {earlier.map((car) => (
+            <button key={car} type="button" onClick={() => onStart(car - 1)}>{String(car).padStart(2, '0')}</button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
