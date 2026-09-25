@@ -26,8 +26,8 @@ html.cg-guest {
   --cg-teal: #2f7f76;
   --cg-muted: #6e6258;
   --cg-font: "Nunito CG", "Avenir Next", "Trebuchet MS", system-ui, sans-serif;
-  /* 510px tall is scale 1, so 1920×1080 reads as that layout enlarged. */
-  --cg-s: clamp(0.84, 100dvh / 510, 2.16);
+  /* Overwritten from the guest app: 510px tall is scale 1. */
+  --cg-s: 1;
   background: var(--cg-ink);
 }
 

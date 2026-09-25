@@ -141,6 +141,16 @@ export default function App() {
   const { savedData, persist } = useGameSave<CollectionSave>('get-off-the-train.collection.v1')
   const [collectionMirror, setCollectionMirror] = useState<CollectionSave | undefined>(undefined)
   const desk = useGuestDesk()
+  useEffect(() => {
+    if (!isCrazyGamesBuild) return
+    const apply = () => {
+      const next = Math.min(2.16, Math.max(0.84, window.innerHeight / 510))
+      document.documentElement.style.setProperty('--cg-s', next.toFixed(3))
+    }
+    apply()
+    window.addEventListener('resize', apply)
+    return () => window.removeEventListener('resize', apply)
+  }, [])
   const coach = useCoach(hud, phase)
   const [muted, setMuted] = useState(() => sound.isMuted())
   const [bestStage, setBestStage] = useState(() => (isCrazyGamesBuild ? readBestStage() : 0))
