@@ -20,8 +20,14 @@ Crazy Games requires that guests can play and that the game does not add its own
 - Opens the leaderboard as a local note (“best score stays on this device”) instead of “Open in AlterU” / “GET ALTERU”.
 - Does not treat Crazy Games query parameters as an Aigram session.
 - Drops the in-game `AIGRAM // EN` HUD mark. The default build still shows it.
-- Serves `<html lang="en" class="cg-guest">` with `<title>Get Off the Train!</title>`. `?lang=zh` and a saved `game_locale` still switch the in-game strings; with neither set, the guest build defaults to English.
-- On desktop (viewport at least 700px wide) the portrait play column stays 500px. The side gutters are a station wall — halftone, hazard stripes, and route posters — instead of empty black bars. Phone portrait is full-bleed, same as before.
+- Serves `<html lang="en" class="cg-guest">` with `<title>Get Off the Train!</title>` and `./favicon.svg` (no `vite.svg`). In-game copy is English only.
+- Desktop landscape (including 800×450) is a full-bleed 16:9 view. The carriage fills the frame; there is no 500px portrait column and no decorative side posters. Phone portrait stays full-bleed.
+- Keyboard: WASD and arrows move, Space or Enter confirms (resume, next car, try again), P pauses, M mutes. Escape is not used.
+- The first run is a four-step coach (move, let go on sway, get up, exit). Skip writes `get-off-the-train.cg.tutorial`. Replay tips is on the result card.
+- Failing or clearing a car pays coins, shows the car and the best car, and the next hero still locked. Stage banners play at the start of each car.
+- Music and layered effects are synthesized in the browser (see `doc/audio.md`). Mute persists. Audio starts after the first gesture.
+
+UI spec for this build (see `src/ui/cg-theme.less`): space 4/8/12/16/24; type 11/13/16/22/32; strokes 2px chips, 3px controls, 4px panels; ink `#1a1612`, paper `#fff8ee`, sand `#f3e7cf`, yellow `#f5c518` for actions, red `#d4534a` for danger, teal `#2f7f76` for progress. Nunito ExtraBold (SIL OFL) is the UI face.
 
 The default `npm run build` path is unchanged for GitHub Pages and any AlterU/Aigram embed.
 

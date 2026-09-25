@@ -15,6 +15,8 @@ if (!existsSync(path.join(dist, 'index.html'))) {
   process.exit(1);
 }
 
+cpSync(path.join(root, 'src/ui/cg/favicon.svg'), path.join(dist, 'favicon.svg'))
+
 const forbidden = [
   'guest-shell.js',
   'https://alteru.app',
@@ -52,6 +54,12 @@ if (!indexHtml.includes('<title>Get Off the Train!</title>')) {
 }
 if (indexHtml.includes('挤下地铁') || /lang="zh/.test(indexHtml)) {
   leaks.push('dist-crazygames/index.html still has a Chinese document title or lang');
+}
+if (indexHtml.includes('vite.svg')) {
+  leaks.push('dist-crazygames/index.html still references vite.svg');
+}
+if (!indexHtml.includes('favicon.svg')) {
+  leaks.push('dist-crazygames/index.html is missing the favicon');
 }
 for (const file of walk(dist)) {
   if (!/\.(html|js|css)$/.test(file)) continue;

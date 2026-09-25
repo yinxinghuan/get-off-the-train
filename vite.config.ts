@@ -17,6 +17,7 @@ function crazyGamesIndexHtml(mode: string): Plugin {
         .replace(pattern, '\n')
         .replace(/<html\b[^>]*>/i, '<html lang="en" class="cg-guest">')
         .replace(/<title>[\s\S]*?<\/title>/i, '<title>Get Off the Train!</title>')
+        .replace(/<head>/i, '<head>\n    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />')
     },
   }
 }

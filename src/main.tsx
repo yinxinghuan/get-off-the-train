@@ -5,11 +5,14 @@ import App from './App'
 import './app.less'
 import { preloadCharacterLibrary } from './game/assetLibrary'
 
-const root = ReactDOM.createRoot(document.getElementById('root')!)
+const themeReady = import.meta.env.MODE === 'crazygames' ? import('./ui/cg-theme.less') : Promise.resolve()
 
-preloadCharacterLibrary()
-  .then(() => root.render(<React.StrictMode><App /></React.StrictMode>))
-  .catch((error) => {
-    console.error(error)
-    root.render(<main className="got-boot-error">{import.meta.env.MODE === 'crazygames' ? 'Could not load the characters. Refresh to try again.' : '角色资源加载失败，请刷新重试。'}</main>)
-  })
+themeReady.then(() => {
+  const root = ReactDOM.createRoot(document.getElementById('root')!)
+  preloadCharacterLibrary()
+    .then(() => root.render(<React.StrictMode><App /></React.StrictMode>))
+    .catch((error) => {
+      console.error(error)
+      root.render(<main className="got-boot-error">{import.meta.env.MODE === 'crazygames' ? 'Could not load the characters. Refresh to try again.' : '角色资源加载失败，请刷新重试。'}</main>)
+    })
+})

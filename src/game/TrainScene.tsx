@@ -5,7 +5,9 @@ import * as THREE from 'three'
 import { ANIMAL_LIBRARY_IDS, applyPassengerActivity, box, C, cyl, HERO_IDS, HUMAN_LIBRARY_IDS, isBroadLibraryCharacter, isSmallLibraryCharacter, makeLibraryPassenger, makePlayer, makeSeatedLibraryPassenger, MONSTER_LIBRARY_IDS, toon } from './models'
 import type { CharacterRig, HeroId, PassengerActivity } from './models'
 import type { HudState, InputVector, LevelConfig } from './types'
+import type { CoachStep } from '../ui/cg/tutorial'
 import { sound } from '../audio/sound'
+import { integrateSteer, stepBlend } from './stepBlend'
 
 interface OutcomeData { timeLeft: number; falls: number }
 interface Props {
@@ -18,6 +20,12 @@ interface Props {
   onHud: (hud: HudState) => void
   onFailureStart: () => void
   onOutcome: (kind: 'clear' | 'fail', data: OutcomeData) => void
+  /** Crazy Games landscape camera. Host builds leave this unset. */
+  desk?: boolean
+  /** Exponential smoothing so 60/144/165 Hz match. Host builds leave this unset. */
+  rateStable?: boolean
+  /** Guest tutorial sway. Host builds leave this unset. */
+  coachStep?: CoachStep | null
 }
 
 interface Body {
@@ -89,6 +97,15 @@ const QA_SEAT_STAND = import.meta.env.DEV && new URLSearchParams(location.search
 const QA_WRONG_DOOR = import.meta.env.DEV && new URLSearchParams(location.search).has('qaWrongDoor')
 const QA_SPEED = import.meta.env.DEV ? THREE.MathUtils.clamp(Number(new URLSearchParams(location.search).get('qaSpeed') || 1), 1, 5) : 1
 const QA_FAIL_AFTER = import.meta.env.DEV ? Math.max(0, Number(new URLSearchParams(location.search).get('qaFailAfter') || 0)) : 0
+const DESK_FOV = 32
+
+function applyFov(camera: THREE.Camera, desk: boolean) {
+  const cam = camera as THREE.PerspectiveCamera
+  const next = desk ? DESK_FOV : 55
+  if (cam.fov === next) return
+  cam.fov = next
+  cam.updateProjectionMatrix()
+}
 
 function mulberry32(seed: number) {
   return () => {
@@ -453,7 +470,7 @@ function dispose(root: THREE.Object3D) {
   })
 }
 
-function World({ level, heroId, config, active, input, reducedMotion, onHud, onFailureStart, onOutcome }: Props) {
+function World({ level, heroId, config, active, input, reducedMotion, onHud, onFailureStart, onOutcome, desk = false, rateStable = false, coachStep = null }: Props) {
   const { scene, camera } = useThree()
   const exitSide = level % 2 === 0 ? 1 : -1
   const train = useMemo(() => buildTrain(config, exitSide), [config, exitSide])
@@ -469,6 +486,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
     failureCameraFrom: new THREE.Vector3(), failureLookFrom: new THREE.Vector3(),
     boardingsSpawned: 0,
     nextBoardingAt: config.stationEvent === 'inflow' ? 3.2 : 3.7 + ((level * 17) % 10) / 10,
+    coachTripped: false,
   })
 
   useEffect(() => {
@@ -487,7 +505,13 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
     }
     S.player = player
     S.bodies.push(player)
-    camera.position.set(START_X - FORWARD_X * 5.2, 6.05, START_Z - FORWARD_Z * 5.2)
+    if (desk) {
+      applyFov(camera, true)
+      camera.position.set(START_X - 4.15, 4.85, START_Z)
+      cameraLook.current.set(START_X + 3.35, 0.58, START_Z)
+    } else {
+      camera.position.set(START_X - FORWARD_X * 5.2, 6.05, START_Z - FORWARD_Z * 5.2)
+    }
     camera.lookAt(cameraLook.current)
 
     const rand = mulberry32(9017 + level * 103)
@@ -619,6 +643,17 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
   }, [scene, camera, train, fx, config, level])
 
   useEffect(() => {
+    if (!desk) return
+    const S = state.current
+    const player = S.player
+    if (!player || S.time > 0 || S.failureStarted >= 0) return
+    applyFov(camera, true)
+    camera.position.set(player.x - 4.15, 4.85, player.z)
+    cameraLook.current.set(player.x + 3.35, 0.58, player.z)
+    camera.lookAt(cameraLook.current)
+  }, [desk, camera, active, cameraLook])
+
+  useEffect(() => {
     const player = state.current.player
     if (!player || player.group.userData.heroId === heroId) return
     const oldGroup = player.group
@@ -636,6 +671,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
   }, [heroId, train.root])
 
   useFrame(() => {
+    if (desk) applyFov(camera, true)
     const S = state.current
     if (!active || S.ended || !S.player) return
     const now = performance.now()
@@ -669,9 +705,13 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
       }
       train.exitArrow.scale.setScalar(Math.max(0.001, 1 - doorClose))
 
-      const cameraEnd = cameraGoal.current.set(EXIT_X - 4.15, 3.45, -train.exitSide * 1.18)
+      const cameraEnd = desk
+        ? cameraGoal.current.set(EXIT_X - 2.2, 3.4, -train.exitSide * 0.15)
+        : cameraGoal.current.set(EXIT_X - 4.15, 3.45, -train.exitSide * 1.18)
       camera.position.lerpVectors(S.failureCameraFrom, cameraEnd, rush)
-      const lookEnd = new THREE.Vector3(EXIT_X, 1.34, train.exitSide * 2.05)
+      const lookEnd = desk
+        ? new THREE.Vector3(EXIT_X, 1.05, train.exitSide * 0.85)
+        : new THREE.Vector3(EXIT_X, 1.34, train.exitSide * 2.05)
       cameraLook.current.lerpVectors(S.failureLookFrom, lookEnd, rush)
       const slam = reducedMotion ? 0 : Math.max(0, 1 - Math.abs(elapsed - 0.68) / 0.22)
       camera.position.z += Math.sin(elapsed * 92) * 0.055 * slam
@@ -755,12 +795,16 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
       }
       S.nextSway += config.swayPeriod * (0.92 + ((level * 31 + Math.floor(S.time)) % 17) / 100)
       S.warningSent = false
+      if (coachStep === 'sway' && !S.coachTripped) {
+        S.coachTripped = true
+        if (!S.braced && S.player.fallenUntil <= S.time) knockDown(S.player, 'forward', 1.12)
+      }
     }
 
     S.swayKick = Math.max(0, S.swayKick - dt * 2.45)
     const warningLean = warningNow ? Math.sin((S.nextSway - S.time) * 12) * 0.35 : 0
     const roll = THREE.MathUtils.degToRad(config.roll) * (S.swayKick + warningLean) * (reducedMotion ? 0.4 : 1)
-    train.root.rotation.x = THREE.MathUtils.lerp(train.root.rotation.x, roll * -S.swayDirection, Math.min(1, dt * 10))
+    train.root.rotation.x = THREE.MathUtils.lerp(train.root.rotation.x, roll * -S.swayDirection, stepBlend(10, dt, rateStable))
     for (let i = 0; i < train.handles.length; i++) {
       train.handles[i].rotation.z = Math.sin(S.time * 2.5 + i * 0.16) * 0.04 + train.root.rotation.x * -2.6
     }
@@ -908,6 +952,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
       if (b.behavior === 'departed') continue
       const fallen = b.fallenUntil > S.time
       let npcWalking = false
+      let exactMove = false
       if (!b.player && b.behavior !== 'boarding' && b.behavior !== 'exiting' && S.time >= b.exitAt) {
         b.behavior = 'exiting'
         b.wanderSpeed = Math.min(1.18, 0.82 + level * 0.035)
@@ -925,8 +970,19 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
           const forward = -stickZ
           const targetVx = (FORWARD_X * forward + RIGHT_X * stickX) * 4.1
           const targetVz = (FORWARD_Z * forward + RIGHT_Z * stickX) * 4.1
-          b.vx += (targetVx - b.vx) * Math.min(1, 18 * dt)
-          b.vz += (targetVz - b.vz) * Math.min(1, 18 * dt)
+          if (rateStable) {
+            const sx = integrateSteer(b.vx, targetVx, 18, 5.6, dt)
+            const sz = integrateSteer(b.vz, targetVz, 18, 5.6, dt)
+            b.vx = sx.v
+            b.vz = sz.v
+            b.x += sx.dx
+            b.z += sz.dx
+            exactMove = true
+          } else {
+            const steerPlayer = Math.min(1, 18 * dt)
+            b.vx += (targetVx - b.vx) * steerPlayer
+            b.vz += (targetVz - b.vz) * steerPlayer
+          }
         }
       } else if (!fallen && b.behavior === 'boarding') {
         const outsideDoor = Math.abs(b.z) > 1.05
@@ -938,7 +994,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
         if (distance > 0.10) {
           const desiredVx = dx / distance * b.wanderSpeed
           const desiredVz = dz / distance * b.wanderSpeed
-          const steer = Math.min(1, dt * 5.2)
+          const steer = stepBlend(5.2, dt, rateStable)
           b.vx += (desiredVx - b.vx) * steer
           b.vz += (desiredVz - b.vz) * steer
           npcWalking = true
@@ -962,7 +1018,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
         if (distance > 0.08) {
           const desiredVx = dx / distance * b.wanderSpeed
           const desiredVz = dz / distance * b.wanderSpeed
-          const steer = Math.min(1, dt * 4.4)
+          const steer = stepBlend(4.4, dt, rateStable)
           b.vx += (desiredVx - b.vx) * steer
           b.vz += (desiredVz - b.vz) * steer
           npcWalking = true
@@ -995,19 +1051,21 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
           if (distance > 0.12) {
             const desiredVx = dx / distance * b.wanderSpeed
             const desiredVz = dz / distance * b.wanderSpeed
-            const steer = Math.min(1, dt * 2.8)
+            const steer = stepBlend(2.8, dt, rateStable)
             b.vx += (desiredVx - b.vx) * steer
             b.vz += (desiredVz - b.vz) * steer
             npcWalking = true
           }
         }
       }
-      const dampingRate = fallen ? 2.4 : b.player ? 5.6 : npcWalking ? 1.1 : 4.8
-      const damping = Math.exp(-dampingRate * dt)
-      b.vx *= damping
-      b.vz *= damping
-      b.x += b.vx * dt
-      b.z += b.vz * dt
+      if (!exactMove) {
+        const dampingRate = fallen ? 2.4 : b.player ? 5.6 : npcWalking ? 1.1 : 4.8
+        const damping = Math.exp(-dampingRate * dt)
+        b.vx *= damping
+        b.vz *= damping
+        b.x += b.vx * dt
+        b.z += b.vz * dt
+      }
 
       const inExitLane = Math.abs(b.x - EXIT_X) < train.exitHalf + b.r * 0.65
       const canUseExit = (b.player || b.behavior === 'exiting' || b.behavior === 'boarding') && inExitLane
@@ -1235,7 +1293,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
         if (speed > 0.08 && (b.player || b.behavior === 'wandering' || b.behavior === 'exiting')) {
           const desiredYaw = Math.atan2(b.vx, b.vz)
           const yawDelta = Math.atan2(Math.sin(desiredYaw - b.group.rotation.y), Math.cos(desiredYaw - b.group.rotation.y))
-          b.group.rotation.y += yawDelta * Math.min(1, dt * (b.player ? 11 : 4.8))
+          b.group.rotation.y += yawDelta * stepBlend(b.player ? 11 : 4.8, dt, rateStable)
         }
         const swingMax = b.player ? 0.56 : 0.42
         const profile = motion ?? { style: 'commuter', legSwing: 1, armSwing: 1, footLift: 1, lean: 0, sway: 1, asymmetry: 0 }
@@ -1245,7 +1303,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
         const footLift = (b.player ? 0.12 : 0.075) * profile.footLift
         const readyLift = (0.09 + idleAir * 0.07) * motionScale
         const readyStep = Math.sin(S.time * 3.2 + b.phase) * 0.035 * motionScale
-        const poseBlend = Math.min(1, dt * 10)
+        const poseBlend = stepBlend(10, dt, rateStable)
         const activity = (!b.player && !locomoting ? b.group.userData.activity : 'natural') as PassengerActivity
         const gesture = Math.sin(S.time * 1.8 + b.phase) * 0.035 * motionScale
         const restLegLX = rig?.rest.legL?.x ?? 0
@@ -1313,12 +1371,18 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
     // A stable third-person chase camera keeps the player in the lower-middle
     // foreground while the green exit arrow remains ahead at the top of the screen.
     const cameraTrackZ = player.z * 0.35
-    cameraGoal.current.set(QA_SEAT_VIEW ? -2.20 : player.x - 5.2, QA_SEAT_VIEW ? 3.50 : 6.05, QA_SEAT_VIEW ? 0.40 : cameraTrackZ)
-    camera.position.lerp(cameraGoal.current, 1 - Math.exp(-dt * 7.5))
-    cameraLook.current.lerp(
-      cameraGoal.current.set(QA_SEAT_VIEW ? -4.20 : player.x + 4.8, QA_SEAT_VIEW ? 0.66 : 0.70, QA_SEAT_VIEW ? -1.78 : cameraTrackZ),
-      1 - Math.exp(-dt * 9),
-    )
+    if (desk && !QA_SEAT_VIEW) {
+      cameraGoal.current.set(player.x - 4.15, 4.85, cameraTrackZ)
+      camera.position.lerp(cameraGoal.current, 1 - Math.exp(-dt * 7.5))
+      cameraLook.current.lerp(cameraGoal.current.set(player.x + 3.35, 0.58, cameraTrackZ), 1 - Math.exp(-dt * 9))
+    } else {
+      cameraGoal.current.set(QA_SEAT_VIEW ? -2.20 : player.x - 5.2, QA_SEAT_VIEW ? 3.50 : 6.05, QA_SEAT_VIEW ? 0.40 : cameraTrackZ)
+      camera.position.lerp(cameraGoal.current, 1 - Math.exp(-dt * 7.5))
+      cameraLook.current.lerp(
+        cameraGoal.current.set(QA_SEAT_VIEW ? -4.20 : player.x + 4.8, QA_SEAT_VIEW ? 0.66 : 0.70, QA_SEAT_VIEW ? -1.78 : cameraTrackZ),
+        1 - Math.exp(-dt * 9),
+      )
+    }
     camera.lookAt(cameraLook.current)
 
     const playerBeyondExit = train.exitSide > 0 ? player.z > train.exitZ + 0.36 : player.z < train.exitZ - 0.36
