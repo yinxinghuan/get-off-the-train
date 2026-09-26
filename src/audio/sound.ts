@@ -277,7 +277,7 @@ function guestUnlock() {
   }
 }
 
-if (isCrazyGamesBuild) void prefetchTracks()
+if (isCrazyGamesBuild) void loadTracks()
 
 function guestToggle() {
   muted = !muted
