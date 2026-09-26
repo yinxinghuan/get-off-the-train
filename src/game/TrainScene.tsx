@@ -1171,7 +1171,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
         const nx = dx / d, nz = dz / d
         let invA = 1 / a.mass, invB = 1 / b.mass
         if (rateStable && (a.player || b.player)) {
-          const assist = THREE.MathUtils.clamp(1 - level * 0.12, 0, 1)
+          const assist = THREE.MathUtils.clamp(0.45 - level * 0.07, 0, 0.45)
           const light = THREE.MathUtils.lerp(1, 0.12, assist)
           const give = THREE.MathUtils.lerp(1, 2.6, assist)
           if (a.player) { invA *= light; invB *= give }
