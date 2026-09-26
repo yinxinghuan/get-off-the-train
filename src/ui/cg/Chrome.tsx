@@ -104,9 +104,14 @@ function UpgradeIcon({ id }: { id: UpgradeId }) {
   }
   return (
     <svg className="cg-upgrade__glyph" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M5 3v18" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
-      <path d="M5 8h6M5 12h7M5 16h6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M11 8.2c2.4.5 3.8 1.8 3.8 3.8s-1.4 3.3-3.8 3.8" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M3 4.5h18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M8 4.5v3.2M16 4.5v3.2" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M5 9.2h14" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M7.2 9.2c0-2.1 1-3.2 1.7-3.2s1.5 1.1 1.5 3.2" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M11.2 9.2c0-2.4 1-3.6 1.7-3.6s1.5 1.2 1.5 3.6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M15.1 9.2c0-2.1 1-3.2 1.6-3.2s1.4 1.1 1.4 3.2" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M6.4 9.2v3.4c0 2.6 2.2 4.4 5.6 4.4s5.6-1.8 5.6-4.4V9.2" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M6.4 12.2c-2 .3-3.3 1.5-3.1 3.1" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
     </svg>
   )
 }

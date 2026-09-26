@@ -69,14 +69,13 @@ const EN_SPECIAL: Partial<Record<StationEvent, [string, string]>> = {
 }
 
 function guestEase(config: LevelConfig, level: number): LevelConfig {
-  // A competent hold-forward clear should spend most of the clock. Car 01 still
-  // leaves room for a couple of falls. Later cars, including car 06 onward, step down.
+  // Car 01 is a long, forgiving clock. Each later car, including car 06 onward, steps down.
   const steps: Array<Partial<LevelConfig>> = [
-    { time: 10, passengers: 7, alightingCount: 1, boardingCount: 0, fallChance: 0.04, swayFallChance: 0.06, impulse: 1.25, roll: 1.4, warning: 1.35, wander: 0.34, swayPeriod: 7.2 },
-    { time: 10, passengers: 8, alightingCount: 2, boardingCount: 1, fallChance: 0.06, swayFallChance: 0.08, impulse: 1.5, roll: 1.65, warning: 1.15, wander: 0.4, swayPeriod: 6.6 },
-    { time: 10, passengers: 9, alightingCount: 2, boardingCount: 1, fallChance: 0.07, swayFallChance: 0.09, impulse: 1.7, roll: 1.9, warning: 1.05, wander: 0.46, swayPeriod: 6.1 },
-    { time: 9, passengers: 10, alightingCount: 2, boardingCount: 1, fallChance: 0.08, swayFallChance: 0.11, impulse: 1.9, roll: 2.1, warning: 0.95, wander: 0.52, swayPeriod: 5.7 },
-    { time: 9, passengers: 12, alightingCount: 3, boardingCount: 2, fallChance: 0.1, swayFallChance: 0.13, impulse: 2.1, roll: 2.3, warning: 0.85, wander: 0.58, swayPeriod: 5.3 },
+    { time: 15, passengers: 7, alightingCount: 1, boardingCount: 0, fallChance: 0.04, swayFallChance: 0.06, impulse: 1.25, roll: 1.4, warning: 1.35, wander: 0.34, swayPeriod: 7.2 },
+    { time: 14, passengers: 8, alightingCount: 2, boardingCount: 1, fallChance: 0.06, swayFallChance: 0.08, impulse: 1.5, roll: 1.65, warning: 1.15, wander: 0.4, swayPeriod: 6.6 },
+    { time: 13, passengers: 9, alightingCount: 2, boardingCount: 1, fallChance: 0.07, swayFallChance: 0.09, impulse: 1.7, roll: 1.9, warning: 1.05, wander: 0.46, swayPeriod: 6.1 },
+    { time: 12.5, passengers: 10, alightingCount: 2, boardingCount: 1, fallChance: 0.08, swayFallChance: 0.11, impulse: 1.9, roll: 2.1, warning: 0.95, wander: 0.52, swayPeriod: 5.7 },
+    { time: 12, passengers: 12, alightingCount: 3, boardingCount: 2, fallChance: 0.1, swayFallChance: 0.13, impulse: 2.1, roll: 2.3, warning: 0.85, wander: 0.58, swayPeriod: 5.3 },
   ]
   const named = steps[level]
   if (named) return { ...config, ...named }
@@ -84,7 +83,7 @@ function guestEase(config: LevelConfig, level: number): LevelConfig {
   const last = steps[steps.length - 1]
   return {
     ...config,
-    time: Math.max(8, (last.time ?? 10) - extra),
+    time: Math.max(8, 11 - (level - 5) * 0.5),
     passengers: Math.min(18, (last.passengers ?? 13) + extra),
     alightingCount: Math.min(6, (last.alightingCount ?? 3) + Math.floor(extra / 2)),
     boardingCount: Math.min(4, (last.boardingCount ?? 2) + Math.floor(extra / 3)),
