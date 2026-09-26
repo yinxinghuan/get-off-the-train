@@ -652,7 +652,7 @@ html.cg-guest .cg-pips em {
 }
 html.cg-guest .cg-pips em.is-on { background: var(--cg-teal); }
 
-html.cg-guest .cg-poster {
+html.cg-guest .cg-ticket {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -664,9 +664,9 @@ html.cg-guest .cg-poster {
   border-radius: 8px;
   box-shadow: 3px 3px 0 var(--cg-ink);
 }
-html.cg-guest .cg-poster.is-made { box-shadow: 3px 3px 0 var(--cg-teal); }
-html.cg-guest .cg-poster.is-miss { box-shadow: 3px 3px 0 var(--cg-red); }
-html.cg-guest .cg-poster__stage {
+html.cg-guest .cg-ticket.is-made { box-shadow: 3px 3px 0 var(--cg-teal); }
+html.cg-guest .cg-ticket.is-miss { box-shadow: 3px 3px 0 var(--cg-red); }
+html.cg-guest .cg-ticket__stage {
   position: relative;
   flex: 1 1 auto;
   min-height: 72px;
@@ -675,8 +675,8 @@ html.cg-guest .cg-poster__stage {
   border-radius: 8px;
   overflow: hidden;
 }
-html.cg-guest .cg-poster__stage svg { display: block; width: 100%; height: 100%; }
-html.cg-guest .cg-poster__stamp {
+html.cg-guest .cg-ticket__stage svg { display: block; width: 100%; height: 100%; }
+html.cg-guest .cg-ticket__stamp {
   position: absolute;
   right: 8px;
   bottom: 8px;
@@ -689,16 +689,16 @@ html.cg-guest .cg-poster__stamp {
   letter-spacing: .04em;
   transform: rotate(-8deg);
 }
-html.cg-guest .cg-poster.is-miss .cg-poster__stamp { background: var(--cg-red); }
-html.cg-guest .cg-poster__meta {
+html.cg-guest .cg-ticket.is-miss .cg-ticket__stamp { background: var(--cg-red); }
+html.cg-guest .cg-ticket__meta {
   display: flex;
   align-items: baseline;
   gap: 8px;
   margin: 0;
   min-width: 0;
 }
-html.cg-guest .cg-poster__meta strong { font-size: 13px; }
-html.cg-guest .cg-poster__meta span {
+html.cg-guest .cg-ticket__meta strong { font-size: 13px; }
+html.cg-guest .cg-ticket__meta span {
   overflow: hidden;
   color: var(--cg-muted);
   font-size: 11px;
@@ -707,14 +707,14 @@ html.cg-guest .cg-poster__meta span {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-html.cg-guest .cg-poster__spare {
+html.cg-guest .cg-ticket__spare {
   color: var(--cg-teal);
   font-size: 11px;
   font-style: normal;
   font-weight: 800;
   letter-spacing: .06em;
 }
-html.cg-guest .cg-poster.is-miss .cg-poster__spare { color: var(--cg-red); }
+html.cg-guest .cg-ticket.is-miss .cg-ticket__spare { color: var(--cg-red); }
 
 html.cg-guest .cg-next__go {
   min-height: 44px;
@@ -782,7 +782,7 @@ html.cg-guest .got-lb__panel {
   html.cg-guest .got-panel--game-over {
     animation: cg-card-in .34s cubic-bezier(.2, .8, .2, 1);
   }
-  html.cg-guest .cg-poster__stamp {
+  html.cg-guest .cg-ticket__stamp {
     animation: cg-stamp .42s cubic-bezier(.2, 1.3, .4, 1) .08s both;
   }
 }

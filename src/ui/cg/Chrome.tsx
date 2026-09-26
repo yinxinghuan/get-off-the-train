@@ -168,8 +168,8 @@ export function CgUpgrades({
 export function CgPoster({ made, car, name, spare }: { made: boolean; car: number; name: string; spare: number }) {
   const spareLabel = made ? `${Math.max(0, Math.ceil(spare))}s SPARE` : 'DOORS SHUT'
   return (
-    <aside className={`cg-poster${made ? ' is-made' : ' is-miss'}`}>
-      <div className="cg-poster__stage">
+    <aside className={`cg-ticket${made ? ' is-made' : ' is-miss'}`}>
+      <div className="cg-ticket__stage">
         <svg viewBox="0 0 180 96" aria-hidden="true">
           <rect x="8" y="28" width="164" height="52" rx="8" fill="#fff8ee" stroke="#1a1612" strokeWidth="3" />
           <rect x="8" y="28" width="164" height="10" rx="4" fill="#f5c518" stroke="#1a1612" strokeWidth="3" />
@@ -183,13 +183,13 @@ export function CgPoster({ made, car, name, spare }: { made: boolean; car: numbe
           <path d="M50 86c1-12 6-16 8-16s7 4 8 16" fill="#1a1612" />
           <rect x="14" y="78" width="152" height="4" rx="2" fill="#1a1612" />
         </svg>
-        <b className="cg-poster__stamp">{made ? 'MADE IT' : 'MISSED'}</b>
+        <b className="cg-ticket__stamp">{made ? 'MADE IT' : 'MISSED'}</b>
       </div>
-      <p className="cg-poster__meta">
+      <p className="cg-ticket__meta">
         <strong>CAR {String(car).padStart(2, '0')}</strong>
         <span>{name}</span>
       </p>
-      <em className="cg-poster__spare">{spareLabel}</em>
+      <em className="cg-ticket__spare">{spareLabel}</em>
     </aside>
   )
 }
