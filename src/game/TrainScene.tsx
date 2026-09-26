@@ -1117,7 +1117,10 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
           const push = min - d
           let ox = dx / d * push
           let oz = dz / d * push
-          if (rateStable && b.player && b.vx > 0.15 && Math.abs(dx) > Math.abs(dz) * 1.6) oz += train.exitSide * push * 1.1
+          if (rateStable && b.player && input.current.z < -0.2 && Math.abs(dx) > Math.abs(dz) * 1.6) {
+            oz += train.exitSide * push * 1.25
+            if (b.vx < 1.05) b.vx = 1.05
+          }
           b.x += ox
           b.z += oz
           const vn = b.vx * dx / d + b.vz * dz / d
