@@ -262,10 +262,16 @@ function resumeLoop() {
 
 function guestUnlock() {
   armed = true
-  ensureGuest()
+  const ac = ensureGuest()
   applyBuses()
-  if (want === 'loop' && !muted) loadTracks()
+  if (ac && ac.state === 'suspended') void ac.resume()
+  if (want === 'loop' && !muted) {
+    if (tracks) startLoop()
+    else void loadTracks()
+  }
 }
+
+if (isCrazyGamesBuild) void loadTracks()
 
 function guestToggle() {
   muted = !muted

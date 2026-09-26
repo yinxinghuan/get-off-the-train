@@ -96,16 +96,17 @@ function UpgradeIcon({ id }: { id: UpgradeId }) {
   if (id === 'pocket') return <CoinIcon size={18} />
   if (id === 'hustle') {
     return (
-      <svg className="cg-upgrade__icon" viewBox="0 0 24 24" aria-hidden="true">
+      <svg className="cg-upgrade__glyph" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M4 15l4-4 3 3 6-7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M13 7h6v6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     )
   }
   return (
-    <svg className="cg-upgrade__icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M7 4v16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M7 10h7a3 3 0 0 1 0 6H7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    <svg className="cg-upgrade__glyph" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 3v18" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M5 8h6M5 12h7M5 16h6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M11 8.2c2.4.5 3.8 1.8 3.8 3.8s-1.4 3.3-3.8 3.8" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
     </svg>
   )
 }
@@ -148,8 +149,9 @@ export function CgUpgrades({
             aria-label={`${UPGRADE_LABEL[id]}, ${UPGRADE_BLURB[id]}, rank ${rank} of ${UPGRADE_MAX}, ${maxed ? 'maxed' : `${cost} coins`}`}
             onClick={() => onBuy(id)}
           >
-            {locked ? <LockIcon /> : <UpgradeIcon id={id} />}
-            <b>{UPGRADE_LABEL[id]}</b>
+            <span className="cg-upgrade__mark">{locked ? <LockIcon /> : <UpgradeIcon id={id} />}</span>
+            <b className="cg-upgrade__name">{UPGRADE_LABEL[id]}</b>
+            <span className="cg-upgrade__price">{maxed ? 'MAX' : cost}</span>
             <small>{UPGRADE_BLURB[id]}</small>
             <span className="cg-rank">
               <i className="cg-pips" aria-hidden="true">
@@ -157,7 +159,6 @@ export function CgUpgrades({
               </i>
               <em>RANK {rank}</em>
             </span>
-            <strong>{maxed ? 'MAX' : cost}</strong>
           </button>
         )
       })}

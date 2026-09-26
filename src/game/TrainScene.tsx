@@ -1002,7 +1002,7 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
               }
             }
           }
-          const cruise = 4.1 * (1 + (upgrades?.hustle ?? 0) * 0.07)
+          const cruise = 4.1 * (rateStable ? 0.72 : 1) * (1 + (upgrades?.hustle ?? 0) * 0.07)
           const targetVx = (FORWARD_X * advance + RIGHT_X * aimX) * cruise
           const targetVz = (FORWARD_Z * advance + RIGHT_Z * aimX) * cruise
           if (rateStable) {

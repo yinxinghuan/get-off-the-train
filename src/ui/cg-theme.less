@@ -448,7 +448,7 @@ html.cg-guest .got--desk .got-panel {
   grid-template-columns: minmax(0, 1.25fr) minmax(200px, 0.72fr);
   column-gap: 16px;
   row-gap: 6px;
-  align-items: start;
+  align-items: stretch;
   overflow: auto;
 }
 html.cg-guest .got--desk .got-panel > .got-panel__eyebrow,
@@ -550,7 +550,15 @@ html.cg-guest .cg-ladder em {
   letter-spacing: .04em;
 }
 
-html.cg-guest .cg-result__main { display: grid; gap: 8px; min-width: 0; }
+html.cg-guest .cg-result__main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+html.cg-guest .cg-result__main .cg-upgrades { margin-top: auto; }
 html.cg-guest .cg-result__main h2 { margin: 0; }
 html.cg-guest .cg-metrics {
   display: grid;
@@ -567,9 +575,11 @@ html.cg-guest .cg-metrics span {
 html.cg-guest .cg-metrics small {
   display: block;
   color: var(--cg-muted);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: .06em;
+  letter-spacing: .04em;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 html.cg-guest .cg-metrics b {
   display: block;
@@ -603,11 +613,14 @@ html.cg-guest .cg-upgrades {
 }
 html.cg-guest .cg-upgrades button {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) auto;
-  grid-template-rows: auto auto auto;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  grid-template-areas:
+    "mark name price"
+    "mark blurb blurb"
+    "mark rank rank";
   gap: 2px 8px;
   align-items: center;
-  min-height: 72px;
+  min-height: 0;
   padding: 8px;
   color: var(--cg-ink);
   background: var(--cg-paper);
@@ -621,19 +634,49 @@ html.cg-guest .cg-upgrades button {
 html.cg-guest .cg-upgrades button:disabled { cursor: default; }
 html.cg-guest .cg-upgrades .is-ready { background: var(--cg-yellow); }
 html.cg-guest .cg-upgrades .is-short { background: var(--cg-sand); box-shadow: none; }
-html.cg-guest .cg-upgrades .is-short strong { color: var(--cg-muted); }
+html.cg-guest .cg-upgrades .is-short .cg-upgrade__price { color: var(--cg-muted); background: var(--cg-paper); }
 html.cg-guest .cg-upgrades .is-max { background: var(--cg-paper); color: var(--cg-teal); }
-html.cg-guest .cg-upgrade__icon,
-html.cg-guest .cg-upgrades svg { grid-row: 1 / span 3; width: 22px; height: 22px; }
-html.cg-guest .cg-upgrades b { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+html.cg-guest .cg-upgrade__mark {
+  grid-area: mark;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+}
+html.cg-guest .cg-upgrade__mark svg { display: block; width: 22px; height: 22px; }
+html.cg-guest .cg-upgrade__name {
+  grid-area: name;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html.cg-guest .cg-upgrade__price {
+  grid-area: price;
+  justify-self: end;
+  padding: 3px 6px;
+  background: var(--cg-paper);
+  border: 2px solid var(--cg-ink);
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
 html.cg-guest .cg-upgrades small {
+  grid-area: blurb;
+  min-width: 0;
+  overflow: hidden;
   color: var(--cg-muted);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 html.cg-guest .cg-upgrades .is-ready small { color: var(--cg-ink); }
-html.cg-guest .cg-rank { display: flex; align-items: center; gap: 6px; min-width: 0; }
+html.cg-guest .cg-rank { grid-area: rank; display: flex; align-items: center; gap: 6px; min-width: 0; }
 html.cg-guest .cg-rank em {
   color: var(--cg-muted);
   font-size: 11px;
@@ -641,7 +684,6 @@ html.cg-guest .cg-rank em {
   font-weight: 800;
   letter-spacing: .04em;
 }
-html.cg-guest .cg-upgrades strong { grid-row: 1 / span 3; font-size: 16px; }
 html.cg-guest .cg-pips { display: flex; gap: 4px; }
 html.cg-guest .cg-pips em {
   width: 8px;

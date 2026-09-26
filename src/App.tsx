@@ -69,16 +69,33 @@ const EN_SPECIAL: Partial<Record<StationEvent, [string, string]>> = {
 }
 
 function guestEase(config: LevelConfig, level: number): LevelConfig {
-  // Named cars step up one notch at a time. Endless (level >= 5) keeps the host curve.
+  // A competent hold-forward clear should spend most of the clock. Car 01 still
+  // leaves room for a couple of falls. Later cars, including car 06 onward, step down.
   const steps: Array<Partial<LevelConfig>> = [
-    { time: 32, passengers: 4, alightingCount: 1, boardingCount: 0, fallChance: 0.03, swayFallChance: 0.05, impulse: 1.15, roll: 1.3, warning: 1.45, wander: 0.25, swayPeriod: 8.2 },
-    { time: 32, passengers: 5, alightingCount: 1, boardingCount: 0, fallChance: 0.05, swayFallChance: 0.08, impulse: 1.4, roll: 1.5, warning: 1.25, wander: 0.32, swayPeriod: 7.4 },
-    { time: 30, passengers: 7, alightingCount: 2, boardingCount: 1, fallChance: 0.07, swayFallChance: 0.11, impulse: 1.7, roll: 1.85, warning: 1.1, wander: 0.42, swayPeriod: 6.8 },
-    { time: 30, passengers: 8, alightingCount: 2, boardingCount: 1, fallChance: 0.08, swayFallChance: 0.1, impulse: 1.9, roll: 2.05, warning: 1.12, wander: 0.46, swayPeriod: 6.4 },
-    { time: 28, passengers: 10, alightingCount: 3, boardingCount: 1, fallChance: 0.12, swayFallChance: 0.16, impulse: 2.2, roll: 2.4, warning: 0.88, wander: 0.55, swayPeriod: 5.8 },
+    { time: 12, passengers: 7, alightingCount: 1, boardingCount: 0, fallChance: 0.04, swayFallChance: 0.06, impulse: 1.25, roll: 1.4, warning: 1.35, wander: 0.34, swayPeriod: 7.2 },
+    { time: 12, passengers: 8, alightingCount: 2, boardingCount: 1, fallChance: 0.06, swayFallChance: 0.08, impulse: 1.5, roll: 1.65, warning: 1.15, wander: 0.4, swayPeriod: 6.6 },
+    { time: 11, passengers: 10, alightingCount: 2, boardingCount: 1, fallChance: 0.08, swayFallChance: 0.1, impulse: 1.75, roll: 1.95, warning: 1.0, wander: 0.48, swayPeriod: 6.0 },
+    { time: 11, passengers: 11, alightingCount: 2, boardingCount: 1, fallChance: 0.09, swayFallChance: 0.12, impulse: 1.95, roll: 2.15, warning: 0.9, wander: 0.54, swayPeriod: 5.6 },
+    { time: 10, passengers: 13, alightingCount: 3, boardingCount: 2, fallChance: 0.11, swayFallChance: 0.14, impulse: 2.15, roll: 2.4, warning: 0.8, wander: 0.6, swayPeriod: 5.2 },
   ]
-  const step = steps[level]
-  return step ? { ...config, ...step } : config
+  const named = steps[level]
+  if (named) return { ...config, ...named }
+  const extra = level - (steps.length - 1)
+  const last = steps[steps.length - 1]
+  return {
+    ...config,
+    time: Math.max(8, (last.time ?? 10) - extra),
+    passengers: Math.min(18, (last.passengers ?? 13) + extra),
+    alightingCount: Math.min(6, (last.alightingCount ?? 3) + Math.floor(extra / 2)),
+    boardingCount: Math.min(4, (last.boardingCount ?? 2) + Math.floor(extra / 3)),
+    fallChance: Math.min(0.22, (last.fallChance ?? 0.11) + extra * 0.015),
+    swayFallChance: Math.min(0.28, (last.swayFallChance ?? 0.14) + extra * 0.015),
+    impulse: Math.min(3.4, (last.impulse ?? 2.15) + extra * 0.12),
+    roll: Math.min(4, (last.roll ?? 2.4) + extra * 0.12),
+    warning: Math.max(0.55, (last.warning ?? 0.8) - extra * 0.04),
+    wander: Math.min(1, (last.wander ?? 0.6) + extra * 0.04),
+    swayPeriod: Math.max(3.8, (last.swayPeriod ?? 5.2) - extra * 0.18),
+  }
 }
 
 function levelCopy(index: number, config: ReturnType<typeof getLevelConfig>) {
@@ -527,9 +544,9 @@ export default function App() {
                 <h2>{phase === 'level-clear' ? t('clear') : t('miss')}</h2>
                 <div className="cg-metrics">
                   <span><small>CAR</small><b>{String(level + 1).padStart(2, '0')}</b></span>
-                  <span><small>BEST</small><b>{String(Math.max(bestStage, level + 1)).padStart(2, '0')}</b></span>
+                  <span><small>BEST CAR</small><b>{String(Math.max(bestStage, level + 1)).padStart(2, '0')}</b></span>
                   <span><small>{t('falls')}</small><b>{totalFalls}</b></span>
-                  <span><small>{phase === 'game-over' ? t('best') : t('totalScore')}</small><b>{phase === 'game-over' ? Math.max(best, score) : score}</b></span>
+                  <span><small>BEST SCORE</small><b>{Math.max(best, score)}</b></span>
                 </div>
                 <div className="cg-reward"><CoinIcon size={22} /><b>+{levelCoins}</b><small>COINS</small></div>
                 <CgLadder bestClear={bestClear} />
