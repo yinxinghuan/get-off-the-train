@@ -8,7 +8,7 @@ import { ArrowIcon, CoinIcon, CollectionIcon, CrownIcon, MutedIcon, PauseIcon, S
 import { Joystick } from './ui/Joystick'
 import { CrazyGamesFrame } from './ui/CrazyGamesFrame'
 import { useGuestDesk } from './ui/cg/desk'
-import { CgChip, CgCoach, CgLadder, CgLegend, CgNext, CgUpgrades } from './ui/cg/Chrome'
+import { CgChip, CgCoach, CgLadder, CgLegend, CgNext, CgPoster, CgUpgrades } from './ui/cg/Chrome'
 import { pocketMultiplier, readBestClear, readBestStage, readUpgrades, upgradeCost, writeBestClear, writeBestStage, writeUpgrades, EMPTY_UPGRADES, type UpgradeId } from './ui/cg/progress'
 import { useCoach } from './ui/cg/tutorial'
 import { useCgKeys } from './ui/cg/useCgKeys'
@@ -69,13 +69,16 @@ const EN_SPECIAL: Partial<Record<StationEvent, [string, string]>> = {
 }
 
 function guestEase(config: LevelConfig, level: number): LevelConfig {
-  if (level === 0) {
-    return { ...config, time: 32, passengers: 4, alightingCount: 1, boardingCount: 0, fallChance: 0.03, swayFallChance: 0.05, impulse: 1.15, roll: 1.3, warning: 1.45, wander: 0.25, swayPeriod: 8.2 }
-  }
-  if (level === 1) {
-    return { ...config, time: 32, passengers: 5, alightingCount: 1, boardingCount: 0, fallChance: 0.05, swayFallChance: 0.08, impulse: 1.4, roll: 1.5, warning: 1.25, wander: 0.32 }
-  }
-  return config
+  // Named cars step up one notch at a time. Endless (level >= 5) keeps the host curve.
+  const steps: Array<Partial<LevelConfig>> = [
+    { time: 32, passengers: 4, alightingCount: 1, boardingCount: 0, fallChance: 0.03, swayFallChance: 0.05, impulse: 1.15, roll: 1.3, warning: 1.45, wander: 0.25, swayPeriod: 8.2 },
+    { time: 32, passengers: 5, alightingCount: 1, boardingCount: 0, fallChance: 0.05, swayFallChance: 0.08, impulse: 1.4, roll: 1.5, warning: 1.25, wander: 0.32, swayPeriod: 7.4 },
+    { time: 30, passengers: 7, alightingCount: 2, boardingCount: 1, fallChance: 0.07, swayFallChance: 0.11, impulse: 1.7, roll: 1.85, warning: 1.1, wander: 0.42, swayPeriod: 6.8 },
+    { time: 28, passengers: 9, alightingCount: 3, boardingCount: 1, fallChance: 0.1, swayFallChance: 0.15, impulse: 2.05, roll: 2.25, warning: 0.95, wander: 0.52, swayPeriod: 6.1 },
+    { time: 26, passengers: 11, alightingCount: 3, boardingCount: 2, fallChance: 0.13, swayFallChance: 0.18, impulse: 2.35, roll: 2.6, warning: 0.82, wander: 0.64, swayPeriod: 5.5 },
+  ]
+  const step = steps[level]
+  return step ? { ...config, ...step } : config
 }
 
 function levelCopy(index: number, config: ReturnType<typeof getLevelConfig>) {
@@ -534,7 +537,12 @@ export default function App() {
                 {phase === 'game-over' && <CgNext bestClear={bestClear} onStart={beginAt} />}
               </div>
             )}
-            {isCrazyGamesBuild ? <div className="got-panel__actions">{panelActions}</div> : panelActions}
+            {isCrazyGamesBuild ? (
+              <div className="got-panel__actions">
+                {phase !== 'paused' && <CgPoster made={phase === 'level-clear'} car={level + 1} name={copy.name} spare={hud.timeLeft} />}
+                {panelActions}
+              </div>
+            ) : panelActions}
           </section>
         </div>
       )}

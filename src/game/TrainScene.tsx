@@ -979,14 +979,22 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
           // are clearable without fighting the center poles. A real strafe still wins.
           let aimX = stickX
           let advance = forward
+          // Door steer is full on car 01 and fades by about car 07. A real strafe still wins.
           if (rateStable && forward > 0.45 && Math.abs(stickX) < 0.45) {
-            if (b.x < EXIT_X - 0.35) {
-              const routeZ = train.exitSide * 0.85
-              aimX = THREE.MathUtils.clamp((routeZ - b.z) * 1.6, -0.7, 0.7)
-              advance = forward
-            } else {
-              aimX = train.exitSide
-              advance = 0.12
+            const assist = THREE.MathUtils.clamp(1 - level * 0.18, 0, 1)
+            if (assist > 0.02) {
+              let helpX = 0
+              let helpAdvance = forward
+              if (b.x < EXIT_X - 0.35) {
+                const routeZ = train.exitSide * 0.85
+                helpX = THREE.MathUtils.clamp((routeZ - b.z) * 1.6, -0.7, 0.7)
+                helpAdvance = forward
+              } else {
+                helpX = train.exitSide
+                helpAdvance = 0.12
+              }
+              aimX = THREE.MathUtils.lerp(stickX, helpX, assist)
+              advance = THREE.MathUtils.lerp(forward, helpAdvance, assist)
             }
           }
           const cruise = 4.1 * (1 + (upgrades?.hustle ?? 0) * 0.07)
@@ -1154,8 +1162,13 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
         const d = Math.sqrt(d2) || 0.001
         const nx = dx / d, nz = dz / d
         let invA = 1 / a.mass, invB = 1 / b.mass
-        if (rateStable && a.player) { invA *= 0.12; invB *= 2.6 }
-        else if (rateStable && b.player) { invB *= 0.12; invA *= 2.6 }
+        if (rateStable && (a.player || b.player)) {
+          const assist = THREE.MathUtils.clamp(1 - level * 0.18, 0, 1)
+          const light = THREE.MathUtils.lerp(1, 0.12, assist)
+          const give = THREE.MathUtils.lerp(1, 2.6, assist)
+          if (a.player) { invA *= light; invB *= give }
+          else { invB *= light; invA *= give }
+        }
         const pen = min - d
         a.x -= nx * pen * invA / (invA + invB)
         a.z -= nz * pen * invA / (invA + invB)

@@ -75,7 +75,7 @@ function ensureGuest(): AudioContext | null {
       sfxBus.gain.value = 0.7
       sfxBus.connect(master)
       musicBus = ac.createGain()
-      musicBus.gain.value = 0.46
+      musicBus.gain.value = MUSIC_GAIN
       musicBus.connect(master)
     }
     return ac
@@ -168,9 +168,14 @@ let stingSrc: AudioBufferSourceNode | null = null
 let tracks: { loop: AudioBuffer; clear: AudioBuffer; miss: AudioBuffer } | null = null
 let loading: Promise<void> | null = null
 
+// Loop file is about -12 LUFS; stings are -16 and -20. The bed sits under the
+// oscillator effects. Stings get a makeup gain so a clear still reads as a sting.
+const MUSIC_GAIN = 0.3
+const STING_GAIN = 2
+
 function applyBuses() {
   if (master) master.gain.setValueAtTime(muted ? 0 : volume, ctx?.currentTime ?? 0)
-  if (musicBus) musicBus.gain.value = 0.46
+  if (musicBus) musicBus.gain.value = MUSIC_GAIN
   if (sfxBus) sfxBus.gain.value = 0.7
 }
 
@@ -207,7 +212,10 @@ function startSting() {
   stopSting()
   const src = ac.createBufferSource()
   src.buffer = pendingSting === 'clear' ? tracks.clear : tracks.miss
-  src.connect(musicBus)
+  const makeup = ac.createGain()
+  makeup.gain.value = STING_GAIN
+  src.connect(makeup)
+  makeup.connect(musicBus)
   src.start()
   stingSrc = src
   src.onended = () => { if (stingSrc === src) stingSrc = null }

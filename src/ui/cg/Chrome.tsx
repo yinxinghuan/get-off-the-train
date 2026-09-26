@@ -73,9 +73,23 @@ export function CgLegend() {
 }
 
 const UPGRADE_LABEL: Record<UpgradeId, string> = { grip: 'GRIP', hustle: 'HUSTLE', pocket: 'POCKET' }
+const UPGRADE_BLURB: Record<UpgradeId, string> = {
+  grip: 'Fewer falls on sway',
+  hustle: 'Faster push through crowd',
+  pocket: 'More coins per ride',
+}
 
 function goalName(goal: NonNullable<ReturnType<typeof nextCoinGoal>>) {
   return goal.kind === 'hero' ? heroName(goal.id as HeroNameId) : UPGRADE_LABEL[goal.id]
+}
+
+function LockIcon() {
+  return (
+    <svg className="cg-upgrade__icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      <rect x="6" y="11" width="12" height="9" rx="2" fill="none" stroke="currentColor" strokeWidth="2.4" />
+    </svg>
+  )
 }
 
 function UpgradeIcon({ id }: { id: UpgradeId }) {
@@ -83,15 +97,15 @@ function UpgradeIcon({ id }: { id: UpgradeId }) {
   if (id === 'hustle') {
     return (
       <svg className="cg-upgrade__icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M5 16l5-5 3 3 6-7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M14 7h5v5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M4 15l4-4 3 3 6-7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M13 7h6v6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     )
   }
   return (
     <svg className="cg-upgrade__icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-      <rect x="6" y="11" width="12" height="9" rx="2" fill="none" stroke="currentColor" strokeWidth="2.4" />
+      <path d="M7 4v16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M7 10h7a3 3 0 0 1 0 6H7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -124,18 +138,59 @@ export function CgUpgrades({
         const cost = upgradeCost(rank)
         const ready = cost != null && coins >= cost
         const maxed = rank >= UPGRADE_MAX
+        const locked = !maxed && !ready
         return (
-          <button key={id} type="button" className={maxed ? 'is-max' : ready ? 'is-ready' : 'is-short'} disabled={!ready} onClick={() => onBuy(id)}>
-            <UpgradeIcon id={id} />
+          <button
+            key={id}
+            type="button"
+            className={maxed ? 'is-max' : ready ? 'is-ready' : 'is-short'}
+            disabled={!ready}
+            aria-label={`${UPGRADE_LABEL[id]}, ${UPGRADE_BLURB[id]}, rank ${rank} of ${UPGRADE_MAX}, ${maxed ? 'maxed' : `${cost} coins`}`}
+            onClick={() => onBuy(id)}
+          >
+            {locked ? <LockIcon /> : <UpgradeIcon id={id} />}
             <b>{UPGRADE_LABEL[id]}</b>
-            <i className="cg-pips" aria-label={`Rank ${rank} of ${UPGRADE_MAX}`}>
-              {[0, 1, 2].map((pip) => <em key={pip} className={pip < rank ? 'is-on' : ''} />)}
-            </i>
+            <small>{UPGRADE_BLURB[id]}</small>
+            <span className="cg-rank">
+              <i className="cg-pips" aria-hidden="true">
+                {[0, 1, 2].map((pip) => <em key={pip} className={pip < rank ? 'is-on' : ''} />)}
+              </i>
+              <em>RANK {rank}</em>
+            </span>
             <strong>{maxed ? 'MAX' : cost}</strong>
           </button>
         )
       })}
     </div>
+  )
+}
+
+export function CgPoster({ made, car, name, spare }: { made: boolean; car: number; name: string; spare: number }) {
+  const spareLabel = made ? `${Math.max(0, Math.ceil(spare))}s SPARE` : 'DOORS SHUT'
+  return (
+    <aside className={`cg-poster${made ? ' is-made' : ' is-miss'}`}>
+      <div className="cg-poster__stage">
+        <svg viewBox="0 0 180 96" aria-hidden="true">
+          <rect x="8" y="28" width="164" height="52" rx="8" fill="#fff8ee" stroke="#1a1612" strokeWidth="3" />
+          <rect x="8" y="28" width="164" height="10" rx="4" fill="#f5c518" stroke="#1a1612" strokeWidth="3" />
+          <rect x="18" y="44" width="22" height="16" rx="3" fill="#2f7f76" stroke="#1a1612" strokeWidth="2" />
+          <rect x="46" y="44" width="22" height="16" rx="3" fill="#2f7f76" stroke="#1a1612" strokeWidth="2" />
+          <rect x="112" y="44" width="22" height="16" rx="3" fill="#2f7f76" stroke="#1a1612" strokeWidth="2" />
+          <rect x="140" y="44" width="22" height="16" rx="3" fill="#2f7f76" stroke="#1a1612" strokeWidth="2" />
+          <rect x="78" y="42" width="26" height="38" rx="3" fill={made ? '#f5c518' : '#d4534a'} stroke="#1a1612" strokeWidth="3" />
+          <path d="M91 50 v22" fill="none" stroke="#1a1612" strokeWidth="2" />
+          <circle cx="58" cy="62" r="7" fill="#1a1612" />
+          <path d="M50 86c1-12 6-16 8-16s7 4 8 16" fill="#1a1612" />
+          <rect x="14" y="78" width="152" height="4" rx="2" fill="#1a1612" />
+        </svg>
+        <b className="cg-poster__stamp">{made ? 'MADE IT' : 'MISSED'}</b>
+      </div>
+      <p className="cg-poster__meta">
+        <strong>CAR {String(car).padStart(2, '0')}</strong>
+        <span>{name}</span>
+      </p>
+      <em className="cg-poster__spare">{spareLabel}</em>
+    </aside>
   )
 }
 
