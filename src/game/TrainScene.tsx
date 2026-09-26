@@ -990,12 +990,16 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
                 const routeZ = train.exitSide * 0.85
                 helpX = THREE.MathUtils.clamp((routeZ - b.z) * 1.6, -0.7, 0.7)
                 helpAdvance = forward
+                aimX = THREE.MathUtils.lerp(stickX, helpX, assist)
+                advance = THREE.MathUtils.lerp(forward, helpAdvance, assist)
               } else {
+                // The aisle fade must not keep walking past a narrow door.
                 helpX = train.exitSide
-                helpAdvance = 0.12
+                helpAdvance = 0
+                const doorAssist = Math.max(assist, 0.8)
+                aimX = THREE.MathUtils.lerp(stickX, helpX, doorAssist)
+                advance = THREE.MathUtils.lerp(forward, helpAdvance, doorAssist)
               }
-              aimX = THREE.MathUtils.lerp(stickX, helpX, assist)
-              advance = THREE.MathUtils.lerp(forward, helpAdvance, assist)
             }
           }
           const cruise = 4.1 * (1 + (upgrades?.hustle ?? 0) * 0.07)

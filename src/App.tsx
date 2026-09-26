@@ -74,7 +74,7 @@ function guestEase(config: LevelConfig, level: number): LevelConfig {
     { time: 32, passengers: 4, alightingCount: 1, boardingCount: 0, fallChance: 0.03, swayFallChance: 0.05, impulse: 1.15, roll: 1.3, warning: 1.45, wander: 0.25, swayPeriod: 8.2 },
     { time: 32, passengers: 5, alightingCount: 1, boardingCount: 0, fallChance: 0.05, swayFallChance: 0.08, impulse: 1.4, roll: 1.5, warning: 1.25, wander: 0.32, swayPeriod: 7.4 },
     { time: 30, passengers: 7, alightingCount: 2, boardingCount: 1, fallChance: 0.07, swayFallChance: 0.11, impulse: 1.7, roll: 1.85, warning: 1.1, wander: 0.42, swayPeriod: 6.8 },
-    { time: 30, passengers: 8, alightingCount: 2, boardingCount: 1, fallChance: 0.09, swayFallChance: 0.13, impulse: 1.9, roll: 2.05, warning: 1.02, wander: 0.46, swayPeriod: 6.4 },
+    { time: 30, passengers: 8, alightingCount: 2, boardingCount: 1, fallChance: 0.08, swayFallChance: 0.1, impulse: 1.9, roll: 2.05, warning: 1.12, wander: 0.46, swayPeriod: 6.4 },
     { time: 28, passengers: 10, alightingCount: 3, boardingCount: 1, fallChance: 0.12, swayFallChance: 0.16, impulse: 2.2, roll: 2.4, warning: 0.88, wander: 0.55, swayPeriod: 5.8 },
   ]
   const step = steps[level]
