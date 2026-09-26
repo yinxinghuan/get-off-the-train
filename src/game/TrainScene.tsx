@@ -979,19 +979,17 @@ function World({ level, heroId, config, active, input, reducedMotion, onHud, onF
           // are clearable without fighting the center poles. A real strafe still wins.
           let aimX = stickX
           let advance = forward
-          // Door steer is full on car 01 and fades by about car 09. Stay in the
-          // exit lane until the doorway is lined up, then strafe out. A real strafe still wins.
+          // Door steer is full on car 01 and fades by about car 09. Holding forward
+          // follows the aisle, then strafes out through the door. A real strafe still wins.
           if (rateStable && forward > 0.45 && Math.abs(stickX) < 0.45) {
             const assist = THREE.MathUtils.clamp(1 - level * 0.12, 0, 1)
             if (assist > 0.02) {
-              const routeZ = train.exitSide * 0.85
-              const linedUp = Math.abs(b.z - routeZ) < Math.max(0.34, train.exitHalf * 0.42)
-              const atDoor = b.x > EXIT_X - 0.45 && linedUp
               let helpX = 0
               let helpAdvance = forward
-              if (!atDoor) {
+              if (b.x < EXIT_X - 0.35) {
+                const routeZ = train.exitSide * 0.85
                 helpX = THREE.MathUtils.clamp((routeZ - b.z) * 1.6, -0.7, 0.7)
-                helpAdvance = b.x > EXIT_X - 0.45 ? Math.min(forward, 0.38) : forward
+                helpAdvance = forward
               } else {
                 helpX = train.exitSide
                 helpAdvance = 0.12
