@@ -221,23 +221,29 @@ function startSting() {
   src.onended = () => { if (stingSrc === src) stingSrc = null }
 }
 
+let rawTracks: Promise<{ loop: ArrayBuffer; clear: ArrayBuffer; miss: ArrayBuffer }> | null = null
+
+function prefetchTracks() {
+  if (rawTracks || !isCrazyGamesBuild) return rawTracks
+  rawTracks = (async () => {
+    const mod = await import('./cgTracks')
+    const grab = async (url: string) => (await fetch(url)).arrayBuffer()
+    return { loop: await grab(mod.loopUrl), clear: await grab(mod.clearUrl), miss: await grab(mod.missUrl) }
+  })()
+  return rawTracks
+}
+
 function loadTracks() {
-  if (tracks || loading) return loading ?? Promise.resolve()
+  if (tracks) return Promise.resolve()
+  if (loading) return loading
   loading = (async () => {
     if (import.meta.env.MODE !== 'crazygames') return
-    const ac = ensureGuest()
-    if (!ac) return
-    const mod = await import('./cgTracks')
-    const decode = async (url: string) => {
-      const res = await fetch(url)
-      const raw = await res.arrayBuffer()
-      return ac.decodeAudioData(raw.slice(0))
-    }
-    tracks = {
-      loop: await decode(mod.loopUrl),
-      clear: await decode(mod.clearUrl),
-      miss: await decode(mod.missUrl),
-    }
+    const ac = context()
+    const raw = await prefetchTracks()
+    if (!raw) { loading = null; return }
+    const decode = (buf: ArrayBuffer) => ac.decodeAudioData(buf.slice(0))
+    tracks = { loop: await decode(raw.loop), clear: await decode(raw.clear), miss: await decode(raw.miss) }
+    if (!armed || muted) return
     if (want === 'loop') startLoop()
     else startSting()
   })().catch(() => { loading = null })
@@ -271,7 +277,7 @@ function guestUnlock() {
   }
 }
 
-if (isCrazyGamesBuild) void loadTracks()
+if (isCrazyGamesBuild) void prefetchTracks()
 
 function guestToggle() {
   muted = !muted

@@ -553,10 +553,9 @@ html.cg-guest .cg-ladder em {
 html.cg-guest .cg-result__main {
   display: flex;
   flex-direction: column;
+  align-self: stretch;
   gap: 8px;
-  height: 100%;
   min-width: 0;
-  min-height: 0;
 }
 html.cg-guest .cg-result__main .cg-upgrades { margin-top: auto; }
 html.cg-guest .cg-result__main h2 { margin: 0; }
@@ -647,10 +646,8 @@ html.cg-guest .cg-upgrade__mark svg { display: block; width: 22px; height: 22px;
 html.cg-guest .cg-upgrade__name {
   grid-area: name;
   min-width: 0;
-  overflow: hidden;
   font-size: 13px;
-  line-height: 1.1;
-  text-overflow: ellipsis;
+  line-height: 1.2;
   white-space: nowrap;
 }
 html.cg-guest .cg-upgrade__price {
@@ -667,13 +664,11 @@ html.cg-guest .cg-upgrade__price {
 html.cg-guest .cg-upgrades small {
   grid-area: blurb;
   min-width: 0;
-  overflow: hidden;
   color: var(--cg-muted);
   font-size: 11px;
   font-weight: 800;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.15;
+  white-space: normal;
 }
 html.cg-guest .cg-upgrades .is-ready small { color: var(--cg-ink); }
 html.cg-guest .cg-rank { grid-area: rank; display: flex; align-items: center; gap: 6px; min-width: 0; }

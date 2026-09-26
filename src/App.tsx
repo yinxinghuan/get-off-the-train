@@ -72,11 +72,11 @@ function guestEase(config: LevelConfig, level: number): LevelConfig {
   // A competent hold-forward clear should spend most of the clock. Car 01 still
   // leaves room for a couple of falls. Later cars, including car 06 onward, step down.
   const steps: Array<Partial<LevelConfig>> = [
-    { time: 12, passengers: 7, alightingCount: 1, boardingCount: 0, fallChance: 0.04, swayFallChance: 0.06, impulse: 1.25, roll: 1.4, warning: 1.35, wander: 0.34, swayPeriod: 7.2 },
-    { time: 12, passengers: 8, alightingCount: 2, boardingCount: 1, fallChance: 0.06, swayFallChance: 0.08, impulse: 1.5, roll: 1.65, warning: 1.15, wander: 0.4, swayPeriod: 6.6 },
-    { time: 11, passengers: 10, alightingCount: 2, boardingCount: 1, fallChance: 0.08, swayFallChance: 0.1, impulse: 1.75, roll: 1.95, warning: 1.0, wander: 0.48, swayPeriod: 6.0 },
-    { time: 11, passengers: 11, alightingCount: 2, boardingCount: 1, fallChance: 0.09, swayFallChance: 0.12, impulse: 1.95, roll: 2.15, warning: 0.9, wander: 0.54, swayPeriod: 5.6 },
-    { time: 10, passengers: 13, alightingCount: 3, boardingCount: 2, fallChance: 0.11, swayFallChance: 0.14, impulse: 2.15, roll: 2.4, warning: 0.8, wander: 0.6, swayPeriod: 5.2 },
+    { time: 10, passengers: 7, alightingCount: 1, boardingCount: 0, fallChance: 0.04, swayFallChance: 0.06, impulse: 1.25, roll: 1.4, warning: 1.35, wander: 0.34, swayPeriod: 7.2 },
+    { time: 10, passengers: 8, alightingCount: 2, boardingCount: 1, fallChance: 0.06, swayFallChance: 0.08, impulse: 1.5, roll: 1.65, warning: 1.15, wander: 0.4, swayPeriod: 6.6 },
+    { time: 10, passengers: 9, alightingCount: 2, boardingCount: 1, fallChance: 0.07, swayFallChance: 0.09, impulse: 1.7, roll: 1.9, warning: 1.05, wander: 0.46, swayPeriod: 6.1 },
+    { time: 9, passengers: 10, alightingCount: 2, boardingCount: 1, fallChance: 0.08, swayFallChance: 0.11, impulse: 1.9, roll: 2.1, warning: 0.95, wander: 0.52, swayPeriod: 5.7 },
+    { time: 9, passengers: 12, alightingCount: 3, boardingCount: 2, fallChance: 0.1, swayFallChance: 0.13, impulse: 2.1, roll: 2.3, warning: 0.85, wander: 0.58, swayPeriod: 5.3 },
   ]
   const named = steps[level]
   if (named) return { ...config, ...named }
